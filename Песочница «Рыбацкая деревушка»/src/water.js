@@ -46,11 +46,11 @@ function wStep(J, limit) { const { x0, y0, Ls, Ds, Bs, F, PN, ZN, blk } = J;
       PN[i] = Math.floor((vn(x * .016, y * .021, SEED + 760) * .72 + Math.abs(((x + y * .35) / 300) % 2 - 1) * .28) * 255); ZN[i] = Math.floor((h2(x, y, SEED + 761) * .55 + h2(x >> 2, y >> 1, SEED + 762) * .45) * 255) }
     J.r++ }
   if (J.r >= CK) { J.done = true; J.f = J.any ? { x0, y0, F, PN, ZN } : null } }
-// (the fields in view and round it are built a little each frame, the nearest first)
+// (the fields in view and round it are built a little each frame, the nearest first; a little more while the place is just opening)
 function wFields(cx0, cy0) { const ci0 = Math.floor(cx0 / CK) - 1, ci1 = Math.floor((cx0 + W) / CK) + 1, cj0 = Math.floor(cy0 / CK) - 1, cj1 = Math.floor((cy0 + H) / CK) + 1, FS = [], todo = [], mx = cx0 + W / 2, my = cy0 + H / 2;
   for (let cj = cj0; cj <= cj1; cj++) for (let ci = ci0; ci <= ci1; ci++) { const key = ci + ',' + cj; let J = WJOBS.get(key); if (!J) { J = wJob(ci, cj); WJOBS.set(key, J) }
     if (J.done) { if (J.f && ci >= ci0 + 1 && ci <= ci1 - 1 && cj >= cj0 + 1 && cj <= cj1 - 1) FS.push(J.f) } else todo.push([Math.hypot(ci * CK + CK / 2 - mx, cj * CK + CK / 2 - my), J]) }
-  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + 3; for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } }
+  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + (t < 4 ? 14 : 3); for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } }
   return FS }
 const wFrac = u => u - Math.floor(u);
 const wHash = (x, y, k) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(k, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 24 }; // (a cheap hash, 0..255)
