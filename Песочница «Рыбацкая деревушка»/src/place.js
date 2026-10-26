@@ -18,7 +18,7 @@
     { id: 'house-3', p: 'house', x: 760, y: 338, w: 50, d: 40, wall: 'board', col: [204, 172, 98], roof: 'tin', roofCol: [138, 62, 48], shut: [176, 70, 52], wins: [-16, 16], deco: ['buoys', 'barrel', 'aerial', 'logs', 'lamp', 'kennel', 'bucket'], seed: 8, decay: .45, shutBad: [1, 0, 0, 0], fallen: -1, lampC: '255,176,96', meter: -19 },
     { id: 'smokehouse', p: 'smokehouse', x: 588, y: 284, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
     { id: 'boatshed', p: 'boatshed', x: 968, y: 306, meter: 38, deco: ['oars', 'net', 'buoys', 'lamp'], lampC: '255,252,236', lampX: 24 },
-    { id: 'well', p: 'well', x: 386, y: 360 },
+    { id: 'well', p: 'well', x: 386, y: 387 },
     { id: 'logpile', p: 'logpile', x: 168, y: 340, seed: 11 },
     // nets and fish drying on the shore side
     { id: 'netrack-1', p: 'netrack', x: 142, y: 300, len: 58, nets: 2, seed: 7 }, { id: 'netrack-2', p: 'netrack', x: 706, y: 254, len: 50, nets: 2, seed: 17, col: [70, 92, 84] },
@@ -44,7 +44,7 @@
     { id: 'crates-2', p: 'crates', x: PIER.x - 2, y: 118, seed: 8 },
     { id: 'lantern-1', p: 'lantern', x: PIER.x - 11, y: 106, c: '255,196,120', seed: 1 }, { id: 'lantern-2', p: 'lantern', x: PIER.x + 11, y: 106, c: '255,236,200', flick: true, seed: 2 },
     // by the fire on the beach
-    { id: 'fire-1', p: 'fire', kind: 'ring', x: 792, y: 216 }, { id: 'bench-1', p: 'bench', x: 764, y: 230 }, { id: 'bench-2', p: 'bench', x: 822, y: 232 },
+    { id: 'fire-1', p: 'fire', kind: 'ring', x: 800, y: 262 }, { id: 'bench-1', p: 'bench', x: 782, y: 250 }, { id: 'bench-2', p: 'bench', x: 818, y: 250 },
     // cars, the power, the signposts, the end of the dam
     { id: 'car-kopeika', p: 'oldcar', kind: 'copeika', x: 662, y: 456, flip: true }, { id: 'car-beetle', p: 'oldcar', kind: 'beetle', x: 150, y: 482 },
     // weeds growing through and round the parked cars
@@ -81,7 +81,7 @@
       { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 274, 22, 8], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
       { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
-      { id: 'dirt-well', mat: 'dirt', ellipse: [386, 372, 16, 6], rough: .4 },
+      { id: 'dirt-well', mat: 'dirt', ellipse: [388, 399, 18, 7], rough: .4 },
       // a patch of firm ground at the foot of the dam for the checkpoint: grass and soil, not sand, which the waves would wash from under it
       { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1188, 222, 14, 8], rough: .35 },
       // the way into the village from the forest, the street and the embankment out over the bay
@@ -98,7 +98,7 @@
     ],
     objects,
     scatter: [
-      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 3], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
+      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 4.4], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
       { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], shore: true, clear: 14, kinds: [['rock', 1]] },
       { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],
@@ -120,16 +120,16 @@
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
     { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
-        route: [[386, 378, 22], [440, 398, 0], [482, 392, 40], [440, 398, 0]] },
+        route: [[384, 403, 22], [440, 412, 0], [482, 404, 40], [440, 412, 0]] },
     ],
-    sitters: { 'fire-1': [[-18, 6, 90], [16, 8, 270]] },
+    sitters: { 'fire-1': [[-18, -20, 180], [18, -20, 180]] },
     poi: [
       { id: 'jetty', name: 'Мостки', hint: 'отсюда уходят на лодках', x: 640, y: 206, r: 34 },
       { id: 'smoke', name: 'Коптильня', hint: 'пахнет ольхой и рыбой', x: 600, y: 292, r: 30 },
       { id: 'shed', name: 'Лодочный сарай', hint: 'вёсла, сети, лодочный мотор', x: 968, y: 318, r: 40 },
-      { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят у воды', x: 792, y: 226, r: 28 },
+      { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят, глядя на воду', x: 800, y: 262, r: 28 },
       { id: 'barn', name: 'Коровник', hint: 'пахнет сеном и парным молоком', x: 925, y: 486, r: 46 },
-      { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 374, r: 24 },
+      { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 401, r: 24 },
     ],
     exits: [
       { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7 },

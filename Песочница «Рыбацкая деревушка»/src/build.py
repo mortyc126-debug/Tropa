@@ -11,7 +11,7 @@ SRC = os.path.join(HERE, '..', '..', 'Осенняя тропа (2)', 'index.htm
 out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..')
 
 s = open(SRC, encoding='utf-8').read()
-PF = ''.join(open(os.path.join(HERE, f), encoding='utf-8').read() + '\n' for f in ('pf.js', 'terrain.js', 'water.js', 'extras.js', 'gulls.js'))
+PF = ''.join(open(os.path.join(HERE, f), encoding='utf-8').read() + '\n' for f in ('pf.js', 'terrain.js', 'water.js', 'extras.js', 'guard.js', 'birds_art.js', 'birds_kinds.js', 'birds.js', 'flora.js', 'night.js', 'gulls.js'))
 PLACE = open(os.path.join(HERE, 'place.js'), encoding='utf-8').read()
 
 
@@ -118,21 +118,34 @@ rep("const K = OBJ.ktp;", "const K = OBJ.ktp || OBJ.mtp;")
 # ---- the guard who smokes: a person with a cigarette in his hand, who stands where he is put ----
 rep("function drawSmoke() { worldT();", "function drawSmoke() { worldT(); drawGuardSmoke();")
 rep("drawFoxDots(); for (const m of MOTHS)", "drawFoxDots(); drawGuardGlow(); for (const m of MOTHS)")
-rep("  for (const s of [-1, 1]) { const ph = -s * sw, carrying", "  for (const s of [-1, 1]) { if (pose.smoke !== undefined && s > 0) { const up = pose.smoke, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = up ? [s * (shW - .35), -dep - .5, lift(shZ) - H * .1] : [s * (shW + .1), -.6, lift(shZ) - H * .17], hd = up ? [s * .75, -dep - .7, lift(hz) - head * .3] : [s * (shW + .1), -1.8, lift(shZ) - H * .3];\n      t3limb(M, sh, el, .7 * bd, .6, top); t3limb(M, el, hd, .6, .5, top); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 }); const cz = hd[2] + (up ? .1 : .3), cz2 = hd[2] + (up ? .2 : -.4), c1 = hd[1] + (up ? .1 : -.3), c2 = hd[1] - (up ? 2.1 : 1.9); t3line(M, [hd[0] - .3, c1, cz], [hd[0] - .35, c2, cz2], [238, 234, 224]); M.dots.push([[hd[0] - .35, c2 - .2, cz2], [236, 110, 40]]); continue }\n    const ph = -s * sw, carrying")
-rep("const pose = kind === 'walk' ? { walk: frame / 4 }", "const pose = kind === 'smoke' ? { smoke: frame } : kind === 'walk' ? { walk: frame / 4 }")
+rep("const pose = kind === 'walk' ? { walk: frame / 4 }", "const pose = kind === 'guard' ? gpose(frame) : kind === 'walk' ? { walk: frame / 4 }")
 rep("const sp = t3sprite(() => { const M = personModel(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h };",
-    "let MM = null; const sp = t3sprite(() => { const M = personModel(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'smoke') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMouth(look, dir) };")
+    "let MM = null; const sp = t3sprite(() => { const M = (kind === 'guard' ? guardModel : personModel)(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'guard') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMarkMouth(MM.mouth, dir) };")
 rep("idleT: Math.random() * 3 } });", "idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } });")
 rep("dir: 4, dist: 0,", "dir: n.dir ?? 4, dist: 0,")
-rep("function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt;", "function stepNpcs(dt) { stepGSM(dt); for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }")
-rep("function npcSpr(P) { if (P.sit)", "function npcSpr(P) { if (P.smoker) return npcSprite(P.look, 'smoke', P.dir, P.sf); if (P.sit)")
+rep("function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt;", "function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }")
+rep("function npcSpr(P) { if (P.sit)", "function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit)")
 
 # ---- the guard's uniform: the firm's patch on the chest (and on the sleeve) ----
 rep("  if (L.topKind === 'fleece' && z > z1 - 1.4) return cmul(c, .78);", "  if (L.topKind === 'fleece' && z > z1 - 1.4) return cmul(c, .78);\n  if (L.badge && z1 > 0 && ((z > z1 - 4.4 && z < z1 - 2.8 && x > .6 && x < 2.6) || (z > z1 - 3 && z < z1 - 1.8 && x < -.6 && x > -2.4))) return L.badge; // (the firm's patch and a pocket flap)")
 
+# ---- the night's moths come to the lights and the foxfire sits on the wood (night.js replaces the old ones) ----
+NIGHTOLD = open(os.path.join(HERE, 'nightold.txt'), encoding='utf-8').read().rstrip('\n')
+rep(NIGHTOLD, "// (the moths and the foxfire: night.js)")
+rep("for (const m of MOTHS) { ctx.fillStyle = `rgb(${m.c})`; ctx.fillRect(Math.round(m.x), Math.round(m.y), 1, 1); if (Math.sin(t * 60 + m.ph) > 0) { ctx.fillRect(Math.round(m.x) - 1, Math.round(m.y), 1, 1); ctx.fillRect(Math.round(m.x) + 1, Math.round(m.y), 1, 1) } }", "drawMoths();")
+
+# ---- the black dashes over the canopy are gone: the birds are real ones now (birds.js) ----
+FLYOLD = open(os.path.join(HERE, 'flyold.txt'), encoding='utf-8').read().rstrip('\n')
+rep(FLYOLD, "// (the birds of the place: birds.js)")
+rep("  scrT(); ctx.fillStyle = 'rgba(38,30,28,.9)'; for (const f of FLY) { const x = Math.round(f.x), y = Math.round(f.y), up = Math.sin(f.ph) > 0; ctx.fillRect(x, y, 1, 1);\n    if (up) { ctx.fillRect(x - 1, y - 1, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1); ctx.fillRect(x - 2, y - 1, 1, 1); ctx.fillRect(x + 2, y - 1, 1, 1) } else { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x - 2, y + 1, 1, 1); ctx.fillRect(x + 2, y + 1, 1, 1) } } }",
+    "  drawBirdsHigh(); }")
+# birds in the draw list among the people (the flying ones over everything: drawBirdsHigh)
+rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if (B.st === 'fly' && B.z >= 2.5) list.push([B.y - .2, { bsh: B }]); else list.push([B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
+rep("    if (o && o.cow) { drawCow(o.cow); continue }", "    if (o && o.cow) { drawCow(o.cow); continue }\n    if (o && o.bird) { drawBird(o.bird); continue }\n    if (o && o.bsh) { drawBirdShadow(o.bsh); continue }")
+
 # ---- the gulls: stepped with the rest of the life of the place, drawn among the things by their place on the ground ----
 rep("const SITS = []; cowsInit();", "const SITS = []; cowsInit(); gullsInit();")
-rep("function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt) }", "function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt); stepGulls(dt) }")
+rep("function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt) }", "function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt) }")
 rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
 rep("    if (o && o.cow) { drawCow(o.cow); continue }", "    if (o && o.cow) { drawCow(o.cow); continue }\n    if (o && o.gull) { drawGull(o.gull); continue }")
 
@@ -149,7 +162,7 @@ rep("ctx.fillStyle = 'rgba(10,14,8,.2)'; for (const o of VIS) { if (o.flat) cont
 rep("const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));", "const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));")
 
 # ---- the game clock and the pause, for the debug hooks (a still frame at a given moment of the waves) ----
-rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY:')
+rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlush, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY:')
 
 # ---- the prefabs and the place ----
 banner = "// =====================================================================================================================\n// PLACE: Турбаза «Студёный ключ» — the start of the game and the player's base."

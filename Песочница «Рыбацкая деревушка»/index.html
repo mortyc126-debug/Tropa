@@ -2228,9 +2228,7 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
   if (L.topKind === 'vest') for (const s of [-1, 1]) t3face(M, [[s * .3, -.5 + 1 - dep, waistZ], [s * hipW * .8, -.5 + 1 - dep, waistZ], [s * shW * .7, -.3 + 1 - dep, lift(shZ) - .2], [s * .6, -.3 + 1 - dep, lift(shZ) - .2]], L.shirt || [180, 60, 50], null, { both: true, zb: .2 });
   if (L.carry === 'backpack') t3box(M, -shW * .7, 1 + dep * .8, waistZ, shW * .7, 1 + dep * .8 + 2.2, lift(shZ) - .4, L.carryCol || [70, 90, 60]);
   // arms: from the shoulder, swinging opposite the legs, the elbow bending forward a little; hands
-  for (const s of [-1, 1]) { if (pose.smoke !== undefined && s > 0) { const up = pose.smoke, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = up ? [s * (shW - .35), -dep - .5, lift(shZ) - H * .1] : [s * (shW + .1), -.6, lift(shZ) - H * .17], hd = up ? [s * .75, -dep - .7, lift(hz) - head * .3] : [s * (shW + .1), -1.8, lift(shZ) - H * .3];
-      t3limb(M, sh, el, .7 * bd, .6, top); t3limb(M, el, hd, .6, .5, top); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 }); const cz = hd[2] + (up ? .1 : .3), cz2 = hd[2] + (up ? .2 : -.4), c1 = hd[1] + (up ? .1 : -.3), c2 = hd[1] - (up ? 2.1 : 1.9); t3line(M, [hd[0] - .3, c1, cz], [hd[0] - .35, c2, cz2], [238, 234, 224]); M.dots.push([[hd[0] - .35, c2 - .2, cz2], [236, 110, 40]]); continue }
-    const ph = -s * sw, carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0)];
+  for (const s of [-1, 1]) { const ph = -s * sw, carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0)];
     const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve); t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
     if (carrying && L.carry === 'bucket') { t3cyl(M, hd[0], hd[1] - .4, 1.5, hd[2] - 4, hd[2] - 1.2, L.carryCol || [150, 156, 160], { topCol: [70, 110, 140] }); t3line(M, [hd[0] - 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]); t3line(M, [hd[0] + 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]) }
     if (carrying && L.carry === 'mug') t3cyl(M, hd[0], hd[1] - .6, .6, hd[2] - .2, hd[2] + 1, L.carryCol || [200, 60, 50]) }
@@ -2264,8 +2262,8 @@ function headModel(M, L, c, head, skin, look) { const r = head * .5, hair = L.ha
 // the sprites of one person, made as they are first needed
 const NPC_SPR = new Map();
 function npcSprite(look, kind, dir, frame) { const key = (look.id || JSON.stringify(look)) + kind + dir + '/' + frame; let r = NPC_SPR.get(key); if (r) return r;
-  const pose = kind === 'smoke' ? { smoke: frame } : kind === 'walk' ? { walk: frame / 4 } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
-  let MM = null; const sp = t3sprite(() => { const M = personModel(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'smoke') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMouth(look, dir) }; NPC_SPR.set(key, r); return r }
+  const pose = kind === 'guard' ? gpose(frame) : kind === 'walk' ? { walk: frame / 4 } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
+  let MM = null; const sp = t3sprite(() => { const M = (kind === 'guard' ? guardModel : personModel)(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'guard') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMarkMouth(MM.mouth, dir) }; NPC_SPR.set(key, r); return r }
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
   return { id: 'camper' + seed, sex: f ? 'f' : 'm', h: f ? 16.2 + r() * 1.4 : 17 + r() * 2, build: .9 + r() * .3, skin: Math.floor(r() * 4), hair: pick([[60, 42, 30], [120, 80, 40], [200, 170, 110], [40, 34, 30], [150, 70, 40]]),
@@ -2945,16 +2943,34 @@ PF.crates = ({ seed = 4 } = {}) => { const r = mulberry(seed);
 PF.piling = ({ h = 16, tire = false, seed = 5 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3cyl(M, 0, 0, 1.7, 0, h, [96, 76, 56], { topCol: [150, 126, 94] }); t3line(M, [-1.7, -.2, h - 2], [1.7, -.2, h - 2], [60, 56, 50]);
     if (tire) t3cyl(M, 0, -1.4, 2.8, h * .55, h * .55 + 2.4, [34, 34, 36], { topCol: [40, 40, 42] }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-2.4, -2.4, 2.4, 2.4]].map(t3w) } };
-PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W = 8, D = 8, R = [96, 72, 52], RL = [150, 116, 78]; M.seed = seed;
-    for (let c = 0; c < 6; c++) { const z = c * 2.2; t3roll(M, -W - 1, W + 1, 0, 1.15, c % 2 ? RL : [140, 106, 70], { z0: z, endCol: FV.woodL }); t3roll(M, -W - 1, W + 1, D, 1.15, c % 2 ? [140, 106, 70] : RL, { z0: z, endCol: FV.woodL }) }
-    t3box(M, -W + 1, 1, 12.6, W - 1, D - 1, 13.2, [14, 12, 10]); // the dark mouth
-    for (const x of [-W + 1, W - 1]) t3box(M, x - .9, D / 2 - .9, 13, x + .9, D / 2 + .9, 34, FV.woodD);
-    t3roll(M, -W + 1, W - 1, D / 2, 1.3, FV.woodL, { z0: 21, endCol: FV.woodL }); t3line(M, [W, D / 2 - 1, 22.5], [W + 3, D / 2 - 1, 22.5], [90, 90, 96]); t3line(M, [W + 3, D / 2 - 1, 22.5], [W + 3, D / 2 - 1, 19], [90, 90, 96]);
-    t3line(M, [2, D / 2, 21.6], [2, D / 2, 14.5], [80, 80, 86]); t3cyl(M, 2, D / 2, 1.9, 12.8, 15.4, [96, 98, 104], { topCol: [60, 60, 66] });
-    const rz = 34; t3face(M, [[-W - 2, -2, rz - 5], [0, -2, rz + 4], [0, D + 2, rz + 4], [-W - 2, D + 2, rz - 5]], [96, 70, 48], [0, D / 2, 14], { tex: x => ((Math.round(x) % 3) + 3) % 3 === 0 ? [72, 52, 36] : [102, 76, 52] });
-    t3face(M, [[W + 2, -2, rz - 5], [0, -2, rz + 4], [0, D + 2, rz + 4], [W + 2, D + 2, rz - 5]], [96, 70, 48], [0, D / 2, 14], { tex: x => ((Math.round(x) % 3) + 3) % 3 === 0 ? [72, 52, 36] : [102, 76, 52] });
-    t3face(M, [[-W - 2, -2.2, rz - 5], [W + 2, -2.2, rz - 5], [0, -2.2, rz + 4]], FV.wood, null, { both: true, zb: .2 }); return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-9.5, -10, 9.5, 2]].map(t3w) } };
+PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W = 6.4, D = 12.4, r = 1.1; M.seed = seed;
+    const LG = [[142, 108, 72], [158, 122, 82]], LGE = [196, 164, 118], IRON = [70, 70, 76], ROPE = [186, 160, 116], mixc = (a, b, k) => cmix(a, b, clamp(k, 0, 1));
+    // a log lying along n (the sides of the curb): t3roll goes along x only
+    const rolln = (x, n0, n1, rad, col, o = {}) => { const seg = 8, zc = (o.z0 || 0) + rad, ctr = [x, (n0 + n1) / 2, zc];
+      for (let i = 0; i < seg; i++) { const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2, p = (n, a) => [x + Math.cos(a) * rad, n, zc + Math.sin(a) * rad]; t3face(M, [p(n0, a0), p(n1, a0), p(n1, a1), p(n0, a1)], col, ctr, o) }
+      for (const n of [n0, n1]) { const pts = []; for (let i = 0; i < seg; i++) { const a = i / seg * Math.PI * 2; pts.push([x + Math.cos(a) * rad, n, zc + Math.sin(a) * rad]) } t3face(M, pts, o.endCol || cmul(col, 1.15), ctr, o) } };
+    // the curb: four courses of notched logs; the logs of one course run along x and stick out at the corners, the next run along n and stick out the other way.
+    // The far wall of the shaft (what shows over the near rim) goes dark, deeper the lower it is
+    for (let c = 0; c < 4; c++) { const z0 = c * 2.2, col = LG[c % 2], far = (X, N, Z) => mixc([30, 26, 24], cmul(col, .75), (Z - 1.5) / 7);
+      if (c % 2 === 0) { t3roll(M, -W - 1.4, W + 1.4, r, r, col, { z0, endCol: LGE }); t3roll(M, -W - 1.4, W + 1.4, D - r, r, col, { z0, endCol: LGE, tex: far });
+        for (const x of [-(W - r), W - r]) rolln(x, r * 2, D - r * 2, r, col, { z0, endCol: LGE }) }
+      else { for (const x of [-(W - r), W - r]) rolln(x, -1.4, D + 1.4, r, col, { z0, endCol: LGE });
+        t3roll(M, -W + r * 2, W - r * 2, r, r, col, { z0, endCol: LGE }); t3roll(M, -W + r * 2, W - r * 2, D - r, r, col, { z0, endCol: LGE, tex: far }) } }
+    t3box(M, -W + 2, 2.2, 0, W - 2, D - 2.2, 4, [10, 10, 12]); // (the dark of the shaft, where the logs leave a gap)
+    // the sweep: a tall post behind the curb, a long pole on a fork at its top, a heavy stone on the short end, a thin rod and the bucket on the long end
+    const px = 10.2, pn = 6.6, zp = 25, tip = [-2.2, pn, zp + 4.6], butt = [px + 6.4, pn, zp - 2.4];
+    t3limb(M, [px, pn, 0], [px, pn, zp + .8], 1.5, 1.2, [132, 102, 70], { capCol: [196, 164, 118] });
+    t3box(M, px - 1.8, pn - .9, zp - 1.4, px + 1.8, pn + .9, zp - .6, [96, 72, 48]); // the cross-pin of the fork
+    t3limb(M, tip, butt, .7, 1.15, [150, 116, 78], { capCol: LGE });
+    t3line(M, [butt[0] - .6, pn, butt[2] - .8], [butt[0] - .6, pn, butt[2] - 4.4], ROPE); t3box(M, butt[0] - 2.4, pn - 1.5, butt[2] - 8, butt[0] + 1.2, pn + 1.5, butt[2] - 4.4, [128, 124, 116]);
+    // the rod down to the bucket's bail, the bucket (dark wet staves, two iron hoops, an iron handle) hanging just over the rim
+    const bz = 10.6, bt = 14.2; t3line(M, [tip[0], pn, tip[2] - .6], [tip[0], pn, bt + 1.7], [124, 96, 66]);
+    t3line(M, [tip[0] - 1.9, pn, bt], [tip[0], pn, bt + 1.7], IRON); t3line(M, [tip[0] + 1.9, pn, bt], [tip[0], pn, bt + 1.7], IRON);
+    t3cyl(M, tip[0], pn, 2.2, bz, bt, [120, 94, 64], { topCol: [18, 14, 12], tex: (X, N, Z) => Z > bt - .1 ? [18, 14, 12] : (Z > bz + .8 && Z < bz + 1.5 || Z > bt - 1.5 && Z < bt - .7) ? [92, 94, 102] : (Math.round(X * 2.4) % 3 === 0 ? [96, 72, 50] : [128, 100, 68]) });
+    // a zinc pail on the ground by the curb: wider at the mouth, a bail over it
+    t3limb(M, [-W - 3.8, 2.2, 0], [-W - 3.8, 2.2, 4.4], 1.7, 2.2, [164, 170, 174], { capCol: [40, 44, 50] }); t3line(M, [-W - 5.8, 2.2, 4.3], [-W - 3.8, 2.2, 6.3], [92, 94, 100]); t3line(M, [-W - 1.8, 2.2, 4.3], [-W - 3.8, 2.2, 6.3], [92, 94, 100]);
+    return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8.8, -14, 8.8, 1.6], [-12.4, -4.4, -8.2, .4], [8.4, -8.4, 12, -4.8], [14.2, -8.4, 17.8, -4.8]].map(t3w) } };
 
 // ---- old cars for the village: a «копейка» (VAZ-2101, the Russian Fiat 124) with fishing rods on the roof, and a VW «жук» ----
 // Parked nose to the east like the car park's cars; x along the car, n from its near side (0) to the far side (W), z up.
@@ -3462,23 +3478,15 @@ PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprit
 // ---- the guard: stands by the barrier and smokes. A cycle of seventeen seconds: the cigarette hangs at his hip and a thin wisp rises from it; then he lifts it to his
 // lips and draws on it (the ember brightens and glows); lowers it and breathes the smoke out in a stream that the wind takes; the ember dims again ----
 const GSM = []; // the guard's smoke: kind 0 a wisp (single pixels rising and wavering), kind 1 a breath (soft puffs that spread)
-// where the mouth is, as an offset from the anchor of the figure's sprite (the same turn and scale as the sprite's model)
-function guardMouth(look, dir) { const H = look.h || 17.6, head = H / 4.5, r = head * .5, hz = H - head * .55, T = T3(); T.dots.push([[0, 1.05 - r * .95, hz - r * .45], [0, 0, 0]]); t3rot(T, dir * 45); t3scale(T, NPC_K); return t3p(T.dots[0][0]) }
-function guardStep(P, dt) { P.st += dt; P.moving = false; const T = P.st % 17, up = (T > 8.2 && T < 10.4) ? 1 : 0, S = npcSprite(P.look, 'smoke', P.dir, up); P.sf = up;
-  // the ember: dim while held, glowing while he draws, a slow fade after
-  P.ember = (T < 8.2 ? .3 : T < 9.5 ? .3 + .7 * (T - 8.2) / 1.3 : T < 10.4 ? 1 : T < 12.4 ? 1 - .7 * (T - 10.4) / 2 : .3) * (.92 + .08 * Math.sin(P.st * 3.3));
-  if (S.tip) { P.tx = Math.round(P.x) + S.tip[0]; P.ty = Math.round(P.y) + S.tip[1];
-    if (!up) { P.wa = (P.wa || 0) + dt * 9; while (P.wa >= 1) { P.wa--; GSM.push({ k: 0, x: P.tx + (Math.random() - .5) * .4, y: P.ty - .5, vx: 0, vy: -(6 + Math.random() * 3), age: 0, life: 3.2 + Math.random() * 1.8, ph: Math.random() * 6.28, a0: .7, c: 0 }) } } }
-  if (T > 10.5 && T < 12.0 && S.mouth) { P.ba = (P.ba || 0) + dt * 15; const th = P.dir * Math.PI / 4, fx = Math.sin(th), fy = -Math.cos(th);
-    while (P.ba >= 1) { P.ba--; const sp = 16 + Math.random() * 9; GSM.push({ k: 1, x: Math.round(P.x) + S.mouth[0] + fx * 2.2, y: Math.round(P.y) + S.mouth[1] + fy * 1.6, vx: fx * sp + (Math.random() - .5) * 3.5, vy: fy * sp * .5 - 3 + (Math.random() - .5) * 3, age: 0, life: 3.2 + Math.random() * 1.6, ph: Math.random() * 6.28, a0: .48, r0: .8 + Math.random() * .5 }) } } else P.ba = 0 }
+// (the guard himself, his poses and his day: guard.js; here only what comes from his cigarette)
 function stepGSM(dt) { const g = gustNow(), wv = 3 + 26 * WIND.s * (.55 + .7 * g);
-  for (const p of GSM) { p.age += dt; const k = Math.min(1, dt * (p.k ? 1.7 : .8)), tx = WINDX * wv + Math.sin(p.age * 2.6 + p.ph) * (p.k ? 1.5 : 3.2) * (1 + WIND.s), ty = (p.k ? -7 : -Math.max(1.5, 6 - p.age * 1.2)) + WINDY * wv * .4;
+  for (const p of GSM) { p.age += dt; if (p.k === 2) { p.vy += 34 * dt; p.x += p.vx * dt; p.y += p.vy * dt; continue } const k = Math.min(1, dt * (p.k ? 1.7 : .8)), tx = WINDX * wv + Math.sin(p.age * 2.6 + p.ph) * (p.k ? 1.5 : 3.2) * (1 + WIND.s), ty = (p.k ? -7 : -Math.max(1.5, 6 - p.age * 1.2)) + WINDY * wv * .4;
     p.vx += (tx - p.vx) * k; p.vy += (ty - p.vy) * k; p.x += p.vx * dt; p.y += p.vy * dt }
   for (let i = GSM.length - 1; i >= 0; i--) if (GSM[i].age > GSM[i].life) GSM.splice(i, 1) }
 // the smoke is drawn under the light (dimmer at night, like the rest of the smoke)
 function drawGuardSmoke() { const dim = 1 - LT.dark * .55;
   for (const p of GSM) { if (p.x < CAM.x - 20 || p.x > CAM.x + W + 20 || p.y < CAM.y - 20 || p.y > CAM.y + H + 20) continue; const u = p.age / p.life, fade = (1 - u) * (u < .12 ? u / .12 : 1);
-    if (p.k) puff(p.x, p.y, Math.min(4.6, p.r0 + p.age * 1.5), p.a0 * fade * dim, '224,228,236'); else { ctx.fillStyle = `rgba(178,184,198,${(p.a0 * fade * dim).toFixed(3)})`; const x = Math.round(p.x), y = Math.round(p.y); ctx.fillRect(x, y, 1, 1); if (u > .3) ctx.fillRect(x + (p.ph > 3.14 ? 1 : -1), y, 1, 1); if (u > .6) ctx.fillRect(x, y - 1, 1, 1) } } }
+    if (p.k === 2) { ctx.fillStyle = `rgba(206,204,198,${(p.a0 * fade).toFixed(3)})`; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1) } else if (p.k) puff(p.x, p.y, Math.min(4.6, p.r0 + p.age * 1.5), p.a0 * fade * dim, '224,228,236'); else { ctx.fillStyle = `rgba(178,184,198,${(p.a0 * fade * dim).toFixed(3)})`; const x = Math.round(p.x), y = Math.round(p.y); ctx.fillRect(x, y, 1, 1); if (u > .3) ctx.fillRect(x + (p.ph > 3.14 ? 1 : -1), y, 1, 1); if (u > .6) ctx.fillRect(x, y - 1, 1, 1) } } }
 // the ember and its small light, over the lit picture: a pixel of orange by day, a warm glow in the dark that swells when he draws
 function drawGuardGlow() { for (const P of NPCS) { if (!P.smoker || P.tx === undefined || Math.abs(P.x - CAM.x - W / 2) > W) continue; const e = P.ember, nt = clamp(LT.dark * 1.25, 0, 1);
     if (nt > .04) { puff(P.tx, P.ty, 7 + 6 * e, (.08 + .3 * e) * nt, '255,150,70'); puff(P.tx, P.ty, 3, (.22 + .5 * e) * nt, '255,205,130') }
@@ -3501,11 +3509,513 @@ function scatterOK(S, L, t, x, y) { const dL = layerD(L, x, y);
 const BEACHLESS = new Set(['grass', 'fern', 'lowshrub', 'juniper', 'bush', 'barebush', 'sapling', 'mush', 'rosehip']); // (low growth that does not take to sand)
 
 // =====================================================================================================================
+// THE GUARD: an old man in the uniform of the guard firm who stands by the barrier, smokes and looks about.
+// His body is a small rig of numbers: the breath, the weight (shifted over one leg), the turn and the nod of the head, how high the right hand is
+// with the cigarette, and what the left hand is doing (in the pocket, behind the back, on the belt, at the watch, at the cap, a wave). Each number is cut
+// into a few steps, a pose is made from the steps the first time it is needed (a few at a time, so that the frame never stalls) and kept; the day of the guard
+// walks the numbers along smooth curves, so every little movement runs through several frames instead of jumping between two pictures.
+// =====================================================================================================================
+const GST = { br: 3, sh: 2, hy: 4, ar: 8, al: 4 };                                   // the steps of each number
+const GKINDS = ['hang', 'pocket', 'back', 'belt', 'watch', 'scratch', 'wave', 'wave2']; // what the left hand can do
+const GSIGN = 1;                                                                        // + : a positive turn of the head goes to the clockwise side (bearing grows)
+const gkey = g => [g.br, g.sh, g.hy, g.hn, g.ar, g.al, g.alk].join(',');
+const gpose = k => { const [br, sh, hy, hn, ar, al, alk] = k.split(',').map(Number); return { br: br / GST.br, sh: sh / GST.sh, hy: hy / GST.hy, hn, ar: ar / GST.ar, al: al / GST.al, alk } };
+const gmix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+// the left arm's gestures: where the elbow and the hand go at full strength (the arm hangs at zero); s is the side of the arm (-1: the left of the figure)
+const GARM = {
+  pocket: (s, c) => ({ el: [s * (c.shW + .35), .1, c.shZ - c.H * .2], hd: [s * (c.hipW + .45), -.7, c.hipZ + .9] }),                      // the hand in the jacket's pocket
+  back: (s, c) => ({ el: [s * (c.shW - .2), 1.9, c.shZ - c.H * .2], hd: [s * .5, 2.7, c.hipZ + 1.2] }),                                    // behind the back
+  belt: (s, c) => ({ el: [s * (c.shW + 1), .3, c.shZ - c.H * .17], hd: [s * (c.hipW + .1), -.3, c.hipZ + 1.5] }),                         // the hand on the belt, the elbow out
+  watch: (s, c) => ({ el: [s * (c.shW - .6), -.9, c.shZ - c.H * .2], hd: [s * .3, -c.dep - .9, c.shZ - c.H * .23] }),                      // the wrist before the chest
+  scratch: (s, c) => ({ el: [s * (c.shW + .9), -.1, c.shZ + .1], hd: [s * c.r * .95, -.3, c.hz - c.r * .1] }),                            // the hand at the cap
+  wave: (s, c) => ({ el: [s * (c.shW + .9), -.4, c.shZ - .4], hd: [s * (c.shW + 1.9), -.9, c.hz - .2] }),                                // the hand raised, out
+  wave2: (s, c) => ({ el: [s * (c.shW + .9), -.4, c.shZ - .4], hd: [s * (c.shW + 1.1), -.9, c.hz + .5] })                                 // ... and a little in
+};
+function guardModel(L, P) { const M = T3(); M.seed = 7; const H = L.h || 17, bd = L.build || 1, skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
+  const head = H / 4.5, r = head * .5, legH = H * .42, shZ0 = H - head * 1.05 - .3, hipZ = legH + .2, shW = 2.7 * bd, hipW = 1.95 * bd, dep = 1.35 * bd, hz0 = H - head * .55;
+  const bl = P.br * .5, shZ = shZ0 + bl, hz = hz0 + bl, hx = P.sh * .5, lean = -P.sh * .3, nod = Math.max(P.hn, 0), up = Math.max(-P.hn, 0);
+  // the legs: the one that carries the weight stands straight, the other rests: the knee forward and a little out
+  for (const s of [-1, 1]) { const lo = Math.max(0, -P.sh * s), x = s * hipW * .48, hip = [x + hx, 1, hipZ - lo * .2], knee = [x + hx * .4 + s * lo * .3, 1 - lo * .9, legH * .52 - lo * .1], foot = [x + s * lo * .5, 1 - lo * 1.4, .6];
+    t3limb(M, hip, knee, 1.05 * bd, .85, legs); t3limb(M, knee, foot, .85, .65, legs); t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
+  // the body: a band of eight sides whose centre may lean as it goes up
+  const gband = (z0, z1, hw0, hd0, hw1, hd1, x0, x1, col, o = {}) => { const seg = 8, ctr = [(x0 + x1) / 2, 1, (z0 + z1) / 2], Pt = (z, hw, hd, xo, i) => { const a = i / seg * TAU; return [xo + Math.cos(a) * hw, 1 + Math.sin(a) * hd, z] };
+    for (let i = 0; i < seg; i++) t3face(M, [Pt(z0, hw0, hd0, x0, i), Pt(z0, hw0, hd0, x0, i + 1), Pt(z1, hw1, hd1, x1, i + 1), Pt(z1, hw1, hd1, x1, i)], col, ctr, o);
+    const tp = [], bt = []; for (let i = 0; i < seg; i++) { tp.push(Pt(z1, hw1, hd1, x1, i)); bt.push(Pt(z0, hw0, hd0, x0, i)) } t3face(M, tp, col, ctr, o); t3face(M, bt, col, ctr, o) };
+  const tt = (z0, z1, x0, x1) => { const f = torsoTex(L, z0, z1); return (x, n, z, col) => f(x - (x0 + (x1 - x0) * clamp((z - z0) / (z1 - z0 || 1), 0, 1)), n, z, col) };
+  const waistZ = hipZ + (shZ0 - hipZ) * .38, xw = hx * .6 + lean * .2, xs = lean * .9;
+  gband(hipZ - .3, waistZ, hipW * 1.06, dep, hipW * .96, dep * .95, hx, xw, top, { clean: true, tex: tt(0, 0, hx, xw) });             // the jacket's skirt, a little wider at the hem (the pressed uniform: no moss on it)
+  gband(waistZ, shZ, hipW * .96, dep * .95, shW, dep * (1.05 + .03 * P.br), xw, xs, top, { clean: true, tex: tt(waistZ, shZ, xw, xs) });
+  gband(waistZ - .65, waistZ + .1, hipW * 1.01, dep, hipW * 1.01, dep, xw, xw, [18, 18, 20], { clean: true });                          // the belt
+  M.dots.push([[xw, 1 - dep - .05, waistZ - .3], [204, 198, 172]]);                                                                     // its buckle
+  gband(shZ - .6, shZ + .3, shW * .6, dep * .78, shW * .48, dep * .7, xs, xs, gmix(top, [196, 202, 216], .22), { clean: true });        // the collar
+  // the arms
+  const c0 = { shW, hipW, dep, shZ, hipZ, H, hz, r }, shj = s => [s * (shW - .15) + xs, 1, shZ - .5];
+  { // the right hand holds the cigarette: down by the hip, or up at the mouth; the elbow leads and the hand follows on a small arc
+    const e = P.ar, sh = shj(1), dn = { el: [shW + .1 + xs, -.6, shZ - H * .17], hd: [shW + .1 + xs, -1.8, shZ - H * .3] }, uk = { el: [shW - .35 + xs, -dep - .5, shZ - H * .1], hd: [.75 + xs * .5, -dep - .7, hz - head * .3 - nod * .3] };
+    const el = gmix(dn.el, uk.el, Math.min(1, e * 1.25)), h0 = gmix(dn.hd, uk.hd, e), arc = Math.sin(e * Math.PI), hd = [h0[0] + arc * .45, h0[1] - arc * .35, h0[2]];
+    t3limb(M, sh, el, .7 * bd, .6, top, { clean: true }); t3limb(M, el, hd, .6, .5, top, { clean: true }); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
+    const cz = hd[2] + .3 - .2 * e, cz2 = hd[2] - .4 + .6 * e, c1 = hd[1] - .3 + .4 * e, c2 = hd[1] - 1.9 - .2 * e;
+    t3line(M, [hd[0] - .3, c1, cz], [hd[0] - .35, c2, cz2], [238, 234, 224]); M.dots.push([[hd[0] - .35, c2 - .2, cz2], [236, 110, 40]]) }
+  { // the left hand: hanging, or one of its gestures
+    const s = -1, kind = GKINDS[P.alk], u = P.al, sh = shj(s), hang = { el: [s * (shW + .05) + xs, 1, shZ - H * .17], hd: [s * (shW + .1) + xs, .8, shZ - H * .33] }, g = kind && GARM[kind] ? GARM[kind](s, c0) : hang;
+    const g2 = { el: [g.el[0] + xs, g.el[1], g.el[2]], hd: [g.hd[0] + xs, g.hd[1], g.hd[2]] }, el = gmix(hang.el, g2.el, u), hd = gmix(hang.hd, g2.hd, u);
+    t3limb(M, sh, el, .7 * bd, .6, top, { clean: true }); t3limb(M, el, hd, .6, .5, top, { clean: true }); t3ball(M, hd, .6, .6, .65, kind === 'pocket' && u > .6 ? top : skin, { seg: 6 }) }
+  // the neck and the head (it turns, nods or lifts its chin), the peaked cap with its band, its badge and its visor
+  const hc = [xs * .8 - P.sh * .05, 1.05 - nod * .25 + up * .1, hz - nod * .35 + up * .15], look = P.hy * 2.2;
+  t3limb(M, [xs, 1, shZ - .2], [hc[0], 1, shZ + .8], .65, .6, skin);
+  headModel(M, Object.assign({}, L, { hat: null }), hc, head, skin, look);
+  { const rot = look * .45, cs = Math.cos(rot), sn = Math.sin(rot), fx = (x, n) => [x * cs - n * sn, x * sn + n * cs], hcol = L.hatCol || [28, 34, 48], band = cmul(hcol, .55), badge = [226, 190, 58], cz = hc[2] + .55;
+    t3ball(M, [hc[0], hc[1] + .2, cz], r * 1.08, r * 1.08, r * .95, hcol, { from: .5, clean: true, tex: (x, n, z) => { const [a, b] = fx(x - hc[0], n - hc[1] - .2); if (z < cz + .5) return b < -r * .7 && Math.abs(a) < r * .3 ? badge : band; return hcol } });
+    const vz = cz + .3, quad = [[-.8, -.9], [.8, -.9], [.66, -1.22], [-.66, -1.22]].map(([a, b]) => { const [x, n] = fx(a * r, b * r); return [hc[0] + x, hc[1] + .2 + n, vz - (b < -1.1 ? .25 : 0)] }); // (a short visor: it must not cover the eyes in the slanting view)
+    t3face(M, quad, cmul(hcol, .7), null, { both: true, zb: .15, clean: true }) }
+  { const rot = look * .45, a = [0, -r * .95], cs = Math.cos(rot), sn = Math.sin(rot); M.mouth = [hc[0] + a[0] * cs - a[1] * sn, hc[1] + a[0] * sn + a[1] * cs, hc[2] - r * .45] } // (where the smoke comes from: kept in the model's own frame, turned and scaled with the sprite by the caller)
+  return M }
+function guardMarkMouth(m, dir) { const T = T3(); T.dots.push([m.slice(), [0, 0, 0]]); t3rot(T, dir * 45); t3scale(T, NPC_K); return t3p(T.dots[0][0]) }
+
+// ---- the day of the guard ----
+const gease = u => u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u), gwrap = a => ((a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+let GBUILD = 0;                                                       // sprites made in this frame (the number is kept low: the rest wait a frame)
+const GWARM = [];                                                     // the poses he is likely to need, made one by one in the quiet frames
+function guardInit(P) { P.g = { t: Math.random() * 40, brC: 0, sh: 0, shT: 0, shW: 5 + Math.random() * 6, hy: 0, hyT: 0, hq: [], hW: 2 + Math.random() * 3, hTau: .2, hn: 0, hnT: 0, ar: 0, sm: 'low', smT: 3 + Math.random() * 4, smD: 1,
+    al: 0, alk: 0, alS: 'idle', alT: 0, alW: 5 + Math.random() * 6, alD: 0, alK: 0, fl: 0, fW: 6 + Math.random() * 6, far: 99, turn: 0, home: P.dir, greet: 0, ash: false, wv: 0 };
+  P.wa = 0; P.ba = 0; P.ember = .3 }
+function guardWarm(P) { if (!GWARM.length) { for (let b = 0; b <= GST.br; b++) { for (let h = -GST.hy; h <= GST.hy; h++) GWARM.push([b, 0, h, 0, 0, 0, 0]); for (let a = 0; a <= GST.ar; a++) GWARM.push([b, 0, 0, 0, a, 0, 0]); for (let s = -GST.sh; s <= GST.sh; s++) GWARM.push([b, s, 0, 0, 0, 0, 0]);
+      for (let k = 1; k < GKINDS.length; k++) for (let l = 1; l <= GST.al; l++) GWARM.push([b, 0, 0, k === 4 ? 1 : 0, 0, l, k]) } GWARM.reverse() }
+  if (GBUILD > 0 || !GWARM.length) return; npcSprite(P.look, 'guard', P.dir, GWARM.pop().join(',')); GBUILD++ }
+function guardStep(P, dt) { if (!P.g) guardInit(P); const G = P.g; P.st += dt; P.moving = false; G.t += dt;
+  const near = Math.abs(P.x - CAM.x - W / 2) < W * .9 && Math.abs(P.y - CAM.y - H / 2) < H * .9;
+  // --- the smoke: the cigarette hangs low and wisps; he lifts it, draws, lowers it and breathes the smoke out
+  G.smT -= dt; if (G.smT <= 0) { const s = G.sm; if (s === 'low') { G.sm = 'raise'; G.smD = .95 } else if (s === 'raise') { G.sm = 'drag'; G.smD = 1.25 } else if (s === 'drag') { G.sm = 'lower'; G.smD = .9 } else if (s === 'lower') { G.sm = 'exhale'; G.smD = 2.4; G.exs = Math.random() < .5 ? 1 : -1 } else { G.sm = 'low'; G.smD = 6 + Math.random() * 6 } G.smT = G.smD }
+  const su = 1 - G.smT / G.smD, sm = G.sm;
+  G.ar = sm === 'raise' ? gease(su) : sm === 'drag' ? 1 : sm === 'lower' ? 1 - gease(su) : 0;
+  if (sm === 'low') { G.fW -= dt; if (G.fW <= 0 && G.smT > 2.5 && G.fl <= 0) { G.fl = .6; G.fW = 9 + Math.random() * 9; G.ash = false } } // (now and then he taps the ash off)
+  if (G.fl > 0) { G.fl -= dt; const fu = 1 - Math.max(0, G.fl) / .6; G.ar = Math.max(G.ar, .25 * Math.sin(fu * Math.PI)); if (fu > .5 && !G.ash) { G.ash = true; G.pashT = true } }
+  P.ember = (sm === 'low' ? .3 : sm === 'raise' ? .3 + .25 * su : sm === 'drag' ? .55 + .45 * gease(su) : sm === 'lower' ? 1 - .2 * su : .8 - .5 * su) * (.92 + .08 * Math.sin(P.st * 3.3));
+  // --- the breath: slow and even, held in while he draws, let out with the smoke
+  const brT = sm === 'drag' ? .35 + .65 * gease(su * 1.4) : sm === 'lower' ? 1 : sm === 'exhale' ? Math.max(0, 1 - su * 1.5) : .5 - .5 * Math.cos(G.t / 4.3 * Math.PI * 2);
+  G.brC += (brT - G.brC) * (1 - Math.exp(-dt / .18));
+  // --- the weight: now and again he goes over to the other leg
+  G.shW -= dt; if (G.shW <= 0) { const o = [-1, 0, 1].filter(v => v !== G.shT); G.shT = o[Math.floor(Math.random() * 2)]; G.shW = 7 + Math.random() * 10 }
+  G.sh += (G.shT - G.sh) * (1 - Math.exp(-dt / .45));
+  // --- the head: looks about in glances (a quick turn and a pause), follows the rider when he comes near, tips back with the smoke, down at the watch
+  const dx = R.x - P.x, dy = R.y - P.y, dist = Math.hypot(dx, dy), rel = gwrap(Math.atan2(dx, -dy) - P.dir * Math.PI / 4), seen = dist < 120 && near && !G.calm, busy = sm === 'raise' || sm === 'drag' || sm === 'lower';
+  let hyT, tau;
+  if (seen && !G.wasSeen) { G.wLook = true; G.wT = 3 + Math.random() * 3 } G.wasSeen = seen;
+  if (seen) { G.far = 0; G.wT -= dt; if (G.wT <= 0) { G.wLook = !G.wLook; G.wT = G.wLook ? 2.5 + Math.random() * 3 : 4 + Math.random() * 5 } // (he looks at the rider for a few seconds, then back to his own things, then at him again)
+    if (dist < 55 && G.greet <= 0 && !busy) { if (G.alS === 'idle') { G.greet = 45; G.alS = 'in'; G.alT = .55; G.alK = 6; G.alD = 2.6; G.wv = 0; G.wLook = true; G.wT = 3.5 } else if (G.alS === 'hold' && G.alK <= 3) G.alT = Math.min(G.alT, .01) } } // (a wave for the rider who comes close: whatever the free hand was doing, it first comes back)
+  else { G.far += dt; G.greet -= dt; G.turn = 0;
+    if (G.far > 4 && P.dir !== G.home) { const d = (G.home - P.dir + 8) % 8 > 4 ? -1 : 1; if (G.far > 4.6) { P.dir = (P.dir + d + 8) % 8; G.hy -= GSIGN * d * .79; G.far = 4 } } } // (the rider is gone: the body goes back to its old place, a step at a time)
+  if (seen && G.wLook) { hyT = clamp(GSIGN * rel / 1.0, -1, 1); tau = .17; G.hq.length = 0; G.hW = 2;
+    if (Math.abs(rel) > .85) { G.turn += dt; if (G.turn > .7) { const st = rel > 0 ? 1 : -1; P.dir = (P.dir + st + 8) % 8; G.hy -= GSIGN * st * .79; G.turn = 0 } } else G.turn = 0 } // (the body follows the head one step at a time, the head keeps looking)
+  else { G.hW -= dt;
+    if (!G.hq.length && G.hW <= 0 && !busy && sm !== 'exhale') { const a = (Math.random() < .5 ? -1 : 1) * (.4 + Math.random() * .6), q = Math.random();
+      G.hq = q < .4 ? [[a, 1.3 + Math.random() * 1.8, .13], [0, 1, .2]] : q < .65 ? [[a, 1, .13], [-a * .7, 1.3, .13], [0, 1, .2]] : q < .8 ? [[a, 2.5 + Math.random() * 2, .4], [0, 1, .4]] : [[a, .6, .12], [0, .3, .12], [a * .8, .8, .12], [0, 1, .2]]; G.hW = 3 + Math.random() * 7 }
+    if (G.hq.length) { const q = G.hq[0]; G.hyT = q[0]; G.hTau = q[2]; q[1] -= dt; if (q[1] <= 0) G.hq.shift() } else { G.hyT = 0; G.hTau = .22 }
+    hyT = G.hyT; tau = G.hTau; if (sm === 'exhale') { hyT = G.exs * .5; tau = .3 } else if (busy) { hyT = 0; tau = .25 } }
+  G.hy += (hyT - G.hy) * (1 - Math.exp(-dt / tau));
+  G.hnT = sm === 'exhale' && su > .05 && su < .7 ? -1 : (G.alS === 'hold' && G.alK === 4 && G.alT > .5 && G.alT < G.alD - .4) ? 1 : 0; G.hn += (G.hnT - G.hn) * (1 - Math.exp(-dt / .2));
+  // --- the left hand: from time to time it does something, goes there in half a second, stays, comes back
+  G.alT -= dt;
+  if (G.alS === 'idle') { G.al = 0; G.alW -= dt; if (G.alW <= 0) { const q = Math.random(), k = q < .28 ? 1 : q < .4 ? 2 : q < .65 ? 3 : q < .8 ? 4 : 5; G.alK = k; G.alD = k === 1 ? 9 + Math.random() * 13 : k === 2 ? 7 + Math.random() * 9 : k === 3 ? 6 + Math.random() * 6 : k === 4 ? 3.6 : 2.6; G.alS = 'in'; G.alT = .55 } }
+  else if (G.alS === 'in') { G.alk = G.alK; G.al = gease(1 - G.alT / .55); if (G.alT <= 0) { G.alS = 'hold'; G.alT = G.alD } }
+  else if (G.alS === 'hold') { G.al = 1; if (G.alK === 6) { G.wv += dt; G.alk = Math.floor(G.wv * 3.2) % 2 ? 7 : 6 } if (G.alT <= 0) { G.alS = 'out'; G.alT = .55 } }
+  else { G.al = 1 - gease(1 - G.alT / .55); if (G.alT <= 0) { G.alS = 'idle'; G.al = 0; G.alk = 0; G.alW = 4 + Math.random() * 9 } }
+  // --- the pose: the numbers cut into steps; the picture is made if there is a moment, otherwise the last one stays a frame longer
+  const q = { br: Math.round(clamp(G.brC, 0, 1) * GST.br), sh: Math.round(clamp(G.sh, -1, 1) * GST.sh), hy: Math.round(clamp(G.hy, -1, 1) * GST.hy), hn: Math.round(clamp(G.hn, -1, 1)), ar: Math.round(clamp(G.ar, 0, 1) * GST.ar), al: Math.round(clamp(G.al, 0, 1) * GST.al), alk: 0 };
+  if (q.al > 0) q.alk = G.alk; const key = gkey(q), id = (P.look.id || '') + 'guard' + P.dir + '/' + key;
+  if (!P.gspr || near && (NPC_SPR.has(id) || GBUILD < 2)) { if (!NPC_SPR.has(id)) GBUILD++; P.gspr = npcSprite(P.look, 'guard', P.dir, key) }  // (off the screen nothing new is made)
+  if (near) guardWarm(P);
+  // --- the ember, the wisp that rises from it, the breath of smoke, the ash that falls
+  const S = P.gspr; if (near && S.tip) { P.tx = Math.round(P.x) + S.tip[0]; P.ty = Math.round(P.y) + S.tip[1];
+    if (G.ar < .12) { P.wa = (P.wa || 0) + dt * 9; while (P.wa >= 1) { P.wa--; GSM.push({ k: 0, x: P.tx + (Math.random() - .5) * .4, y: P.ty - .5, vx: 0, vy: -(6 + Math.random() * 3), age: 0, life: 3.2 + Math.random() * 1.8, ph: Math.random() * 6.28, a0: .7, c: 0 }) } }
+    if (G.pashT) { G.pashT = false; GSM.push({ k: 2, x: P.tx, y: P.ty + .5, vx: (Math.random() - .5) * 2, vy: 2, age: 0, life: .75, ph: 0, a0: .9 }) } }
+  if (near && sm === 'exhale' && su > .12 && su < .62 && S.mouth) { P.ba = (P.ba || 0) + dt * 15; const th = P.dir * Math.PI / 4 + GSIGN * G.hy * .99, fx = Math.sin(th), fy = -Math.cos(th);
+    while (P.ba >= 1) { P.ba--; const sp = 16 + Math.random() * 9; GSM.push({ k: 1, x: Math.round(P.x) + S.mouth[0] + fx * 2.2, y: Math.round(P.y) + S.mouth[1] + fy * 1.6, vx: fx * sp + (Math.random() - .5) * 3.5, vy: fy * sp * .5 - 3 + (Math.random() - .5) * 3, age: 0, life: 3.2 + Math.random() * 1.6, ph: Math.random() * 6.28, a0: .48, r0: .8 + Math.random() * .5 }) } } else P.ba = 0 }
+
+// =====================================================================================================================
+// BIRDS, THE DRAWING: every bird is drawn from a handful of numbers (the body, the head, the tail, the wing) and painted with the colours of its kind,
+// at the size of its class: T (tits, sparrows, finches), M (thrushes, jays, jackdaws), C (crows, magpies, pigeons), D (ducks), G (geese, far up).
+// A pose is a side view facing right (flipped for the other way): stand, hop, peck (head down), swim, dabble; in flight the wings are spread across the heading
+// as the gulls' are: up, level, down, or folded (the finches' bounding flight). The shapes are laid down back to front (tail, far wing, body, near wing, head,
+// bill, legs, eye); a pixel is painted when a shape covers half of it.
+// =====================================================================================================================
+const BSCALE = .8;   // (birds are drawn a little over life size, not as much as their classes' numbers say)
+const BCLS = {
+  T: { rx: 2.5, ry: 1.7, pitch: 34, hr: 1.45, bill: 1.1, tail: 3.0, tw: 1.5, leg: 1.2, wl: 4.2 },
+  M: { rx: 3.3, ry: 2.2, pitch: 30, hr: 1.8, bill: 1.5, tail: 3.6, tw: 1.9, leg: 1.8, wl: 5.6 },
+  C: { rx: 4.1, ry: 2.5, pitch: 18, hr: 2.0, bill: 2.3, tail: 4.6, tw: 2.3, leg: 2.3, wl: 7.0 },
+  D: { rx: 4.6, ry: 2.3, pitch: 6, hr: 1.7, bill: 2.2, tail: 2.2, tw: 2.0, leg: 1.2, wl: 6.8 },
+  G: { rx: 2.6, ry: 1.1, pitch: 0, hr: 0.9, bill: 1.0, tail: 1.3, tw: 1.1, leg: 0, wl: 5.0 }
+};
+const bmix = (a, b, k) => [Math.round(a[0] + (b[0] - a[0]) * k), Math.round(a[1] + (b[1] - a[1]) * k), Math.round(a[2] + (b[2] - a[2]) * k)];
+const bdark = (c, k) => [Math.round(c[0] * k), Math.round(c[1] * k), Math.round(c[2] * k)];
+function bpaint(buf, w, h, test, colorAt, thr = .5) { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let n = 0; for (const sy of [.17, .5, .83]) for (const sx of [.17, .5, .83]) if (test(x + sx, y + sy)) n++; if (n / 9 >= thr) { const c = colorAt(x + .5, y + .5); if (!c) continue; const i = (y * w + x) * 4; buf[i] = c[0]; buf[i + 1] = c[1]; buf[i + 2] = c[2]; buf[i + 3] = 255 } } }
+const bell = (cx, cy, rx, ry, rot) => { const c = Math.cos(rot), s = Math.sin(rot); return (x, y) => { const dx = x - cx, dy = y - cy, u = (dx * c + dy * s) / rx, v = (-dx * s + dy * c) / ry; return u * u + v * v <= 1 } };
+const bpoly = P => (x, y) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins } return ins };
+const bseg = (x0, y0, x1, y1, wd) => (x, y) => { const dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / l2)), px = x0 + dx * t, py = y0 + dy * t; return Math.hypot(x - px, y - py) <= wd / 2 };
+// kind: { cls, k (size), pal: {crown, face, cheek, throat, bib, back, back2, rump, wing, wing2, wbar, breast, belly, tail, bill, leg, eye, spot, crest}, spots, longtail, tailk, billk }
+// pose: 'stand' | 'hop' | 'peck' | 'swim' | 'dabble' | 'cling' (up a trunk) | 'hammer' (the head thrown back to strike) | 'fup' | 'fmid' | 'fdn' | 'fold'; flip: facing left
+function birdArt(kind, pose, flip) {
+  const C = BCLS[kind.cls], k = (kind.k || 1) * (typeof BSCALE === 'number' ? BSCALE : 1), P = kind.pal, rx = C.rx * k, ry = C.ry * k, hr = C.hr * k, bill = C.bill * k * (kind.billk || 1), tail = C.tail * k * (kind.tailk || 1), tw = C.tw * k, leg = C.leg * k, wl = C.wl * k;
+  const flying = pose === 'fup' || pose === 'fmid' || pose === 'fdn' || pose === 'fold', water = pose === 'swim' || pose === 'dabble', rad = a => a * Math.PI / 180, long = kind.cls === 'D' || kind.cls === 'G';
+  const W = Math.ceil((rx + tail + hr * 2 + bill + (flying ? wl : 0)) * 2 + 8), H = Math.ceil((ry * 2 + leg + hr * 3 + (flying ? wl : 0)) * 1.3 + 8), buf = new Uint8ClampedArray(W * H * 4), ox = Math.floor(W / 2) + .5, oy = H - 3;
+  const clingy = pose === 'cling' || pose === 'hammer'; let pitch = rad(C.pitch); if (flying) pitch = 0; if (pose === 'peck') pitch = rad(-20); if (pose === 'swim') pitch = rad(4); if (pose === 'dabble') pitch = rad(-48); if (clingy) pitch = rad(pose === 'hammer' ? 62 : 80);
+  const ang = -pitch, ax_ = Math.cos(ang), ay_ = Math.sin(ang), nx = -ay_, ny = ax_;               // the body's axis (tail to head) and its normal (to the belly)
+  let bcx = ox, bcy = oy - leg - ry * (pose === 'peck' ? .8 : 1.15) - (pose === 'hop' ? 1.1 : 0); if (clingy) { bcx = ox - ry * .9; bcy = oy - rx * .55 } if (flying) { bcy = oy - Math.ceil(H * .45) } if (water) bcy = oy - ry * .45;
+  let hcx = bcx + ax_ * rx * .78 - nx * ry * (long ? .1 : .5), hcy = bcy + ay_ * rx * .78 - ny * ry * (long ? .1 : .5);
+  if (pose === 'peck') { hcx = bcx + ax_ * rx * .95 + nx * ry * .1; hcy = bcy + ay_ * rx * .95 + ny * ry * .1 + ry * .55 }
+  if (clingy) { hcx = bcx + ax_ * rx * .8 + nx * ry * .1 + (pose === 'hammer' ? -ry * .3 : 0); hcy = bcy + ay_ * rx * .8 + ny * ry * .1 }
+  if (pose === 'swim') { hcx = bcx + rx * .8; hcy = bcy - ry * 1.5 } if (pose === 'dabble') { hcx = bcx + rx * 1.0; hcy = bcy + ry * 1.2 }
+  if (flying && long) { hcx = bcx + rx * 1.25; hcy = bcy - ry * .15 }
+  const rearx = bcx - ax_ * rx * .85, reary = bcy - ay_ * rx * .85, tdir = flying ? Math.PI : pose === 'dabble' ? ang + Math.PI + rad(8) : water ? Math.PI + rad(14) : ang + Math.PI + rad(10);
+  const tex = rearx + Math.cos(tdir) * tail * (kind.longtail && !flying ? 1.5 : 1), tey = reary + Math.sin(tdir) * tail * (kind.longtail && !flying ? 1.5 : 1), tnx = -Math.sin(tdir), tny = Math.cos(tdir);
+  const tpts = [[rearx + tnx * tw * .3, reary + tny * tw * .3], [tex + tnx * tw * .5, tey + tny * tw * .5], [tex - tnx * tw * .5, tey - tny * tw * .5], [rearx - tnx * tw * .3, reary - tny * tw * .3]];
+  const body = bell(bcx, bcy, rx, ry, ang), head = bell(hcx, hcy, hr, hr, 0);
+  const wcx = bcx - ax_ * rx * .12 - nx * ry * .28, wcy = bcy - ay_ * rx * .12 - ny * ry * .28, wing = flying ? null : bell(wcx, wcy, rx * .74, ry * .58, ang + rad(6));
+  const bodyCol = (x, y) => { const dx = x - bcx, dy = y - bcy, u = (dx * ax_ + dy * ay_) / rx, v = (dx * nx + dy * ny) / ry;   // u: -1 tail .. 1 head; v: -1 back .. 1 belly
+    if (u < -.5 && v < .35 && P.rump) return P.rump; if (v < -.3) return P.back; if (u > .3 && v > -.1 && v < .95 && P.bib && !water) return P.bib; if (v > .1) { if (kind.spots && u > -.15 && h2(Math.floor(x * 1.4), Math.floor(y * 1.4), 7) < kind.spots) return P.spot || bdark(P.breast, .6); return u > .05 ? P.breast : (P.belly || P.breast) } return u > .25 ? P.breast : (P.back2 || bmix(P.back, P.breast, .45)) };
+  const headCol = (x, y) => { const dx = x - hcx, dy = y - hcy; if (dy < -hr * .3) return P.crown; if (P.cheek && dy > -hr * .2 && dy < hr * .5 && dx < hr * .3) return P.cheek; if (dy > hr * .4) return P.throat || P.face; return P.face };
+  const wingCol = (x, y) => { const dx = x - wcx, dyv = y - wcy; if (P.wbar && dyv > -ry * .3 && dyv < ry * .15 && dx > -rx * .1 && dx < rx * .4) return P.wbar; return dx < -rx * .3 ? (P.wing2 || P.wing) : P.wing };
+  // legs first (behind the body): two thin lines to the ground
+  if (!flying && !water && !clingy && leg > .5) { const lx = Math.floor(bcx + rx * .02) + .5; for (const dx of [0, k > 1.4 ? 2 : 1.4]) bpaint(buf, W, H, bseg(lx + dx, bcy + ry * .5, lx + dx - (pose === 'hop' ? .5 : 0), oy, .9), () => P.leg || [60, 50, 44], .5) }
+  // the tail
+  bpaint(buf, W, H, bpoly(tpts), () => P.tail, .35);
+  // the wings in flight: across the heading from the shoulders, the tips up, level or down
+  const wcol = (x, y) => (P.wing2 && Math.abs(x - bcx) > wl * .55 ? P.wing2 : P.wing);
+  if (flying && pose !== 'fold') { const sy = bcy - ry * 1.0, wb = Math.max(1.5, ry * .95), up = pose === 'fup', dn = pose === 'fdn';
+    for (const s of [-1, 1]) { const tipx = bcx + s * wl * (up ? .74 : dn ? .72 : 1), tipy = sy + (up ? -wl * .78 : dn ? wl * .42 : -wl * .06), rt = bcx + s * rx * .05;
+      bpaint(buf, W, H, bpoly([[rt, sy - wb * .5], [rt + s * rx * .7, sy + wb * .9], [tipx, tipy + (dn ? 0 : wb * .15)], [tipx, tipy - wb * .2]]), wcol, .3) } }
+  bpaint(buf, W, H, body, bodyCol, .5);
+  if (long) { // a neck: from the front of the body to the head
+    bpaint(buf, W, H, bseg(bcx + rx * .55, bcy - ry * .15 + (pose === 'dabble' ? ry * .6 : 0), hcx - hr * .3, hcy + hr * .2, Math.max(1.2, hr * 1.1)), (x, y) => (pose === 'swim' || flying) ? P.throat : P.face, .4) }
+  if (wing) bpaint(buf, W, H, wing, wingCol, .5);
+  if (flying && pose === 'fold') bpaint(buf, W, H, bell(bcx - rx * .1, bcy - ry * .05, rx * .8, ry * .62, 0), wingCol, .5);
+  bpaint(buf, W, H, head, headCol, .5);
+  if (P.crest) bpaint(buf, W, H, bpoly([[hcx - hr * .2, hcy - hr * .7], [hcx - hr * 1.5, hcy - hr * 1.4], [hcx + hr * .1, hcy]]), () => P.crest, .35);
+  // the bill and the eye
+  const bd = pose === 'peck' ? rad(62) : pose === 'dabble' ? rad(75) : pose === 'hammer' ? rad(20) : pose === 'cling' ? rad(-6) : rad(8), bx0 = hcx + hr * .5, by0 = hcy + hr * .12;
+  bpaint(buf, W, H, bseg(bx0, by0, bx0 + Math.cos(bd) * bill, by0 + Math.sin(bd) * bill, Math.max(.9, hr * .55)), () => P.bill, .3);
+  const ex = Math.floor(hcx + hr * .3), ey = Math.floor(hcy - hr * .2); if (hr > 1.2 && ex >= 0 && ey >= 0 && ex < W && ey < H) { const i = (ey * W + ex) * 4; if (buf[i + 3]) { const c = P.eye || [20, 18, 18]; buf[i] = c[0]; buf[i + 1] = c[1]; buf[i + 2] = c[2] } }
+  if (water) { for (let y = Math.round(oy - ry * .05); y < H; y++) for (let x = 0; x < W; x++) buf[(y * W + x) * 4 + 3] = 0 }
+  // crop to what was drawn; the feet's place is the anchor
+  let x0 = W, y0 = H, x1 = -1, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (buf[(y * W + x) * 4 + 3]) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y } if (x1 < 0) { x0 = y0 = 0; x1 = y1 = 0 }
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'), img = g.createImageData(w, h), fx = Math.floor(ox);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const sx = flip ? x1 - x : x0 + x, i = ((y0 + y) * W + sx) * 4, j = (y * w + x) * 4; img.data[j] = buf[i]; img.data[j + 1] = buf[i + 1]; img.data[j + 2] = buf[i + 2]; img.data[j + 3] = buf[i + 3] }
+  g.putImageData(img, 0, 0); return { cv, w, h, ax: flip ? x1 - fx : fx - x0, ay: (flying || clingy ? Math.round(bcy) : oy) - y0 }
+}
+
+// =====================================================================================================================
+// BIRDS, THE KINDS: what is seen at the end of October in the middle belt, by habitat, and how each is drawn (class, size, colours).
+// habitat weights: v the village (yards, roofs, poles), g the glade (open ground, bushes), s the shore (sand, wrack), f* the forests (b pine bor, s spruce, m mixed/birch/aspen, h hazel/undergrowth),
+// w the open water, a the air. The numbers are how likely the kind is to be the one met there (relative).
+// =====================================================================================================================
+const B_K = [0, 0, 0];
+const BKIND = {
+  crow: { name: 'серая ворона', cls: 'C', k: 1, flock: [1, 3], feet: 'ground', roost: 1, flee: 34, speed: 52, call: 'caw', hab: { v: 2, h: 2.5, g: 1.2, s: 2.5, fb: .4, fm: .5, fs: .3, fh: .3 },
+    pal: { crown: [28, 28, 32], face: [28, 28, 32], throat: [28, 28, 32], back: [150, 150, 154], back2: [152, 152, 156], breast: [160, 160, 164], belly: [150, 150, 154], wing: [30, 30, 34], wing2: [22, 22, 26], tail: [26, 26, 30], bill: [32, 32, 34], leg: [34, 32, 32], eye: [210, 200, 160] } },
+  jackdaw: { name: 'галка', cls: 'M', k: 1.08, flock: [3, 6], feet: 'ground', roost: 1, flee: 30, speed: 50, call: 'jack', hab: { v: 3, h: 1.2, g: .8, s: .4, fm: .2 },
+    pal: { crown: [34, 34, 38], face: [36, 36, 40], cheek: [122, 126, 134], throat: [34, 34, 38], back: [46, 46, 52], back2: [58, 58, 64], breast: [70, 70, 76], belly: [62, 62, 68], wing: [30, 30, 36], wing2: [22, 22, 28], tail: [24, 24, 30], bill: [30, 30, 34], leg: [30, 30, 30], eye: [225, 235, 245] } },
+  magpie: { name: 'сорока', cls: 'C', k: .95, longtail: true, tailk: .9, flock: [1, 2], feet: 'ground', flee: 30, speed: 46, call: 'rattle', hab: { v: 2.5, h: 1.2, g: 1.2, s: .5, fm: .7, fb: .2, fh: .6 },
+    pal: { crown: [24, 24, 30], face: [24, 24, 30], throat: [24, 24, 30], back: [26, 26, 32], breast: [26, 26, 32], belly: [242, 242, 240], wing: [36, 56, 90], wing2: [28, 44, 70], wbar: [244, 244, 242], tail: [36, 84, 90], bill: [20, 20, 24], leg: [24, 24, 24], eye: [30, 26, 26] } },
+  sparrow: { name: 'воробей', cls: 'T', k: 1, flock: [3, 7], feet: 'ground', flee: 20, speed: 44, call: 'chirp', hab: { v: 5, h: 1.2, g: .5 }, bound: 1,
+    pal: { crown: [118, 98, 86], face: [172, 166, 158], cheek: [182, 176, 168], throat: [44, 40, 38], bib: [44, 40, 38], back: [140, 94, 58], back2: [150, 130, 108], rump: [128, 118, 106], breast: [178, 172, 162], belly: [192, 186, 174], wing: [128, 84, 50], wing2: [98, 68, 46], wbar: [230, 220, 198], tail: [102, 78, 58], bill: [72, 68, 62], leg: [160, 110, 100], eye: [24, 20, 20] } },
+  tit: { name: 'большая синица', cls: 'T', k: 1.05, flock: [1, 3], feet: 'tree', flee: 14, speed: 44, call: 'tit', hab: { v: 1.5, g: .4, fm: 3, fb: 1.2, fs: 1.2, fh: 3 }, bound: 1,
+    pal: { crown: [22, 24, 28], face: [236, 236, 232], cheek: [242, 242, 238], throat: [24, 26, 30], bib: [30, 32, 20], back: [122, 142, 64], back2: [190, 180, 70], rump: [120, 130, 150], breast: [238, 210, 62], belly: [234, 206, 60], wing: [102, 122, 146], wing2: [80, 98, 124], wbar: [236, 236, 230], tail: [96, 114, 140], bill: [26, 26, 28], leg: [70, 76, 84], eye: [20, 18, 18] } },
+  bluetit: { name: 'лазоревка', cls: 'T', k: .95, flock: [2, 4], feet: 'tree', flee: 14, speed: 44, call: 'bluetit', hab: { v: .6, fm: 3, fb: .6, fs: .8, fh: 3 }, bound: 1,
+    pal: { crown: [72, 132, 204], face: [246, 246, 242], cheek: [248, 248, 244], throat: [42, 62, 104], back: [128, 160, 84], back2: [214, 206, 90], rump: [100, 150, 200], breast: [242, 222, 82], belly: [240, 220, 80], wing: [62, 112, 192], wing2: [48, 90, 164], wbar: [238, 238, 232], tail: [72, 128, 200], bill: [40, 42, 46], leg: [70, 76, 84], eye: [20, 18, 18] } },
+  siskin: { name: 'чиж', cls: 'T', k: .92, flock: [4, 9], feet: 'tree', flee: 18, speed: 50, call: 'twitter', hab: { fm: 3, fs: 2, fb: .6, fh: 1.4, g: .3 }, bound: 1,
+    pal: { crown: [30, 30, 28], face: [196, 200, 76], cheek: [200, 204, 80], throat: [30, 30, 28], bib: [30, 30, 28], back: [150, 160, 62], back2: [190, 196, 80], rump: [214, 216, 84], breast: [220, 218, 84], belly: [236, 236, 214], wing: [60, 60, 52], wing2: [44, 44, 40], wbar: [236, 222, 72], tail: [62, 62, 54], bill: [200, 190, 150], leg: [80, 70, 60], eye: [20, 18, 18] } },
+  redpoll: { name: 'чечётка', cls: 'T', k: .95, flock: [4, 8], feet: 'tree', flee: 18, speed: 50, call: 'twitter', hab: { fm: 2.4, fh: 1.6, g: .8, fs: .4 }, bound: 1,
+    pal: { crown: [204, 46, 56], face: [150, 128, 108], cheek: [160, 138, 118], throat: [40, 34, 34], bib: [40, 34, 34], back: [128, 108, 88], back2: [150, 130, 110], rump: [186, 150, 134], breast: [226, 150, 140], belly: [240, 238, 230], wing: [102, 86, 72], wing2: [80, 66, 54], wbar: [232, 226, 214], tail: [92, 78, 66], bill: [228, 192, 84], leg: [60, 50, 44], eye: [20, 18, 18] } },
+  bullfinch: { name: 'снегирь', cls: 'T', k: 1.2, flock: [1, 3], feet: 'tree', flee: 18, speed: 46, call: 'pipe', hab: { fm: 1.2, fh: 1.4, g: .3, v: .2 }, bound: 1,
+    pal: { crown: [20, 20, 24], face: [20, 20, 24], cheek: [216, 86, 86], throat: [218, 90, 90], back: [122, 126, 138], back2: [170, 120, 124], rump: [244, 244, 244], breast: [218, 88, 88], belly: [210, 100, 100], wing: [30, 30, 36], wing2: [22, 22, 28], wbar: [236, 236, 236], tail: [24, 24, 30], bill: [24, 24, 26], leg: [60, 50, 46], eye: [10, 10, 10] } },
+  fieldfare: { name: 'дрозд-рябинник', cls: 'M', k: 1.1, flock: [3, 8], feet: 'ground', flee: 26, speed: 48, call: 'chack', hab: { g: 3, v: .5, fm: 1.3, fh: 1.2, s: .2 }, spots: .33,
+    pal: { crown: [142, 148, 152], face: [152, 156, 158], cheek: [160, 156, 150], throat: [210, 170, 110], back: [126, 86, 52], back2: [190, 150, 104], rump: [152, 156, 160], breast: [208, 160, 100], belly: [238, 232, 222], spot: [62, 42, 30], wing: [104, 72, 50], wing2: [72, 54, 42], tail: [30, 28, 28], bill: [228, 192, 62], leg: [70, 58, 48], eye: [20, 18, 18] } },
+  jay: { name: 'сойка', cls: 'M', k: 1.15, flock: [1, 2], feet: 'tree', flee: 26, speed: 46, call: 'screech', hab: { fm: 2.2, fb: 1.4, fs: 1.2, fh: 2.4, g: .5, v: .4 },
+    pal: { crown: [198, 164, 146], face: [216, 180, 156], cheek: [28, 26, 30], throat: [244, 240, 234], back: [188, 138, 114], back2: [200, 154, 130], rump: [244, 244, 244], breast: [198, 152, 128], belly: [206, 164, 142], wing: [30, 42, 66], wing2: [22, 24, 32], wbar: [64, 150, 222], tail: [26, 26, 32], bill: [28, 26, 28], leg: [150, 120, 100], eye: [30, 26, 26] } },
+  pigeon: { name: 'сизый голубь', cls: 'C', k: .88, flock: [2, 5], feet: 'ground', flee: 26, speed: 50, call: 'coo', hab: { v: 2.5, h: 1 },
+    pal: { crown: [116, 120, 130], face: [120, 124, 134], cheek: [96, 140, 132], throat: [96, 140, 132], bib: [118, 140, 150], back: [150, 156, 168], back2: [140, 146, 158], rump: [236, 236, 238], breast: [132, 138, 152], belly: [144, 150, 162], wing: [146, 152, 166], wing2: [100, 106, 120], wbar: [44, 44, 52], tail: [64, 68, 80], bill: [150, 150, 154], leg: [190, 80, 92], eye: [230, 150, 60] } },
+  crossbill: { name: 'клёст-еловик', cls: 'T', k: 1.25, billk: 1.05, flock: [3, 7], feet: 'tree', flee: 18, speed: 48, call: 'chip', mate: 'crossbillF', matep: .45, hab: { fs: 3.2, fb: 1.4, fm: .3 }, bound: 1,
+    pal: { crown: [186, 70, 62], face: [194, 78, 68], cheek: [194, 78, 68], throat: [196, 86, 74], back: [172, 62, 56], back2: [190, 96, 84], rump: [206, 90, 70], breast: [198, 84, 72], belly: [194, 104, 90], wing: [90, 54, 46], wing2: [68, 42, 38], tail: [70, 44, 40], bill: [74, 70, 68], leg: [70, 56, 50], eye: [20, 18, 18] } },
+  crossbillF: { name: 'клёст-еловик', cls: 'T', k: 1.2, billk: 1.05, flock: [1, 1], feet: 'tree', flee: 18, speed: 48, call: 'chip', hab: {}, bound: 1,
+    pal: { crown: [148, 158, 86], face: [158, 166, 96], cheek: [158, 166, 96], throat: [176, 178, 112], back: [138, 148, 78], back2: [168, 170, 100], rump: [196, 188, 90], breast: [176, 178, 108], belly: [190, 190, 128], wing: [92, 90, 66], wing2: [70, 68, 52], tail: [74, 72, 54], bill: [74, 70, 68], leg: [70, 62, 52], eye: [20, 18, 18] } },
+  woodpecker: { name: 'большой пёстрый дятел', cls: 'M', k: 1.2, billk: 1.25, flock: [1, 1], feet: 'trunk', flee: 24, speed: 54, call: 'kick', drum: 1, hab: { fm: 1.8, fb: 1.5, fs: 1.4, fh: .9, v: .1 },
+    pal: { crown: [20, 20, 24], face: [240, 240, 236], cheek: [20, 20, 24], throat: [236, 234, 228], back: [22, 22, 26], back2: [236, 236, 232], rump: [22, 22, 26], breast: [226, 212, 190], belly: [224, 206, 184], wing: [26, 26, 30], wing2: [22, 22, 26], wbar: [240, 240, 236], tail: [30, 30, 34], bill: [48, 48, 52], leg: [60, 56, 54], eye: [30, 24, 24], crest: [200, 38, 40] } },
+  nuthatch: { name: 'поползень', cls: 'T', k: 1.2, billk: 1.2, flock: [1, 1], feet: 'trunk', flee: 16, speed: 46, call: 'nut', hab: { fm: 2, fb: 1.2, fh: 1.5, fs: .8, v: .4 },
+    pal: { crown: [108, 130, 160], face: [240, 238, 232], cheek: [28, 28, 34], throat: [244, 242, 236], back: [106, 128, 158], back2: [138, 150, 168], rump: [112, 132, 160], breast: [226, 174, 118], belly: [216, 160, 108], wing: [98, 120, 150], wing2: [78, 98, 128], tail: [92, 112, 142], bill: [52, 54, 60], leg: [70, 62, 56], eye: [20, 18, 18] } },
+  mallard: { name: 'кряква', cls: 'D', k: 1, flock: [2, 5], feet: 'water', flee: 44, speed: 56, call: 'quack', mate: 'mallardF', matep: .45, hab: { w: 4 },
+    pal: { crown: [28, 108, 70], face: [30, 112, 72], cheek: [30, 112, 72], throat: [30, 112, 72], bib: [124, 72, 50], back: [136, 124, 112], back2: [170, 168, 170], rump: [30, 30, 34], breast: [124, 72, 50], belly: [186, 186, 190], wing: [162, 160, 164], wing2: [120, 118, 124], wbar: [64, 96, 176], tail: [226, 226, 228], bill: [228, 204, 62], leg: [236, 140, 50], eye: [20, 18, 18] } },
+  mallardF: { name: 'кряква', cls: 'D', k: .95, flock: [1, 1], feet: 'water', flee: 44, speed: 56, call: 'quack', hab: {},
+    pal: { crown: [96, 74, 54], face: [168, 138, 108], cheek: [172, 142, 112], throat: [190, 166, 134], back: [138, 108, 78], back2: [156, 126, 94], rump: [110, 86, 62], breast: [168, 134, 100], belly: [180, 150, 116], wing: [150, 118, 86], wing2: [116, 90, 66], wbar: [64, 96, 176], tail: [150, 124, 96], bill: [196, 130, 62], leg: [236, 140, 50], eye: [20, 18, 18] } },
+  goose: { name: 'гусь', cls: 'G', k: 1.35, flock: [7, 16], feet: 'air', flee: 0, speed: 30, call: 'honk', hab: { a: 1 },
+    pal: { crown: [60, 54, 50], face: [62, 56, 52], throat: [60, 54, 50], back: [120, 108, 98], breast: [150, 138, 126], belly: [200, 192, 184], rump: [236, 236, 238], wing: [96, 86, 78], wing2: [60, 54, 50], tail: [70, 62, 56], bill: [230, 150, 52], leg: [230, 150, 52], eye: [20, 18, 18] } }
+};
+
+// =====================================================================================================================
+// BIRDS, THE LIFE: the ordinary birds of the end of October, each where it belongs. Sparrows hop about the yards and the crows walk the shore and sit on the roofs and
+// the poles; jackdaws gather on the chimneys; tits, a jay or a bullfinch work through the trees at the edge of the forest; flocks of fieldfares and siskins go over the
+// glade; mallards swim in the bay; and high up a skein of geese goes south. They live on the ground and in the trees and on the roofs and the water by the
+// place they are over (the forest's stand, the village, the shore), sit tight while the rider is far, hop off as he comes and go up all together when he is close.
+// By day only: at dusk they leave to roost (the crows in a stream over the sky), in rain and fog there are few. (The gulls are in gulls.js.)
+// =====================================================================================================================
+const BIRDS = [], BSPR = new Map(), BNODES = new WeakMap(), BTRUNK = new WeakMap(), BLDS = [], BOCC = new Set(), BSKY = [];
+let BTEST = false, BFIRST = false, BSPAWNT = 1, BSKYT = 45 + Math.random() * 60, BDUSKT = 5, BZONE = { v: .3, g: .3, s: .1, f: .3, w: .1 }, BZT = 0, BSTART = false, BID = 1, BFID = 1, BCNT = 0;
+const BTREE = new Set(['pine', 'spruce', 'birch', 'aspen', 'decid', 'bare', 'rowan', 'oak', 'larch', 'linden', 'maple']);
+const BPROP = new Set(['house', 'smokehouse', 'boatshed', 'cowshed', 'haystack', 'bales', 'logpile', 'fishrack', 'netrack', 'boat', 'pole', 'signpost', 'oldcar', 'fence', 'well', 'barrels', 'crates', 'booth']);
+const bsprite = (id, pose, flip) => { const key = id + '/' + pose + (flip ? 'L' : 'R'); let r = BSPR.get(key); if (!r) { r = birdArt(BKIND[id], pose, flip); BSPR.set(key, r) } return r };
+const bAct = () => clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .5 * WX.rain) * (1 - .45 * WX.fog);
+const bRand = (a, b) => a + Math.random() * (b - a), bPick = a => a[Math.floor(Math.random() * a.length)];
+// the pictures a kind will need, made one a frame in the quiet moments (a new kind arriving with several of them at once would be a hitch)
+const BWARM = [];
+function bWarmInit() { for (const id in BKIND) { const K = BKIND[id], fl = K.bound ? ['fup', 'fdn', 'fold'] : ['fup', 'fmid', 'fdn']; const poses = K.feet === 'trunk' ? ['cling', 'hammer', 'fup', 'fmid', 'fdn'] : K.feet === 'water' ? ['swim', 'dabble', 'fup', 'fmid', 'fdn'] : K.feet === 'air' ? ['fup', 'fmid', 'fdn'] : K.feet === 'tree' ? ['stand', 'hop'].concat(fl) : ['stand', 'hop', 'peck'].concat(fl);
+    for (const po of poses) for (const f of [false, true]) BWARM.push([id, po, f]) } BWARM.reverse() }
+function bInit() { BSTART = true; bWarmInit(); for (const o of OBJS) { if (o.kind !== 'prefab') continue; if (o.p === 'house' || o.p === 'smokehouse' || o.p === 'boatshed' || o.p === 'cowshed' || o.p === 'booth') BLDS.push([o.x, o.y - 10, (o.params && o.params.w ? o.params.w / 2 : 22) + 6]) } }
+// the ground a bird may stand on
+const bGround = (x, y) => matAt(x, y) !== 'lake' && !blocked(x, y, 1.6);
+// open water a duck may swim on: lake, a little off the shore, clear of the boats, the piles and the rocks of the shallows
+const bWater = (x, y) => { if (matAt(x, y) !== 'lake' || bayDist(x, y) > -12) return false; for (const o of objsIn(x - 8, y - 8, x + 8, y + 8)) if ((o.kind === 'prefab' || o.t === 'rock') && Math.hypot(o.x - x, o.y - y) < 8 + (o.p === 'boat' ? 6 : 0)) return false; return true };
+// what is round a point: the village, the shore, the open glade, the forest by its stand, the water
+function bctx(x, y) { const m = matAt(x, y), c = { v: 0, g: 0, h: 0, s: 0, w: 0, fb: 0, fs: 0, fm: 0, fh: 0 }; if (m === 'lake') { c.w = 1; return c } if (m === 'bridge') return c;
+  let vd = 1e9; for (const b of BLDS) vd = Math.min(vd, Math.hypot(b[0] - x, b[1] - y) - b[2]); c.v = clamp(1 - vd / 70, 0, 1); c.s = clamp(1 - bayDist(x, y) / 45, 0, 1) * .8;
+  if (m === 'forest') { const id = standAt(x, y).id; c[id === 'bor' ? 'fb' : id === 'spruce' ? 'fs' : id === 'hazel' ? 'fh' : 'fm'] = 1 } else if (m === 'glade') c.g = 1; else if (m === 'beach') c.g = .3; else c.h = 1; return c }
+function bKindAt(c, per) { let tot = 0; const w = []; for (const id in BKIND) { const K = BKIND[id]; let s = 0; for (const k in K.hab) s += K.hab[k] * (c[k] || 0); if (id === 'goose' || id === 'mallardF') s = 0; s /= 1 + 1.6 * ((per && per[id]) || 0) / Math.max(1, K.flock[1]); w.push([id, s]); tot += s } if (tot <= 0) return null; let r = Math.random() * tot; for (const [id, s] of w) { r -= s; if (r <= 0) return id } return null }
+// where a bird can sit on a thing: the points along the top edge of its picture where the edge is flat or a peak (found from the object's own mask)
+function bPerches(o) { let L = BNODES.get(o); if (L) return L; L = []; BNODES.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w) return L; const top = new Int16Array(w).fill(-1);
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) if (m[y * w + x]) { top[x] = y; break }
+  const tree = BTREE.has(o.t); for (let x = 2; x < w - 2; x++) { const t = top[x]; if (t < 0 || (tree && t > h * .62)) continue; let ok = true, flat = 0; for (let d = -2; d <= 2; d++) { const q = top[x + d]; if (q >= 0 && q < t - 1) ok = false; if (q >= 0 && q <= t + 3) flat++ } if (ok && flat >= 4) L.push([x, t]) }
+  return L }
+// a free sitting place on some thing near (x, y), of the kind the bird likes: trees or the works of men
+function bNodeNear(x, y, r, wantTree, wantProp) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) { if (!o.ready || !o.mask) continue; const tree = o.kind === 'gen' && BTREE.has(o.t), prop = o.kind === 'prefab' && BPROP.has(o.p); if (!(tree && wantTree) && !(prop && wantProp)) continue; if (o.p === 'pole' && o.params && o.params.bird) continue; cand.push(o) }
+  for (let n = 0; n < 6 && cand.length; n++) { const o = bPick(cand), L = bPerches(o); if (!L.length) continue; const p = bPick(L), ox = Math.round(o.x - o.ax), oy = Math.round(o.y - o.ay), key = (o.id || o.x + ',' + o.y) + ':' + p[0]; if (BOCC.has(key)) continue;
+    const px = ox + p[0] + .5, py = oy + p[1]; if (Math.hypot(px - R.x, py - R.y) < 24) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o } } return null }
+// where a bird can cling to a tree: the trunk, found as the rows above the foot where the picture is only a few pixels wide
+function bTrunks(o) { let L = BTRUNK.get(o); if (L) return L; L = []; BTRUNK.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w || !BTREE.has(o.t)) return L; const cx = Math.round(o.ax);
+  for (let y = Math.round(o.ay) - 7; y > Math.max(2, Math.round(o.ay) - 40); y -= 2) { if (!m[y * w + cx]) continue; let x0 = cx, x1 = cx; while (x0 > 0 && m[y * w + x0 - 1]) x0--; while (x1 < w - 1 && m[y * w + x1 + 1]) x1++; const wd = x1 - x0 + 1; if (wd >= 2 && wd <= 6) L.push([(x0 + x1) / 2 + .5, y, wd / 2]) }
+  return L }
+function bTrunkNear(x, y, r) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) cand.push(o);
+  for (let n = 0; n < 6 && cand.length; n++) { const o = bPick(cand), L = bTrunks(o); if (!L.length) continue; const p = bPick(L), ox = Math.round(o.x - o.ax), oy = Math.round(o.y - o.ay), key = (o.id || o.x + ',' + o.y) + ':t' + p[1]; if (BOCC.has(key)) continue;
+    const px = ox + p[0], py = oy + p[1]; if (Math.hypot(px - R.x, py - R.y) < 26) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o, cling: 1, hw: p[2], L, ox, oy } } return null }
+// the bird takes its place on a trunk: on the side the sprite's body hangs to
+function bCling(B, nd) { B.node = nd; B.cling = 1; B.x = nd.x + (B.f > 0 ? -nd.hw : nd.hw); B.y = nd.y; B.z = nd.z }
+function bFree(B) { if (B.node) { BOCC.delete(B.node.key); B.node = null } if (B.tnode) { BOCC.delete(B.tnode.key); B.tnode = null } if (B.T && B.T.node) { BOCC.delete(B.T.node.key); B.T.node = null } } // (the place it sits on, and the one it was flying to)
+function bMake(id, x, y, z) { const K = BKIND[id], B = { id: BID++, kind: id, K, x, y, z: z || 0, vx: 0, vy: 0, vz: 0, st: 'ground', f: Math.random() < .5 ? 1 : -1, t: bRand(1, 4), ph: Math.random() * 6, spd: bRand(.88, 1.12), pk: 0, hop: 0, call: bRand(3, 14), fl: null, node: null, T: null, delay: 0, zc: bRand(-3, 5), life: bRand(14, 50), hd: Math.random() * 6.28, alert: 0 }; BIRDS.push(B); return B }
+// a group of one kind placed by the way of life: on the ground, in the trees (or on the roofs), on the water; `fromAir`: they come flying in from the edge of the zone
+function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + Math.floor(Math.random() * (K.flock[1] - K.flock[0] + 1)), F = { id: BFID++, kind: id, members: [], home: { x, y }, t: bRand(20, 60) }, out = [];
+  let mode = K.feet; if (mode === 'trunk' && Math.random() < .08) mode = 'tree'; if (mode === 'ground' && bctx(x, y).v > .3 && Math.random() < .55 && id !== 'fieldfare') mode = 'roof'; if (mode === 'tree' && Math.random() < .04) mode = 'ground';
+  for (let i = 0; i < n; i++) { let B = null;
+    if (mode === 'water') { for (let k = 0; k < 8 && !B; k++) { const a = Math.random() * 6.28, r = Math.random() * 18, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .6; if (bWater(px, py)) { B = bMake(K.mate && i > 0 && Math.random() < (K.matep || .5) ? K.mate : id, px, py, 0); B.st = 'swim'; B.hd = Math.random() * 6.28 } } }
+    else if (mode === 'ground') { const sep = { T: 5, M: 7.5, C: 9, D: 12 }[K.cls] || 7, rr = sep * (1.5 + 1.1 * Math.sqrt(n)); for (let k = 0; k < 16 && !B; k++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * rr, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .7; if (out.some(q => Math.hypot(q.x - px, (q.y - py) * 1.4) < sep)) continue; if (bGround(px, py)) { B = bMake(K.mate && Math.random() < (K.matep || .5) ? K.mate : id, px, py, 0); B.st = 'ground' } } }
+    else if (mode === 'trunk') { const nd = bTrunkNear(x, y, 70); if (nd) { B = bMake(id, nd.x, nd.y, nd.z); B.st = 'perch'; B.f = Math.random() < .5 ? 1 : -1; bCling(B, nd); BOCC.add(nd.key) } }
+    else { const nd = bNodeNear(x, y, 70, mode === 'tree' || mode === 'roof', mode !== 'tree'); if (nd) { B = bMake(K.mate && Math.random() < (K.matep || .5) ? K.mate : id, nd.x, nd.y, nd.z); B.st = 'perch'; B.node = nd; BOCC.add(nd.key) } }
+    if (B) { B.fl = F; F.members.push(B); out.push(B) } }
+  if (!out.length) return null; if (fromAir) { for (const B of out) { const T = { x: B.x, y: B.y, z: B.z, kind: B.st === 'perch' ? 'node' : B.st === 'swim' ? 'water' : 'ground', node: B.node }, a = Math.random() * 6.28, d = bRand(250, 320);
+      B.x = CAM.x + W / 2 + Math.cos(a) * d; B.y = CAM.y + H / 2 + Math.sin(a) * d * .7; B.z = bRand(18, 34); B.T = T; B.arrive = B.st === 'swim' ? 'swim' : B.st; B.st = 'fly'; B.vx = (T.x - B.x) / 7; B.vy = (T.y - B.y) / 7; B.f = B.vx >= 0 ? 1 : -1; B.ft = 1; B.tnode = T.node; B.node = null } }
+  return F }
+// the whole flock goes up: away from what startled it, then on to a place of its own (a new feeding ground, new trees)
+function bFlush(B, from) { const F = B.fl, list = F ? F.members.filter(m => m.st === 'ground' || m.st === 'perch' || m.st === 'swim') : [B]; if (!list.includes(B)) list.push(B); const away = Math.atan2(B.y - from[1], B.x - from[0]), K = B.K;
+  const D = (() => { for (let k = 0; k < 10; k++) { const a = away + bRand(-1, 1), d = bRand(70, 170), x = B.x + Math.cos(a) * d, y = B.y + Math.sin(a) * d * .8; if (K.feet === 'water') { if (bWater(x, y)) return { x, y } } else if (bGround(x, y)) return { x, y } } return { x: B.x + Math.cos(away) * 150, y: B.y + Math.sin(away) * 120 } })();
+  list.forEach((m, i) => { bFree(m); m.delay = i * bRand(.03, .12); m.was = m.st; m.st = 'up'; m.upT = m.delay; m.from = from; m.D = D; m.zc = bRand(-3, 6); if (K.call && Math.random() < .5) m.call = Math.min(m.call, bRand(.1, .9)) }); if (F) { F.home = D; F.t = bRand(25, 70) } }
+function bTakeoff(B) { const K = B.K, D = B.D || { x: B.x + 80, y: B.y }, T = { x: D.x + bRand(-8, 8), y: D.y + bRand(-6, 6), z: 0, kind: 'ground' };
+  if (K.feet === 'trunk') { const f = Math.random() < .5 ? 1 : -1, nd = bTrunkNear(D.x, D.y, 80); if (nd) { T.x = nd.x + (f > 0 ? -nd.hw : nd.hw); T.y = nd.y; T.z = nd.z; T.kind = 'node'; T.node = nd; T.f = f; BOCC.add(nd.key) } else { bLeave(B); return } }
+  else if (K.feet === 'tree' || (K.feet === 'ground' && Math.random() < .3)) { const nd = bNodeNear(D.x, D.y, 60, K.feet === 'tree' || Math.random() < .5, K.feet !== 'tree'); if (nd) { T.x = nd.x; T.y = nd.y; T.z = nd.z; T.kind = 'node'; T.node = nd; BOCC.add(nd.key) } else if (K.feet === 'tree') { bLeave(B); return } }
+  if (K.feet === 'water') { T.kind = 'water'; if (B.was === 'swim') RINGS.push({ x: B.x, y: B.y, t: 0, life: .9 }, { x: B.x + 1, y: B.y, t: -.1, life: .9 }) }
+  B.T = T; B.st = 'fly'; const away = Math.atan2(B.y - B.from[1], B.x - B.from[0]); B.vx = Math.cos(away) * 16; B.vy = Math.sin(away) * 10; B.vz = bRand(14, 22); B.f = B.vx >= 0 ? 1 : -1; B.ft = 0; B.arrive = K.feet === 'water' ? 'swim' : T.kind === 'node' ? 'perch' : 'ground'; B.tnode = T.node || null }
+function bLeave(B) { const a = Math.random() * 6.28, d = 380; bFree(B); B.T = { x: B.x + Math.cos(a) * d, y: B.y + Math.sin(a) * d * .7, z: 30, kind: 'leave' }; B.st = 'fly'; B.leave = true; B.vx = Math.cos(a) * 20; B.vy = Math.sin(a) * 12; B.vz = 14; B.f = B.vx >= 0 ? 1 : -1; B.arrive = null; if (B.fl) { const i = B.fl.members.indexOf(B); if (i >= 0) B.fl.members.splice(i, 1); B.fl = null } }
+function bCall(B) { if (!B.K.call) return; bVoice(B.K.call, B.x, B.y - B.z) }
+function stepBirds(dt) { if (!BSTART) bInit(); const act = bAct(), rv = Math.abs(R.v), zx0 = CAM.x - 150, zy0 = CAM.y - 120, zx1 = CAM.x + W + 150, zy1 = CAM.y + H + 150;
+  // how many there should be: by what the zone is made of (sampled a few at a time) and by the weather and the light
+  BZT -= dt; if (BZT <= 0) { BZT = 2.5; const a = { v: 0, g: 0, s: 0, f: 0, w: 0 }; for (let i = 0; i < 14; i++) { const c = bctx(zx0 + Math.random() * (zx1 - zx0), zy0 + Math.random() * (zy1 - zy0)); a.v += c.v; a.g += c.g * (1 - c.v); a.s += c.s * (1 - c.w); a.f += c.fb + c.fs + c.fm + c.fh; a.w += c.w } for (const k in a) BZONE[k] = a[k] / 14 }
+  const inV = (x, y, m) => x > CAM.x - m && x < CAM.x + W + m && y > CAM.y - m && y < CAM.y + H + m, want = Math.round((2 + 14 * BZONE.v + 8 * BZONE.g + 3 * BZONE.s + 5 * BZONE.f + 4 * BZONE.w) * act), wantG = Math.round((1.4 + 3.4 * BZONE.v + 2.4 * BZONE.g + 1.2 * BZONE.s + 1.6 * BZONE.f + 1.4 * BZONE.w) * act);
+  BCNT = 0; const per = {}, gv = new Set(); for (const b of BIRDS) { if (b.leave) continue; BCNT++; per[b.kind] = (per[b.kind] || 0) + 1; if (inV(b.x, b.y - b.z, 30)) gv.add(b.fl ? b.fl.id : -b.id) }
+  const visG = gv.size, capped = id => (per[id] || 0) >= (BKIND[id].cap || Math.ceil(BKIND[id].flock[1] * 1.2)), pickAt = (x, y) => { const c = bctx(x, y); for (let k = 0; k < 6; k++) { const id = bKindAt(c, per); if (id && !capped(id)) return id } return null };
+  if (!BFIRST) { BFIRST = true; if (!BTEST) for (let i = 0; i < wantG && i < 8; i++) { const x = CAM.x + 14 + Math.random() * (W - 28), y = CAM.y + 24 + Math.random() * (H - 40), id = pickAt(x, y); if (id) bSpawnGroup(id, x, y, false) } }
+  BSPAWNT -= dt;
+  if (BSPAWNT <= 0 && act > .25 && !BTEST) { BSPAWNT = bRand(1, 3);
+    if (visG < wantG) { for (let tries = 0; tries < 6; tries++) { const x = CAM.x + 14 + Math.random() * (W - 28), y = CAM.y + 24 + Math.random() * (H - 40), id = pickAt(x, y); if (id && bSpawnGroup(id, x, y, true)) break } }
+    else if (BCNT < want) { for (let tries = 0; tries < 6; tries++) { const x = zx0 + Math.random() * (zx1 - zx0), y = zy0 + Math.random() * (zy1 - zy0); if (inV(x, y, 24)) continue; const id = pickAt(x, y); if (id && bSpawnGroup(id, x, y, false)) break } }
+    else if (BCNT > want + 3 && act < .6) { const B = BIRDS.find(b => !b.leave && (b.st === 'ground' || b.st === 'perch') && Math.hypot(b.x - R.x, b.y - R.y) > 90); if (B) bLeave(B) } }
+  if (act <= 0 && !BTEST) for (const B of BIRDS) if (!B.leave && B.st !== 'fly') if (Math.random() < dt * 1.2) bLeave(B);
+  for (let i = BIRDS.length - 1; i >= 0; i--) { const B = BIRDS[i], K = B.K; B.ph += dt * 6; const d = Math.hypot(B.x - R.x, B.y - R.y);
+    // far out of the zone: gone
+    if (B.x < zx0 - 140 || B.x > zx1 + 140 || B.y < zy0 - 140 || B.y > zy1 + 140 || B.st === 'off') { bFree(B); if (B.fl) { const j = B.fl.members.indexOf(B); if (j >= 0) B.fl.members.splice(j, 1) } BIRDS.splice(i, 1); continue }
+    B.call -= dt; if (B.call <= 0) { B.call = bRand(K.call === 'caw' ? 8 : 5, K.call === 'caw' ? 24 : 16); if (B.st !== 'swim' || Math.random() < .5) bCall(B) }
+    if (B.st === 'up') { B.upT -= dt; B.alert = 1; if (B.upT <= 0) { bTakeoff(B) } continue }
+    if (B.st === 'perch' || B.st === 'ground' || B.st === 'swim') { B.t -= dt; B.life -= dt; const flee = K.flee * (B.st === 'perch' ? .62 : 1) * (.55 + .45 * Math.min(1, rv / 40)); B.alert = d < K.flee * 1.7 ? 1 : 0;
+      if (d < flee && K.flee > 0) { bFlush(B, [R.x, R.y]); continue }
+      if (B.life <= 0 && B.fl && B.fl.members[0] === B) { bFlush(B, [B.x + bRand(-30, 30), B.y + bRand(-30, 30)]); continue } }
+    if (B.st === 'perch' && B.cling) { if (B.hop > 0) B.hop -= dt; if (B.pk > 0) B.pk -= dt; if (B.t <= 0) { B.t = bRand(.5, 1.8); const r = Math.random(), nd = B.node;
+        if (r < .55 && nd.L) { const q = bPick(nd.L), key = (nd.o.id || nd.o.x + ',' + nd.o.y) + ':t' + q[1]; if (!BOCC.has(key)) { BOCC.delete(nd.key); const n2 = { x: nd.ox + q[0], y: nd.y, z: nd.o.y + .6 - (nd.oy + q[1]), key, o: nd.o, cling: 1, hw: q[2], L: nd.L, ox: nd.ox, oy: nd.oy }; BOCC.add(key); bCling(B, n2); B.hop = .18 } }
+        else if (r < .8 && K.drum) { B.pk = bRand(.5, 1.1); B.t = B.pk + bRand(.4, 1); bVoice('drum', B.x, B.y - B.z) } else if (r < .9) B.f = -B.f, bCling(B, B.node) } }
+    else if (B.st === 'perch') { if (B.hop > 0) B.hop -= dt; if (B.t <= 0) { B.t = K.feet === 'tree' ? bRand(.5, 2.2) : bRand(1.2, 5); const r = Math.random(); if (r < .3) B.f = -B.f; else if (r < .45) B.hop = .16; else if (r < (K.feet === 'tree' ? .85 : .5) && K.feet === 'tree') { const nd = bNodeNear(B.x, B.y, 18, true, false); if (nd) { bFree(B); B.node = nd; BOCC.add(nd.key); B.x = nd.x; B.y = nd.y; B.z = nd.z; B.hop = .2 } } } }
+    else if (B.st === 'ground') { if (B.pk > 0) B.pk -= dt; if (B.hop > 0) B.hop -= dt;
+      if (B.mv) { const sp = (K.cls === 'C' || K.cls === 'M' ? 9 : 13) * dt, dx = B.tx - B.x, dy = B.ty - B.y, l = Math.hypot(dx, dy); if (l < sp) { B.mv = false; B.t = bRand(.5, 2.5) } else { const nx = B.x + dx / l * sp, ny = B.y + dy / l * sp; if (bGround(nx, ny)) { B.x = nx; B.y = ny; B.f = dx >= 0 ? 1 : -1; B.hop = .12 } else { B.mv = false; B.t = .6 } } }
+      else if (B.alert) { B.pk = 0; if (B.t <= 0) { B.t = bRand(.6, 1.8); B.f = R.x >= B.x ? 1 : -1 } }
+      else if (B.t <= 0) { const r = Math.random(); if (r < .5) { B.pk = bRand(.4, 1); B.t = B.pk + bRand(.1, .8) } else if (r < .85) { const h = B.fl ? B.fl.home : { x: B.x, y: B.y }, a = Math.random() * 6.28, l = bRand(3, 10), tx = h.x + Math.cos(a) * bRand(0, 12), ty = h.y + Math.sin(a) * bRand(0, 9); if (bGround(tx, ty)) { B.tx = tx; B.ty = ty; B.mv = true } else B.t = .5 } else { B.f = -B.f; B.t = bRand(.8, 2.4) } } }
+    else if (B.st === 'swim') { B.hd += (Math.sin(t * .3 + B.id) * .5) * dt; const sp = 1.6 + .6 * Math.sin(t * .2 + B.id), nx = B.x + Math.cos(B.hd) * sp * dt, ny = B.y + Math.sin(B.hd) * sp * dt * .6;
+      if (bWater(nx, ny)) { B.x = nx; B.y = ny; B.f = Math.cos(B.hd) >= 0 ? 1 : -1 } else B.hd += 2.2 + Math.random();
+      if (B.fl && B.fl.members.length > 1) { const c = B.fl.members[0]; if (c !== B) { const dx = c.x - B.x, dy = c.y - B.y, l = Math.hypot(dx, dy); if (l > 16) B.hd += (Math.atan2(dy, dx) - B.hd) * dt * .6 } }
+      if (B.pk > 0) B.pk -= dt; else if (B.t <= 0) { B.t = bRand(6, 18); B.pk = Math.random() < .5 ? 1.4 : 0 } }
+    else if (B.st === 'fly') { bStepFly(B, dt, d) } }
+  stepBirdsSky(dt, act); if (BWARM.length && dt < .04) { const q = BWARM.pop(); bsprite(q[0], q[1], q[2]) } }
+function bStepFly(B, dt, d) { const T = B.T, K = B.K, dx = T.x - B.x, dy = T.y - B.y, dist = Math.hypot(dx, dy) || 1; let sp = K.speed * B.spd; B.ft = (B.ft || 0) + dt;
+  const near = dist < 28 && T.kind !== 'leave', zt = T.kind === 'leave' ? 30 + B.zc : near ? T.z + 1.2 + Math.max(0, dist - 6) * .2 : Math.min(54, Math.max(T.z + 6, 8 + dist * .1 + B.zc));
+  B.vz += ((zt - B.z) * 2.4 - B.vz * 1.7) * dt; B.z = Math.max(0, B.z + B.vz * dt); if (near) sp *= .5 + .5 * dist / 28; if (B.ft < .45) sp *= .55 + B.ft; // (the first moments are a scramble, not yet at speed)
+  const k = Math.min(1, dt * 2.6); B.vx += (dx / dist * sp - B.vx) * k; B.vy += (dy / dist * sp - B.vy) * k; B.vy += Math.sin(t * 2.7 + B.id * 1.7) * 5 * dt; B.x += B.vx * dt; B.y += B.vy * dt; if (Math.abs(B.vx) > 2) B.f = B.vx >= 0 ? 1 : -1;
+  if (K.bound) B.z += Math.sin(B.ph * 1.5) * .35; if (T.kind === 'leave') { if (Math.abs(B.x - CAM.x - W / 2) > W * .5 + 330 || Math.abs(B.y - CAM.y - H / 2) > H * .5 + 280) B.st = 'off'; return }
+  if (dist < 2.4 && B.z <= T.z + 1.8) { B.vx = B.vy = B.vz = 0; B.f = B.arrive === 'swim' ? B.f : B.f; if (T.kind === 'node' && T.node) { const nd = T.node; B.node = nd; BOCC.add(nd.key); B.tnode = null; T.node = null; B.x = T.x; B.y = T.y; B.z = T.z; B.st = 'perch'; B.t = bRand(1, 3); B.cling = nd.cling ? 1 : 0; if (T.f) B.f = T.f } else if (B.arrive === 'swim' || T.kind === 'water') { if (matAt(B.x, B.y) === 'lake') { B.z = 0; B.st = 'swim'; B.t = bRand(2, 8); RINGS.push({ x: B.x, y: B.y, t: 0, life: .9 }) } else B.st = 'ground' } else { B.z = 0; B.st = 'ground'; B.t = bRand(.5, 2) } B.life = bRand(14, 50); B.leave = false; if (T.kind !== 'node') B.cling = 0 } }
+// ---- the sky: a skein of geese in a wedge far up; at dusk a long straggling line of crows going to roost ----
+function stepBirdsSky(dt, act) { BSKYT -= dt; BDUSKT -= dt; const eve = DAY.h > 14 && LT.dark > .08 && LT.dark < .7 && WX.rain < .4;
+  if (BSKYT <= 0 && act > .5) { BSKYT = bRand(110, 260); skySpawn('goose') }
+  if (eve && BDUSKT <= 0) { BDUSKT = bRand(14, 34); skySpawn('crow') }
+  for (let i = BSKY.length - 1; i >= 0; i--) { const G = BSKY[i]; G.x += G.vx * dt; G.y += G.vy * dt; G.ph += dt; G.call -= dt; if (G.call <= 0) { G.call = bRand(1.4, 3.2); const m = bPick(G.m); bVoice(G.kind === 'goose' ? 'honk' : 'caw', G.x + m[0], G.y + m[1], G.kind === 'goose' ? .55 : .5) }
+    if ((G.vx > 0 ? G.x - CAM.x > W + 420 : G.x - CAM.x < -420) || Math.abs(G.y - G.z - CAM.y - H / 2) > H + 300) BSKY.splice(i, 1) } }
+function skySpawn(kind) { const goose = kind === 'goose', dirx = goose ? -1 : (Math.random() < .5 ? -1 : 1), sp = goose ? bRand(20, 27) : bRand(42, 54), ang = goose ? bRand(.5, .85) : bRand(-.25, .25), vx = dirx * sp * Math.cos(ang), vy = sp * Math.sin(ang) * (goose ? 1 : bPick([-1, 1])), n = goose ? 7 + Math.floor(Math.random() * 9) : 5 + Math.floor(Math.random() * 9), z = goose ? bRand(120, 160) : bRand(60, 95), m = [];
+  const ux = vx / sp, uy = vy / sp, nx = -uy, ny = ux;                                               // along the flight and across it
+  for (let i = 0; i < n; i++) { if (goose) { const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1, bk = row * 6.6 + Math.random() * 1.2, sd = side * row * 4.6 + (Math.random() - .5) * 1.2; m.push([-ux * bk + nx * sd, -uy * bk + ny * sd, (Math.random() - .5) * 2]) }
+    else { const bk = i * bRand(8, 15), sd = bRand(-12, 12); m.push([-ux * bk + nx * sd, -uy * bk + ny * sd, (Math.random() - .5) * 8]) } }
+  const dy0 = CAM.y + H * (goose ? bRand(.04, .3) : bRand(.25, .55)) + z; BSKY.push({ kind, x: CAM.x + W / 2 - dirx * (W / 2 + 260), y: dy0, vx, vy, z, m, ph: Math.random() * 3, call: bRand(.5, 2), id: BID++ }) }
+// ---- the pictures ----
+function drawBirdShadow(B) { const z = B.z; if (z < 1.5) return; ctx.fillStyle = `rgba(8,14,8,${clamp(.2 - z * .004, .04, .18).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(B.x + z * .22, B.y + .5, Math.max(1.6, (B.K.k || 1) * (B.K.cls === 'C' ? 3.6 : B.K.cls === 'M' ? 3 : 2.2) - z * .03), .9, 0, 0, TAU); ctx.fill() }
+function bPose(B) { const K = B.K; if (B.st === 'fly' || B.st === 'up') { if (B.st === 'up') return B.K.cls === 'T' ? 'hop' : 'stand'; const p = (B.ph * (K.bound ? 1.2 : .62)) % 1, ff = K.bound ? (p < .2 ? 'fup' : p < .4 ? 'fdn' : p < .6 ? 'fup' : p < .8 ? 'fdn' : 'fold') : (p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid'); return B.vz > 2 && !K.bound && B.z < 4 ? 'fup' : ff }
+  if (B.st === 'swim') return B.pk > 0 ? 'dabble' : 'swim'; if (B.st === 'perch') return B.cling ? (B.pk > 0 ? 'hammer' : 'cling') : B.hop > 0 ? 'hop' : 'stand'; if (B.pk > 0) return 'peck'; if (B.hop > 0) return 'hop'; return 'stand' }
+function drawBird(B) { const S = bsprite(B.kind, bPose(B), B.f < 0), gz = B.z; if (B.st === 'ground' || B.st === 'perch') { if (B.st === 'ground') { ctx.fillStyle = 'rgba(8,14,8,.16)'; ctx.fillRect(Math.round(B.x) - 1, Math.round(B.y), 3, 1) } } else if (B.st === 'swim') { ctx.fillStyle = 'rgba(210,225,232,.16)'; ctx.fillRect(Math.round(B.x) - 4, Math.round(B.y), 8, 1) }
+  ctx.drawImage(S.cv, Math.round(B.x) - S.ax, Math.round(B.y - gz) - S.ay) }
+// over everything: the birds that are flying, and the geese and the crows high up
+function drawBirdsHigh() { for (const B of BIRDS) if ((B.st === 'fly') && B.z >= 2.5 && B.x > CAM.x - 24 && B.x < CAM.x + W + 24 && B.y - B.z > CAM.y - 30 && B.y - B.z < CAM.y + H + 30) drawBird(B);
+  for (const G of BSKY) { const goose = G.kind === 'goose', haze = goose ? .78 : .86; ctx.globalAlpha = haze * (1 - .5 * WX.fog); for (const m of G.m) { const x = G.x + m[0], y = G.y + m[1] - G.z + m[2]; if (x < CAM.x - 16 || x > CAM.x + W + 16 || y < CAM.y - 16 || y > CAM.y + H + 16) continue; const p = ((G.ph + m[2] * .13) * (goose ? 1.4 : 2.6)) % 1, pose = p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid', S = bsprite(goose ? 'goose' : 'crow', pose, G.vx < 0); ctx.drawImage(S.cv, Math.round(x) - S.ax, Math.round(y) - S.ay) } ctx.globalAlpha = 1 } }
+// ---- the voices ----
+function bnote(A, dst, t0, o) { const osc = A.createOscillator(), g = A.createGain(); osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f[0], t0); for (let i = 1; i < o.f.length; i++) osc.frequency.linearRampToValueAtTime(o.f[i], t0 + o.d * i / (o.f.length - 1)); let last = osc;
+  if (o.bp) { const f = A.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = o.bp; f.Q.value = o.q || 1.5; osc.connect(f); last = f }
+  if (o.vib) { const l = A.createOscillator(), lg = A.createGain(); l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1]; l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + o.d + .05) }
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(o.v, t0 + Math.min(.02, o.d * .3)); g.gain.exponentialRampToValueAtTime(.001, t0 + o.d); last.connect(g); g.connect(dst); osc.start(t0); osc.stop(t0 + o.d + .03) }
+const BVOICE = {
+  caw: (A, o, T) => { const n = 1 + (Math.random() * 3 | 0), b = bRand(560, 680); for (let i = 0; i < n; i++) bnote(A, o, T + i * .42, { type: 'sawtooth', f: [b, b * .95, b * .72], d: .3, v: .6 - i * .1, bp: 1150, q: 1.1, vib: [38, 24] }) },
+  jack: (A, o, T) => { const n = 2 + (Math.random() * 4 | 0), b = bRand(1250, 1500); for (let i = 0; i < n; i++) bnote(A, o, T + i * .17, { type: 'sawtooth', f: [b, b * .72], d: .1, v: .5, bp: 2100, q: 1.5 }) },
+  rattle: (A, o, T) => { for (let i = 0; i < 12; i++) bnote(A, o, T + i * .036, { type: 'square', f: [2100 + (i % 2) * 260, 1900], d: .03, v: .22, bp: 2600, q: 1.8 }) },
+  chirp: (A, o, T) => { const n = 3 + (Math.random() * 4 | 0); for (let i = 0; i < n; i++) { const f = bRand(3000, 4300); bnote(A, o, T + i * bRand(.07, .12), { f: [f, f * bRand(.85, 1.18)], d: .05, v: .35 }) } },
+  tit: (A, o, T) => { const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { bnote(A, o, T + i * .26, { f: [3900, 3700], d: .09, v: .4 }); bnote(A, o, T + i * .26 + .12, { f: [3400, 3300], d: .09, v: .34 }) } },
+  bluetit: (A, o, T) => { for (let i = 0; i < 7; i++) bnote(A, o, T + i * .045, { f: [5600 + i * 60, 5900], d: .035, v: .28 }); bnote(A, o, T + .4, { f: [4600, 3900], d: .12, v: .3 }) },
+  twitter: (A, o, T) => { const n = 7 + (Math.random() * 6 | 0); for (let i = 0; i < n; i++) { const f = bRand(4300, 6200); bnote(A, o, T + i * .05, { f: [f, f * 1.1], d: .035, v: .26 }) } },
+  pipe: (A, o, T) => { bnote(A, o, T, { f: [980, 860], d: .34, v: .22, vib: [6, 14] }) },
+  chack: (A, o, T) => { const n = 3 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) bnote(A, o, T + i * .13, { type: 'sawtooth', f: [2500, 1700], d: .07, v: .36, bp: 2800, q: 1.6 }) },
+  screech: (A, o, T) => { bnote(A, o, T, { type: 'sawtooth', f: [1500, 1250, 900], d: .5, v: .5, bp: 1700, q: .9, vib: [55, 70] }) },
+  coo: (A, o, T) => { bnote(A, o, T, { f: [440, 470, 430], d: .5, v: .35, vib: [7, 12] }); bnote(A, o, T + .55, { f: [400, 430, 380], d: .6, v: .3, vib: [7, 10] }) },
+  quack: (A, o, T) => { const n = 3 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) bnote(A, o, T + i * .22, { type: 'sawtooth', f: [540 - i * 20, 340], d: .2, v: .5 - i * .06, bp: 950, q: 2 }) },
+  kick: (A, o, T) => { bnote(A, o, T, { type: 'square', f: [2600, 1900], d: .05, v: .5, bp: 2300, q: 1.4 }); if (Math.random() < .6) bnote(A, o, T + .32, { type: 'square', f: [2500, 1800], d: .05, v: .4, bp: 2300, q: 1.4 }) },
+  drum: (A, o, T) => { for (let i = 0; i < 18; i++) bnote(A, o, T + i * .045, { type: 'square', f: [1000, 640], d: .02, v: .5 * (1 - i / 26), bp: 1700, q: .8 }) },
+  nut: (A, o, T) => { for (let i = 0; i < 3; i++) bnote(A, o, T + i * .12, { f: [3300, 3050], d: .06, v: .34 }); if (Math.random() < .5) bnote(A, o, T + .5, { f: [2200, 1700], d: .26, v: .24, vib: [8, 40] }) },
+  chip: (A, o, T) => { const n = 3 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) bnote(A, o, T + i * .1, { type: 'square', f: [3400, 2500], d: .05, v: .26, bp: 3000, q: 1.5 }) },
+  honk: (A, o, T) => { bnote(A, o, T, { type: 'sawtooth', f: [640, 760, 560], d: .38, v: .5, bp: 1100, q: 1.2 }); bnote(A, o, T + .46, { type: 'sawtooth', f: [600, 720, 520], d: .34, v: .42, bp: 1050, q: 1.2 }) }
+};
+function bVoice(kind, x, y, gain) { if (!SND.on || !SND.ctx || !SND.ready || paused) return; const d = Math.hypot(x - R.x, y - R.y); if (d > 340) return; const A = SND.ctx, T = A.currentTime + .03, vol = (gain || 1) * .055 / (1 + (d / 120) * (d / 120)), out = A.createGain(); out.gain.value = vol; const pn = A.createStereoPanner ? A.createStereoPanner() : null;
+  if (pn) { pn.pan.value = clamp((x - R.x) / 100, -.9, .9); out.connect(pn); pn.connect(SND.master); if (SND.rev) { const w = A.createGain(); w.gain.value = .3 + clamp(d / 420, 0, .5); pn.connect(w); w.connect(SND.rev) } } else out.connect(SND.master); if (BVOICE[kind]) BVOICE[kind](A, out, T) }
+
+// =====================================================================================================================
+// LOW GROWTH THAT SITS IN THE GROUND: the tufts of grass and the mushrooms. The old ones were as tall as a man (a tuft: a metre and a half) with a hard dark outline, a solid dark
+// block at the foot and a bright straw yellow, the mushrooms a handful of pixels across with white stalks and scarlet caps: against the soft autumn ground they stood out like
+// stickers. These are smaller, thinner, in the colours of the ground (dull olive, dried grass, brown), without the block at the foot, with a faint outline only.
+// =====================================================================================================================
+const FL_GRASS = {
+  olive: [[58, 62, 32], [80, 86, 42], [104, 110, 54], [132, 132, 70]],
+  dry: [[84, 70, 38], [112, 96, 52], [140, 122, 68], [166, 146, 88]],
+  sedge: [[44, 54, 28], [64, 78, 38], [88, 102, 50], [114, 124, 66]],
+  rust: [[84, 56, 34], [110, 76, 44], [136, 98, 58], [160, 122, 76]]
+};
+function genGrassSoft(r, seed, hint, sw = 0) {
+  const w = 11, h = 11, s = new PSpr(w, h, 5, 3), q = r(), pal = q < .5 ? FL_GRASS.olive : q < .78 ? FL_GRASS.dry : q < .92 ? FL_GRASS.sedge : FL_GRASS.rust, n = 5 + Math.floor(r() * 4), lo = r() < .3;
+  for (let i = 0; i < n; i++) { const f = n > 1 ? i / (n - 1) : .5, mid = 1 - Math.abs(f - .5) * 2, bx = 2.2 + f * (w - 5.4) + (r() - .5) * 1.4, hh = Math.max(2, Math.round((lo ? 2.6 : 3.6) + mid * (lo ? 2.2 : 4.2) + r() * 2.2)), bend = (r() - .5) * 3.2 + (f - .5) * 3.4, shade = (i & 1) ? 1 : 2;
+    for (let t = 0; t <= hh; t++) { const u = t / hh, x = bx + (bend + sw * 2.2 * (.8 + .4 * ((i * 7) % 5) / 4)) * u * u, y = h - 1 - t; s.set(x, y, pal[t < 1 ? 1 : u > .8 ? 3 : u > .45 ? Math.min(3, shade + 1) : shade]) }
+    if (r() < .25 && hh >= 5) { const x = bx + bend + sw * 2.2, y = h - 1 - hh; s.set(x + (bend > 0 ? 1 : -1) * .7, y + 1, pal[3]) } } // (a few have a seed head leaning a little)
+  for (let k = 0; k < 3; k++) { const x = 3 + Math.floor(r() * (w - 6)); if (s.has(x, h - 1)) s.set(x, h - 1, pal[0]) }
+  return { s, ax: 5 + s.ox, ay: h - 1 + s.oy, shadowR: 2 };
+}
+// the caps in colours that have gone dull in the damp: nothing scarlet or white
+const FL_CAP = {
+  fly: [[96, 30, 26], [134, 44, 34], [166, 68, 46]], porcini: [[76, 48, 28], [104, 68, 38], [132, 92, 54]], porcini2: [[92, 60, 34], [124, 86, 48], [156, 116, 70]],
+  russR: [[92, 34, 42], [124, 50, 58], [156, 84, 88]], russV: [[66, 46, 72], [92, 64, 100], [122, 94, 128]], russY: [[110, 98, 46], [144, 130, 62], [172, 158, 92]],
+  chant: [[160, 102, 34], [188, 128, 46], [208, 154, 76]], honey: [[96, 70, 38], [128, 96, 52], [158, 124, 74]], parasol: [[112, 94, 72], [150, 130, 102], [184, 166, 138]]
+};
+const FL_STEM = { cream: [[116, 108, 94], [142, 134, 116], [160, 152, 132]], tan: [[110, 92, 66], [134, 114, 84], [154, 132, 100]], chant: [[150, 102, 38], [172, 122, 48], [190, 142, 70]] };
+function genMushSoft(r, seed, hint) {
+  const W_ = { birch: [['fly', 2.2], ['chant', 1.4], ['russula', 1], ['porcini', .5]], conif: [['fly', 1.6], ['porcini', 1.6], ['chant', 1.2], ['russula', .8]], decid: [['porcini', 1.6], ['russula', 1], ['honey', 1], ['parasol', .6], ['puff', .6]], russula: [['russula', 3], ['puff', .8], ['parasol', .5]] };
+  const kind = wpick(r, W_[hint] || [['fly', 1.3], ['porcini', 1.1], ['russula', 1], ['chant', .8], ['puff', .6], ['honey', .8], ['parasol', .4]]), s = new PSpr(14, 10, 3, 3), bY = 8;
+  const n = kind === 'honey' ? 3 + Math.floor(r() * 3) : kind === 'chant' ? 2 + Math.floor(r() * 2) : kind === 'puff' ? 1 + Math.floor(r() * 2) : 1 + (r() < .3 ? 1 : 0);
+  for (let i = 0; i < n; i++) { const sc = .5 + r() * .4, x = 7 + (i - (n - 1) / 2) * (kind === 'honey' ? 1.8 : kind === 'chant' ? 2.6 : 4) + (r() - .5) * 1.4, yb = bY - (r() < .3 ? 1 : 0), age = r();
+    if (kind === 'fly') mushCap(r, s, x, yb, { stemH: Math.max(1, Math.round((1.4 + age * 1.8) * sc)), stemW: 1.2 * sc + .3, bulb: .5, rx: (1.2 + age * 1.0) * sc + .3, ry: (1.3 - age * .4) * sc + .2, cap: FL_CAP.fly, stem: FL_STEM.cream, spots: Math.round(1 + age * 2), gills: [190, 182, 160], flat: age > .6 });
+    else if (kind === 'porcini') mushCap(r, s, x, yb, { stemH: Math.max(1, Math.round(1.6 * sc)), stemW: 1.8 * sc + .3, bulb: .5, rx: 1.7 * sc + .3, ry: 1.2 * sc + .2, cap: r() < .5 ? FL_CAP.porcini : FL_CAP.porcini2, stem: FL_STEM.tan, gills: [160, 148, 96] });
+    else if (kind === 'russula') mushCap(r, s, x, yb, { stemH: Math.max(1, Math.round(1.6 * sc)), stemW: 1.1 * sc + .3, rx: 1.5 * sc + .3, ry: .9 * sc + .2, cap: pick(r, [FL_CAP.russR, FL_CAP.russV, FL_CAP.russY]), stem: FL_STEM.cream, gills: [196, 188, 170], flat: true });
+    else if (kind === 'chant') mushCap(r, s, x, yb, { stemH: 1, stemW: 1, rx: 1.2 * sc + .2, ry: 1.2 * sc + .2, cap: FL_CAP.chant, stem: FL_STEM.chant, funnel: true });
+    else if (kind === 'puff') { const rr = (.9 + r() * .8) * sc + .2; for (let y = -Math.ceil(rr * 2); y <= 0; y++) for (let xx = -Math.ceil(rr); xx <= rr; xx++) { const dx = xx / rr, dy = (y + rr) / rr; if (dx * dx + dy * dy > 1) continue; s.set(x + xx, yb + y, FL_STEM.cream[dx < -.2 && dy < 0 ? 2 : dy > .4 ? 0 : 1]) } }
+    else if (kind === 'honey') { const lean = (i - (n - 1) / 2) * .5; mushCap(r, s, x + lean, yb, { stemH: Math.max(1, Math.round((1.4 + r() * 1.4) * sc)), stemW: 1, rx: 1.1 * sc + .2, ry: .8 * sc + .2, cap: FL_CAP.honey, stem: FL_STEM.tan, flat: true }) }
+    else mushCap(r, s, x, yb, { stemH: Math.max(2, Math.round(3 * sc)), stemW: 1, bulb: 1, rx: 2 * sc + .3, ry: .9 * sc + .2, cap: FL_CAP.parasol, stem: FL_STEM.tan, gills: [190, 182, 164], flat: true, spots: 1 }) }
+  s.outline(.66, .82); return { s, ax: 7 + s.ox, ay: bY + s.oy, shadowR: 2 };
+}
+MAKERS.grass = genGrassSoft; MAKERS.mush = genMushSoft;
+
+// =====================================================================================================================
+// THE NIGHT'S SMALL LIVES. Moths: at the end of October what flies at night is the winter moths and their like (the fireflies are long over, in July): they come out of the dark to
+// the lights, the bulbs over the porches and the lanterns, the lit windows, the campfire, the bike's lamp when it stands still; they come in a zigzag, go round the light in
+// loops that tighten and loosen, knock against it, now and then settle on the wall beside it for a while, and fly off into the dark.
+// Foxfire: the honey fungus glows a faint green in rotten wood; the specks lie on the wood itself (on the pixels of the log or the stump), not in the air beside it.
+// =====================================================================================================================
+let MOTHS = [], mothAcc = 0; const MCNT = new Map();
+// what a moth is drawn to now: the bulbs, the fire's core, the small window glows (each as bright as its light is), and the bike's lamp when he is nearly still
+function mothSpots() { const out = [], cx = CAM.x + W / 2, cy = CAM.y + H / 2;
+  for (const S of LIGHTS) { if (Math.abs(S.x - cx) > W * .75 || Math.abs(S.y - cy) > H * .8) continue; const lv = lightLevel(S, LT.dark); if (lv < .25) continue;
+    if (S.k === 'lamp' && S.glare) out.push({ k: S, x: S.x, y: S.y, w: lv, kind: 'bulb' }); else if (S.k === 'fire' && S.r <= 14) out.push({ k: S, x: S.x, y: S.y, w: lv * .8, kind: 'fire' }); else if (S.k === 'window' && S.r <= 14) out.push({ k: S, x: S.x, y: S.y, w: lv * .45, kind: 'window' }) }
+  if (LT.lamp * LT.dark > .05 && Math.abs(R.v) < 16) out.push({ k: 'bike', x: R.x + Math.sin(R.psi) * 30, y: R.y - 14 - Math.cos(R.psi) * 30, w: .5 * LT.lamp, kind: 'bike' });
+  return out }
+function stepMoths(dt) { const act = clamp((LT.dark - .3) / .25, 0, 1) * (1 - clamp((WX.rain - .15) / .3, 0, 1)) * (1 - clamp((WIND.s - .45) / .3, 0, 1)) * (1 - .6 * FROST), spots = act > 0 ? mothSpots() : [];
+  MCNT.clear(); for (const m of MOTHS) if (m.st !== 'out') MCNT.set(m.k, (MCNT.get(m.k) || 0) + 1); mothAcc = Math.min(3, mothAcc + dt * act * (.5 + spots.length * .22));
+  while (mothAcc >= 1 && MOTHS.length < 16 && spots.length) { mothAcc--; let best = null, bs = 0; // (the light with the most room for one more)
+    for (const sp of spots) { const room = Math.round(1 + 3 * sp.w) - (MCNT.get(sp.k) || 0); if (room <= 0) continue; const sc = sp.w * (room + Math.random()); if (sc > bs) { bs = sc; best = sp } } if (!best) break;
+    const a = Math.random() * TAU, d = 70 + Math.random() * 40; MOTHS.push({ k: best.k, sp: best, x: best.x + Math.cos(a) * d, y: best.y + Math.sin(a) * d * .7, vx: -Math.cos(a) * 20, vy: -Math.sin(a) * 14, st: 'in', t: 0, dur: 4 + Math.random() * 10, r: 4 + Math.random() * 6, ang: 0, dir: Math.random() < .5 ? 1 : -1, ph: Math.random() * 6, zz: Math.random() * 6, c: Math.random() < .55 ? [236, 228, 204] : [220, 206, 176], a: 0, bump: 0 }) }
+  const wx = WINDX * WIND.s * 6, wy = WINDY * WIND.s * 4;
+  for (const m of MOTHS) { m.t += dt; m.a = Math.min(1, m.a + dt * .7); const live = spots.find(q => q.k === m.k); if (live) m.sp = live;
+    if (!live && m.st !== 'out' && m.st !== 'land') { m.st = 'out'; m.t = 0; m.out = Math.random() * TAU } // (the light went out: it goes)
+    const sp = m.sp;
+    if (m.st === 'in') { // towards the light in a zigzag: it steers, it does not run straight
+      const dx = sp.x - m.x, dy = sp.y - m.y, l = Math.hypot(dx, dy) || 1, v0 = 26 + 8 * Math.sin(m.t * 3 + m.ph), nx = -dy / l, ny = dx / l, z = Math.sin(m.zz) * 14 * Math.min(1, l / 40), k = Math.min(1, dt * 3); m.zz += dt * 7;
+      m.vx += (dx / l * v0 + nx * z - m.vx) * k; m.vy += (dy / l * v0 + ny * z - m.vy) * k; m.x += (m.vx + wx) * dt; m.y += (m.vy + wy) * dt;
+      if (l < m.r + 4) { m.st = 'orbit'; m.t = 0; m.ang = Math.atan2((m.y - sp.y) / .72, m.x - sp.x) } else if (m.t > 12) { m.st = 'out'; m.t = 0; m.out = Math.random() * TAU } }
+    else if (m.st === 'orbit') { m.ang += (4.2 + 1.6 * Math.sin(m.t * .9 + m.ph)) * m.dir * Math.sqrt(6 / Math.max(3, m.r)) * dt; if (Math.random() < dt * .35) m.dir = -m.dir; if (m.bump > 0) m.bump -= dt; else if (Math.random() < dt * .5) m.bump = .35; // (now and then it knocks against the lamp)
+      const rr = m.bump > 0 ? 1.4 : m.r * (1 + .35 * Math.sin(m.t * 1.7 + m.ph)), tx = sp.x + Math.cos(m.ang) * rr + Math.sin(m.t * 7 + m.ph) * .9, ty = sp.y + Math.sin(m.ang) * rr * .72 + Math.cos(m.t * 5.3 + m.ph) * .8, k = Math.min(1, dt * 9);
+      m.x += (tx - m.x) * k + wx * dt; m.y += (ty - m.y) * k + wy * dt;
+      if (m.t > m.dur) { if (sp.kind !== 'fire' && sp.kind !== 'bike' && Math.random() < .35) { m.st = 'land'; m.t = 0; m.dur = 3 + Math.random() * 7; m.lx = sp.x + (Math.random() - .5) * 8; m.ly = sp.y + 1 + Math.random() * 5 } else { m.st = 'out'; m.t = 0; m.out = Math.random() * TAU } } }
+    else if (m.st === 'land') { const k = Math.min(1, dt * 6); m.x += (m.lx - m.x) * k; m.y += (m.ly - m.y) * k; if (m.t > m.dur || act < .05) { m.st = 'out'; m.t = 0; m.out = Math.random() * TAU } }
+    else { const k = Math.min(1, dt * 2); m.vx += (Math.cos(m.out) * 34 - m.vx) * k; m.vy += (Math.sin(m.out) * 22 - m.vy) * k; m.x += m.vx * dt; m.y += m.vy * dt; m.a = Math.max(0, m.a - dt * .5) } }
+  MOTHS = MOTHS.filter(m => !(m.st === 'out' && (m.t > 3 || m.a <= 0))) }
+// the moths shine in the lamplight: the nearer the light, the brighter; a wing flicker as it flies, still as it sits
+function drawMoths() { for (const m of MOTHS) { const x = Math.round(m.x), y = Math.round(m.y), near = m.sp ? clamp(1 - Math.hypot(m.x - m.sp.x, m.y - m.sp.y) / 40, 0, 1) : .5, a = (.4 + .6 * near) * m.a;
+    ctx.fillStyle = `rgba(${m.c[0]},${m.c[1]},${m.c[2]},${a.toFixed(2)})`; ctx.fillRect(x, y, 1, 1); ctx.fillStyle = `rgba(${m.c[0]},${m.c[1]},${m.c[2]},${(a * .6).toFixed(2)})`;
+    if (m.st === 'land') { if (Math.sin(t * 9 + m.ph * 3) > .8) { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1) } }
+    else { const f = Math.floor(t * 9 + m.ph) % 3; if (f === 0) { ctx.fillRect(x - 1, y - 1, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1) } else if (f === 1) { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1) } else { ctx.fillRect(x - 1, y + 1, 1, 1); ctx.fillRect(x + 1, y + 1, 1, 1) } } } }
+// ---- foxfire ----
+const FOXS = new WeakMap(), isFox = o => (o.t === 'log' || o.t === 'stump' || o.t === 'snag') && (o.seed % 10) < 4;
+// the specks on one thing: pixels of its own picture that have wood to the left, right and below (not the rim), a few chosen by its seed; kept as places in the picture
+function foxSpots(o) { let L = FOXS.get(o); if (L) return L; L = []; FOXS.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w) return L; const c = [];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (m[y * w + x] && m[y * w + x - 1] && m[y * w + x + 1] && m[(y + 1) * w + x]) c.push([x, y]);
+  const r = mulberry(o.seed + 99); for (let k = 0; k < 9 && c.length; k++) L.push(c.splice(Math.floor(r() * c.length), 1)[0]); return L }
+const foxAt = (o, q) => [(o._dx !== undefined ? o._dx : Math.round(o.x - o.ax)) + q[0] + .5, (o._dy !== undefined ? o._dy : Math.round(o.y - o.ay)) + q[1] + .5];
+function foxfire(L, dark) { if (dark < .45) return; const a = .16 * clamp((dark - .45) / .3, 0, 1) * (1 + .2 * WET);
+  for (const o of VIS) { if (!isFox(o)) continue; const S = foxSpots(o), fl = .8 + .2 * Math.sin(t * .7 + o.seed % 31); for (let k = 0; k < Math.min(3, S.length); k++) { const [px, py] = foxAt(o, S[k]), g = L.createRadialGradient(px, py, 0, px, py, 5);
+      g.addColorStop(0, `rgba(120,255,150,${a * fl})`); g.addColorStop(1, 'rgba(120,255,150,0)'); L.fillStyle = g; L.fillRect(px - 5, py - 5, 10, 10) } } }
+function drawFoxDots() { if (LT.dark < .45) return; const a = clamp((LT.dark - .45) / .3, 0, 1); for (const o of VIS) { if (!isFox(o)) continue; const S = foxSpots(o);
+    for (let k = 0; k < S.length; k++) { if (h2(o.seed, k, 73 + Math.floor(t * .5)) < .3) continue; const [px, py] = foxAt(o, S[k]); ctx.fillStyle = `rgba(150,255,170,${.55 * a})`; ctx.fillRect(Math.floor(px), Math.floor(py), 1, 1) } } }
+
+// =====================================================================================================================
 // GULLS: the white birds of the bay. They sit on the pilings, the cleats of the jetty, the boats afloat, the lantern posts and the rocks of the shallows and walk
 // about on the wet sand; every so often one is up and circles over the water, and now and then it folds its wings and drops to the surface (a ring spreads).
 // Come near and they go up with a cry. By day only: at dusk they leave to roost, in rain and fog there are few.
 // =====================================================================================================================
-const GCOL = { W: [244, 244, 240], G: [188, 196, 206], B: [150, 160, 178], K: [36, 36, 42], Y: [238, 176, 52], O: [226, 126, 52] };
+// the end of October: most are the large grey-backed gulls (herring, Caspian), many of them this year's young in their brown plumage, and a few lake gulls that have not left yet
+// (the winter plumage: a white head, a red bill and red legs); the lake gulls go in September, the others stay on the open water till the ice
+const GPAL = {
+  adult: { W: [244, 244, 240], G: [188, 196, 206], B: [150, 160, 178], K: [36, 36, 42], Y: [238, 176, 52], O: [226, 126, 52] },
+  juv: { W: [196, 178, 156], G: [138, 118, 98], B: [112, 94, 78], K: [48, 40, 36], Y: [58, 50, 46], O: [200, 140, 126] },
+  lake: { W: [248, 248, 246], G: [200, 208, 218], B: [176, 186, 200], K: [40, 40, 48], Y: [206, 58, 48], O: [206, 66, 54] }
+};
+const GCOL = GPAL.adult;
 // (all heading right; the beak is the Y; flipped for the other way)
 const GART = {
   fup: ["K...........K", "WK.........KW", ".WW.......WW.", "..GWW.WWWWG..", "...GWWWWWWY..", "....GWWWW....", "............."],
@@ -3517,9 +4027,9 @@ const GART = {
 };
 const GAN = { fup: [6, 4], fmid: [6, 4], fdn: [6, 3], stand: [4, 8], walk: [4, 8], peck: [4, 8] }; // anchors: the body's middle in flight, the feet on a perch
 const GSPR = new Map();
-function gullSpr(name, flip) { const key = name + (flip ? 'L' : 'R'); let r = GSPR.get(key); if (r) return r; const art = GART[name], h = art.length, w = art[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+function gullSpr(name, flip, gk) { const key = name + (flip ? 'L' : 'R') + (gk || 'adult'); let r = GSPR.get(key); if (r) return r; const PAL = GPAL[gk || 'adult'], art = GART[name], h = art.length, w = art[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const g = cv.getContext('2d'), img = g.createImageData(w, h), d = img.data;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = art[y][x]; if (ch === '.') continue; const c = GCOL[ch], xx = flip ? w - 1 - x : x, i = (y * w + xx) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255 }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = art[y][x]; if (ch === '.') continue; const c = PAL[ch], xx = flip ? w - 1 - x : x, i = (y * w + xx) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255 }
   g.putImageData(img, 0, 0); r = { cv, w, h, ax: flip ? w - 1 - GAN[name][0] : GAN[name][0], ay: GAN[name][1] }; GSPR.set(key, r); return r }
 const GULLS = []; let GPERCH = [], GBEACH = [];
 function gullsInit() {
@@ -3539,7 +4049,7 @@ function gullUp(g, from) { // takes off: a climb, away from what scared it
   if (g.perch) { g.perch.g = null; g.perch = null } if (g.target && g.target.g === g) g.target.g = null; g.target = null; g.st = 'fly'; g.t = 14 + Math.random() * 18; const aw = from ? Math.atan2(g.y - from[1], g.x - from[0]) : Math.random() * TAU; g.vx = Math.cos(aw) * 20; g.vy = Math.sin(aw) * 12; g.vz = 16 + Math.random() * 6; g.gl = false; g.ph = Math.random();
   const [cx, cy] = gullOver(g); g.cx = cx; g.cy = cy; g.rad = 36 + Math.random() * 40; g.ang = Math.atan2(g.y - cy, g.x - cx); g.dir = Math.random() < .5 ? 1 : -1; g.spd = 22 + Math.random() * 10; g.f = g.vx >= 0 ? 1 : -1; g.call = Math.random() < .6 ? .2 : 5 + Math.random() * 10; g.wz = 12 + Math.random() * 8; g.mv = false }
 function gullSet(g, P) { g.st = 'perch'; g.perch = P; P.g = g; g.x = P.x; g.y = P.y; g.z = P.z; g.vx = g.vy = g.vz = 0; g.t = 3 + Math.random() * 8; g.pk = 0; g.f = Math.random() < .5 ? 1 : -1 }
-function gullsSpawn(n) { for (let i = 0; i < n; i++) { const free = GPERCH.filter(P => !P.g); const g = { id: GULLS.length, x: 0, y: 0, z: 0, st: 'perch', f: 1, t: 0, ph: Math.random(), pk: 0, vx: 0, vy: 0, vz: 0, perch: null, call: 8 };
+function gullsSpawn(n) { for (let i = 0; i < n; i++) { const free = GPERCH.filter(P => !P.g); const q = Math.random(), g = { id: GULLS.length, gk: q < .45 ? 'adult' : q < .8 ? 'juv' : 'lake', x: 0, y: 0, z: 0, st: 'perch', f: 1, t: 0, ph: Math.random(), pk: 0, vx: 0, vy: 0, vz: 0, perch: null, call: 8 };
     if (free.length && Math.random() < .75) gullSet(g, free[Math.floor(Math.random() * free.length)]); else if (GBEACH.length) { const [x, y] = GBEACH[Math.floor(Math.random() * GBEACH.length)]; g.st = 'walk'; g.x = x; g.y = y; g.z = 0; g.t = 2 + Math.random() * 5; g.f = Math.random() < .5 ? 1 : -1; g.mv = false }
     else continue; GULLS.push(g) } }
 let GSTART = false;
@@ -3549,7 +4059,7 @@ function gullCall(g) { if (!SND.on || !SND.ctx || !SND.ready || paused) return; 
     o.frequency.setValueAtTime(base * (1.05 - .02 * i), t0); o.frequency.linearRampToValueAtTime(base * 1.55, t0 + .075); o.frequency.exponentialRampToValueAtTime(base * (1 - .03 * i), t0 + .23); f.type = 'bandpass'; f.frequency.value = base * 1.9; f.Q.value = 2.4;
     gn.gain.setValueAtTime(0, t0); gn.gain.linearRampToValueAtTime(.55 - .08 * i, t0 + .025); gn.gain.exponentialRampToValueAtTime(.001, t0 + .26); o.connect(f); f.connect(gn); gn.connect(out); o.start(t0); lf.start(t0); o.stop(t0 + .3); lf.stop(t0 + .3) } }
 function stepGulls(dt) { if (!GPERCH.length && !GBEACH.length) return;
-  const act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = Math.round(8 * act);
+  const act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = Math.round(5 * act);
   if (!GSTART) { GSTART = true; gullsBeach(); gullsSpawn(want) }
   const live = GULLS.filter(g => !g.leave).length; GSPAWNT = (typeof GSPAWNT === 'undefined' ? 0 : GSPAWNT) - dt;
   if (live < want && GSPAWNT <= 0) { GSPAWNT = 2 + Math.random() * 4; gullsSpawn(1); const g = GULLS[GULLS.length - 1]; if (g && Math.random() < .5) { g.x = CAM.x + (Math.random() < .5 ? -30 : W + 30); g.y = CAM.y + Math.random() * H * .6; if (g.perch) { g.perch.g = null; g.perch = null } g.st = 'fly'; gullUp(g, [g.x + (g.x < CAM.x ? -50 : 50), g.y]); g.z = 18; g.vz = 0; const P = GPERCH.find(gullFree); if (P) { g.st = 'land'; g.target = P; P.g = g } } }
@@ -3585,7 +4095,7 @@ let GSPAWNT, GUPT;
 function drawGull(g) { const flip = g.f < 0, perched = g.st === 'perch', walking = g.st === 'walk';
   let name; if (perched) name = g.pk > 0 ? 'peck' : 'stand'; else if (walking) name = g.pk > 0 ? 'peck' : g.mv ? (Math.floor(g.ph) % 2 ? 'walk' : 'stand') : 'stand';
   else if (g.st === 'dive') name = 'fdn'; else if (g.gl && g.st === 'fly') name = 'fmid'; else { const p = g.ph % 1; name = p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid' }
-  const S = gullSpr(name, flip), lift = deckLift(g.x, g.y), gz = g.z; // (the shadow lies on the ground, or on the deck when it is over the jetty)
+  const S = gullSpr(name, flip, g.gk), lift = deckLift(g.x, g.y), gz = g.z; // (the shadow lies on the ground, or on the deck when it is over the jetty)
   if (gz > .5 || perched) { ctx.fillStyle = `rgba(8,16,20,${clamp(.24 - gz * .004, .05, .22).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(g.x + .5 + gz * .25, g.y + .5 - (perched && g.perch && g.perch.z > 10 ? 0 : lift) , Math.max(2, 4 - gz * .05), 1.3, 0, 0, TAU); ctx.fill() }
   ctx.drawImage(S.cv, Math.round(g.x) - S.ax, Math.round(g.y - gz) - S.ay) }
 
@@ -3784,7 +4294,7 @@ const PLACES = {};
     { id: 'house-3', p: 'house', x: 760, y: 338, w: 50, d: 40, wall: 'board', col: [204, 172, 98], roof: 'tin', roofCol: [138, 62, 48], shut: [176, 70, 52], wins: [-16, 16], deco: ['buoys', 'barrel', 'aerial', 'logs', 'lamp', 'kennel', 'bucket'], seed: 8, decay: .45, shutBad: [1, 0, 0, 0], fallen: -1, lampC: '255,176,96', meter: -19 },
     { id: 'smokehouse', p: 'smokehouse', x: 588, y: 284, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
     { id: 'boatshed', p: 'boatshed', x: 968, y: 306, meter: 38, deco: ['oars', 'net', 'buoys', 'lamp'], lampC: '255,252,236', lampX: 24 },
-    { id: 'well', p: 'well', x: 386, y: 360 },
+    { id: 'well', p: 'well', x: 386, y: 387 },
     { id: 'logpile', p: 'logpile', x: 168, y: 340, seed: 11 },
     // nets and fish drying on the shore side
     { id: 'netrack-1', p: 'netrack', x: 142, y: 300, len: 58, nets: 2, seed: 7 }, { id: 'netrack-2', p: 'netrack', x: 706, y: 254, len: 50, nets: 2, seed: 17, col: [70, 92, 84] },
@@ -3810,7 +4320,7 @@ const PLACES = {};
     { id: 'crates-2', p: 'crates', x: PIER.x - 2, y: 118, seed: 8 },
     { id: 'lantern-1', p: 'lantern', x: PIER.x - 11, y: 106, c: '255,196,120', seed: 1 }, { id: 'lantern-2', p: 'lantern', x: PIER.x + 11, y: 106, c: '255,236,200', flick: true, seed: 2 },
     // by the fire on the beach
-    { id: 'fire-1', p: 'fire', kind: 'ring', x: 792, y: 216 }, { id: 'bench-1', p: 'bench', x: 764, y: 230 }, { id: 'bench-2', p: 'bench', x: 822, y: 232 },
+    { id: 'fire-1', p: 'fire', kind: 'ring', x: 800, y: 262 }, { id: 'bench-1', p: 'bench', x: 782, y: 250 }, { id: 'bench-2', p: 'bench', x: 818, y: 250 },
     // cars, the power, the signposts, the end of the dam
     { id: 'car-kopeika', p: 'oldcar', kind: 'copeika', x: 662, y: 456, flip: true }, { id: 'car-beetle', p: 'oldcar', kind: 'beetle', x: 150, y: 482 },
     // weeds growing through and round the parked cars
@@ -3847,7 +4357,7 @@ const PLACES = {};
       { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 274, 22, 8], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
       { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
-      { id: 'dirt-well', mat: 'dirt', ellipse: [386, 372, 16, 6], rough: .4 },
+      { id: 'dirt-well', mat: 'dirt', ellipse: [388, 399, 18, 7], rough: .4 },
       // a patch of firm ground at the foot of the dam for the checkpoint: grass and soil, not sand, which the waves would wash from under it
       { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1188, 222, 14, 8], rough: .35 },
       // the way into the village from the forest, the street and the embankment out over the bay
@@ -3864,7 +4374,7 @@ const PLACES = {};
     ],
     objects,
     scatter: [
-      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 3], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
+      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 4.4], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
       { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], shore: true, clear: 14, kinds: [['rock', 1]] },
       { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],
@@ -3886,16 +4396,16 @@ const PLACES = {};
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
     { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
-        route: [[386, 378, 22], [440, 398, 0], [482, 392, 40], [440, 398, 0]] },
+        route: [[384, 403, 22], [440, 412, 0], [482, 404, 40], [440, 412, 0]] },
     ],
-    sitters: { 'fire-1': [[-18, 6, 90], [16, 8, 270]] },
+    sitters: { 'fire-1': [[-18, -20, 180], [18, -20, 180]] },
     poi: [
       { id: 'jetty', name: 'Мостки', hint: 'отсюда уходят на лодках', x: 640, y: 206, r: 34 },
       { id: 'smoke', name: 'Коптильня', hint: 'пахнет ольхой и рыбой', x: 600, y: 292, r: 30 },
       { id: 'shed', name: 'Лодочный сарай', hint: 'вёсла, сети, лодочный мотор', x: 968, y: 318, r: 40 },
-      { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят у воды', x: 792, y: 226, r: 28 },
+      { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят, глядя на воду', x: 800, y: 262, r: 28 },
       { id: 'barn', name: 'Коровник', hint: 'пахнет сеном и парным молоком', x: 925, y: 486, r: 46 },
-      { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 374, r: 24 },
+      { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 401, r: 24 },
     ],
     exits: [
       { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7 },
@@ -4647,7 +5157,7 @@ function stepRider(dt) {
 // shifting their weight while they wait; sitters appear at a fire while it burns.
 const NPCS = (PL.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: n.dir ?? 4, dist: 0, idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } });
 const SITS = []; cowsInit(); gullsInit(); const dirOf = (dx, dy) => ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8;
-function stepNpcs(dt) { stepGSM(dt); for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }
+function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }
     if (P.wait > 0) { P.wait -= dt; P.moving = false; continue }
     const nx = (P.i + 1) % P.route.length, [tx, ty, tw] = P.route[nx], dx = tx - P.x, dy = ty - P.y, d = Math.hypot(dx, dy), sp = 12 * dt;
     // giving way: the bike just ahead of them on their way
@@ -4656,7 +5166,7 @@ function stepNpcs(dt) { stepGSM(dt); for (const P of NPCS) { P.idleT += dt; if (
     P.x += dx / d * sp; P.y += dy / d * sp; P.dist += sp; P.dir = dirOf(dx, dy); P.moving = true }
   SITS.length = 0; const S = PL.sitters || {}; for (const F of FIRES) { if (F.I < .35) continue; const list = S[F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
-function npcSpr(P) { if (P.smoker) return npcSprite(P.look, 'smoke', P.dir, P.sf); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
+function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
   const k = Math.floor(P.idleT / 1.8 + P.x * .1) % 7; return k === 5 ? npcSprite(P.look, 'look', P.dir, 0) : k === 6 ? npcSprite(P.look, 'look', P.dir, 1) : npcSprite(P.look, 'idle', P.dir, k % 2) }
 const npcBlocks = (x, y, rad) => { for (const P of NPCS) if (Math.hypot(P.x - x, P.y - y) < 3.6 + rad) return P; for (const P of SITS) if (Math.hypot(P.x - x, P.y - y) < 4 + rad) return P; return null };
 
@@ -4818,6 +5328,7 @@ function drawWorld() {
   const rkey = riderKey(), list = VIS.map(o => [o.flat ? o.y - 1e4 : o.touchT !== undefined && t - o.touchT < .25 ? Math.min(o.y, rkey - .05) : o.y, o]); list.push([rkey, null]); // (undergrowth the bike is in is pressed under it)
   for (const o of FIGOBJ) o._figs = null; FIGOBJ.length = 0; const RF = { fy: R.y, w: RW, h: RH, img: null }; for (const o of OCC) { (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(RF) }
   for (const C of COWS) if (C.x > cx0 - 30 && C.x < cx0 + W + 30 && C.y > cy0 - 10 && C.y < cy0 + H + 40) list.push([C.y, { cow: C }]);
+  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if (B.st === 'fly' && B.z >= 2.5) list.push([B.y - .2, { bsh: B }]); else list.push([B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }
   for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);
   for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20 && P.x < cx0 + W + 20 && P.y > cy0 - 10 && P.y < cy0 + H + 40) { const S = npcSpr(P), occ = P._occ || (P._occ = []); list.push([figKey(P.y, Math.round(P.x) - S.ax, Math.round(P.y) - S.ay, S.cv.width, S.cv.height, occ), { npc: P }]); P._F = { fy: P.y, w: S.cv.width, h: S.cv.height, img: S.cv, rx: Math.round(P.x) - S.ax, ry: Math.round(P.y) - S.ay }; for (const o of occ) (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(P._F) }
   // falling leaves in their turn too, by where they will come down, so one passing behind the rider is hidden by him
@@ -4827,6 +5338,8 @@ function drawWorld() {
     if (o && o.wire) { drawWire(o.wire); continue }
     if (o && o.cow) { drawCow(o.cow); continue }
     if (o && o.gull) { drawGull(o.gull); continue }
+    if (o && o.bird) { drawBird(o.bird); continue }
+    if (o && o.bsh) { drawBirdShadow(o.bsh); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }
     if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS } continue }
@@ -5233,7 +5746,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlush, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
@@ -5258,32 +5771,9 @@ function drawFrost(cx0, cy0) { if (FROST < .02) return; ctx.globalAlpha = smst(F
 // ---- winter moths at the lights ----
 // Pale males flutter in the cold toward any light: they come out of the crowns near the lamp's beam, circle a spot in
 // it for a while, then slip back into the dark. Not in rain, wind or hard frost.
-let MOTHS = [], mothAcc = 0;
-function lampSpots() { const out = []; if (LT.lamp * LT.dark > .05) { const dx = Math.sin(R.psi), dy = -Math.cos(R.psi); for (const u of [.25, .45, .7]) out.push([R.x + dx * 60 * u * 2.4, R.y - 12 + dy * 60 * u * 2.4, 14 + u * 10]) }
-  for (const S of LIGHTS) if (Math.abs(S.x - R.x) < W && Math.abs(S.y - R.y) < H && lightLevel(S, LT.dark) > .3) out.push([S.x, S.y - (S.h || 20), 10]); return out }
-function stepMoths(dt) { const act = clamp((LT.dark - .3) / .25, 0, 1) * (1 - clamp((WX.rain - .15) / .3, 0, 1)) * (1 - clamp((WIND.s - .45) / .3, 0, 1)) * (1 - .6 * FROST);
-  mothAcc = Math.min(3, mothAcc + dt * act * .8); const spots = act > 0 ? lampSpots() : [];
-  while (mothAcc >= 1 && MOTHS.length < 12 && spots.length) { mothAcc--; const sp = spots[Math.floor(Math.random() * spots.length)], a = Math.random() * TAU;
-    MOTHS.push({ x: sp[0] + Math.cos(a) * 80, y: sp[1] + Math.sin(a) * 60 - 20, sp, t: 0, dur: 2 + Math.random() * 4, r: 3 + Math.random() * 7, ph: Math.random() * 6, st: 0, c: Math.random() < .5 ? [232, 222, 196] : [214, 200, 170] }) }
-  for (const m of MOTHS) { m.t += dt; let tx, ty;
-    if (m.st === 0) { tx = m.sp[0]; ty = m.sp[1]; if (Math.hypot(tx - m.x, ty - m.y) < 8) { m.st = 1; m.t = 0 } else if (m.t > 6) { m.st = 2; m.t = 0 } }
-    else if (m.st === 1) { const w = m.t * 2.3 + m.ph; tx = m.sp[0] + Math.cos(w) * m.r + Math.sin(m.t * 5.1) * 2; ty = m.sp[1] + Math.sin(w * 1.3) * m.r * .7; if (m.t > m.dur || act < .05) { m.st = 2; m.t = 0; m.out = Math.random() * TAU } }
-    else { tx = m.x + Math.cos(m.out) * 40; ty = m.y + Math.sin(m.out) * 40 }
-    const dx = tx - m.x, dy = ty - m.y, l = Math.hypot(dx, dy) || 1, v = Math.min(l, (m.st === 1 ? 22 : 30) * dt); m.x += dx / l * v + (Math.random() - .5) * 1.2; m.y += dy / l * v + (Math.random() - .5) * 1.2 }
-  MOTHS = MOTHS.filter(m => !(m.st === 2 && m.t > 2)) }
-// ---- foxfire: honey-fungus mycelium on old wet wood glows a faint green in the dark ----
-const isFox = o => (o.t === 'log' || o.t === 'stump' || o.t === 'snag') && (o.seed % 10) < 4;
-function foxfire(L, dark) { if (dark < .45) return; const a = .16 * clamp((dark - .45) / .3, 0, 1) * (1 + .2 * WET);
-  for (const o of VIS) { if (!isFox(o)) continue; const fl = .8 + .2 * Math.sin(t * .7 + o.seed % 31); for (let k = 0; k < 3; k++) { const px = o.x + (h2(o.seed, k, 71) - .5) * Math.min(20, o.mw * .6), py = o.y - 1 - h2(o.seed, k, 72) * 4, g = L.createRadialGradient(px, py, 0, px, py, 5);
-      g.addColorStop(0, `rgba(120,255,150,${a * fl})`); g.addColorStop(1, 'rgba(120,255,150,0)'); L.fillStyle = g; L.fillRect(px - 5, py - 5, 10, 10) } } }
-function drawFoxDots() { if (LT.dark < .45) return; const a = clamp((LT.dark - .45) / .3, 0, 1); for (const o of VIS) { if (!isFox(o)) continue; for (let k = 0; k < 7; k++) { if (h2(o.seed, k, 73 + Math.floor(t * .5)) < .3) continue; ctx.fillStyle = `rgba(150,255,170,${.55 * a})`;
-      ctx.fillRect(Math.round(o.x + (h2(o.seed, k, 71) - .5) * Math.min(20, o.mw * .6)), Math.round(o.y - 1 - h2(o.seed, k, 74) * 5), 1, 1) } } }
+// (the moths and the foxfire: night.js)
 
-// ---- birds over the canopy by day ----
-let FLY = [], flyT = 12;
-function stepFlyers(dt) { flyT -= dt; if (flyT <= 0) { flyT = (14 + Math.random() * 30) * (1 - .45 * bump(SH, 6, 6.8, 8.5, 9.5)); if (WX.rain < .3 && WX.fog < .6 && LT.day > .5) { const n = 1 + Math.floor(Math.random() * 5), dir = Math.random() < .5 ? 1 : -1, y0 = Math.random() * H * .6, vy = (Math.random() - .5) * 20, v = 38 + Math.random() * 25;
-      for (let i = 0; i < n; i++) FLY.push({ x: dir > 0 ? -8 - i * 7 - Math.random() * 6 : W + 8 + i * 7 + Math.random() * 6, y: y0 + i * (3 + Math.random() * 4) * (i % 2 ? 1 : -1), vx: dir * v * (.95 + Math.random() * .1), vy, ph: Math.random() * 6 }) } }
-  for (const f of FLY) { f.x += f.vx * dt; f.y += f.vy * dt + Math.sin(t * 2 + f.ph) * 3 * dt; f.ph += dt * (9 + Math.random()) } FLY = FLY.filter(f => f.x > -60 && f.x < W + 60) }
+// (the birds of the place: birds.js)
 
 // ---- rain on the water: rings spreading where the drops fall ----
 let RINGS = [];
@@ -5292,11 +5782,10 @@ function stepRings(dt) { if (WX.rain < .06) { RINGS = RINGS.filter(r => r.t < r.
   for (const r of RINGS) r.t += dt; RINGS = RINGS.filter(r => r.t < r.life); if (RINGS.length > 300) RINGS.splice(0, RINGS.length - 300) }
 function drawRings() { for (const r of RINGS) { const u = r.t / r.life, rad = 1 + u * 3.5, a = (1 - u) * .5; ctx.fillStyle = `rgba(200,220,228,${a})`; for (let i = 0; i < 8; i++) { const ang = i / 8 * TAU; ctx.fillRect(Math.round(r.x + Math.cos(ang) * rad), Math.round(r.y + Math.sin(ang) * rad * .5), 1, 1) } } }
 
-function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt); stepGulls(dt) }
+function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt) }
 // over the lit picture: the moths (in the lamplight they shine), the foxfire's specks; the birds over everything
-function drawLife() { worldT(); drawFoxDots(); drawGuardGlow(); for (const m of MOTHS) { ctx.fillStyle = `rgb(${m.c})`; ctx.fillRect(Math.round(m.x), Math.round(m.y), 1, 1); if (Math.sin(t * 60 + m.ph) > 0) { ctx.fillRect(Math.round(m.x) - 1, Math.round(m.y), 1, 1); ctx.fillRect(Math.round(m.x) + 1, Math.round(m.y), 1, 1) } }
-  scrT(); ctx.fillStyle = 'rgba(38,30,28,.9)'; for (const f of FLY) { const x = Math.round(f.x), y = Math.round(f.y), up = Math.sin(f.ph) > 0; ctx.fillRect(x, y, 1, 1);
-    if (up) { ctx.fillRect(x - 1, y - 1, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1); ctx.fillRect(x - 2, y - 1, 1, 1); ctx.fillRect(x + 2, y - 1, 1, 1) } else { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x - 2, y + 1, 1, 1); ctx.fillRect(x + 2, y + 1, 1, 1) } } }
+function drawLife() { worldT(); drawFoxDots(); drawGuardGlow(); drawMoths();
+  drawBirdsHigh(); }
 
 })();
 </script>

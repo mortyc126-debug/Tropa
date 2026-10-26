@@ -301,16 +301,34 @@ PF.crates = ({ seed = 4 } = {}) => { const r = mulberry(seed);
 PF.piling = ({ h = 16, tire = false, seed = 5 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3cyl(M, 0, 0, 1.7, 0, h, [96, 76, 56], { topCol: [150, 126, 94] }); t3line(M, [-1.7, -.2, h - 2], [1.7, -.2, h - 2], [60, 56, 50]);
     if (tire) t3cyl(M, 0, -1.4, 2.8, h * .55, h * .55 + 2.4, [34, 34, 36], { topCol: [40, 40, 42] }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-2.4, -2.4, 2.4, 2.4]].map(t3w) } };
-PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W = 8, D = 8, R = [96, 72, 52], RL = [150, 116, 78]; M.seed = seed;
-    for (let c = 0; c < 6; c++) { const z = c * 2.2; t3roll(M, -W - 1, W + 1, 0, 1.15, c % 2 ? RL : [140, 106, 70], { z0: z, endCol: FV.woodL }); t3roll(M, -W - 1, W + 1, D, 1.15, c % 2 ? [140, 106, 70] : RL, { z0: z, endCol: FV.woodL }) }
-    t3box(M, -W + 1, 1, 12.6, W - 1, D - 1, 13.2, [14, 12, 10]); // the dark mouth
-    for (const x of [-W + 1, W - 1]) t3box(M, x - .9, D / 2 - .9, 13, x + .9, D / 2 + .9, 34, FV.woodD);
-    t3roll(M, -W + 1, W - 1, D / 2, 1.3, FV.woodL, { z0: 21, endCol: FV.woodL }); t3line(M, [W, D / 2 - 1, 22.5], [W + 3, D / 2 - 1, 22.5], [90, 90, 96]); t3line(M, [W + 3, D / 2 - 1, 22.5], [W + 3, D / 2 - 1, 19], [90, 90, 96]);
-    t3line(M, [2, D / 2, 21.6], [2, D / 2, 14.5], [80, 80, 86]); t3cyl(M, 2, D / 2, 1.9, 12.8, 15.4, [96, 98, 104], { topCol: [60, 60, 66] });
-    const rz = 34; t3face(M, [[-W - 2, -2, rz - 5], [0, -2, rz + 4], [0, D + 2, rz + 4], [-W - 2, D + 2, rz - 5]], [96, 70, 48], [0, D / 2, 14], { tex: x => ((Math.round(x) % 3) + 3) % 3 === 0 ? [72, 52, 36] : [102, 76, 52] });
-    t3face(M, [[W + 2, -2, rz - 5], [0, -2, rz + 4], [0, D + 2, rz + 4], [W + 2, D + 2, rz - 5]], [96, 70, 48], [0, D / 2, 14], { tex: x => ((Math.round(x) % 3) + 3) % 3 === 0 ? [72, 52, 36] : [102, 76, 52] });
-    t3face(M, [[-W - 2, -2.2, rz - 5], [W + 2, -2.2, rz - 5], [0, -2.2, rz + 4]], FV.wood, null, { both: true, zb: .2 }); return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-9.5, -10, 9.5, 2]].map(t3w) } };
+PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W = 6.4, D = 12.4, r = 1.1; M.seed = seed;
+    const LG = [[142, 108, 72], [158, 122, 82]], LGE = [196, 164, 118], IRON = [70, 70, 76], ROPE = [186, 160, 116], mixc = (a, b, k) => cmix(a, b, clamp(k, 0, 1));
+    // a log lying along n (the sides of the curb): t3roll goes along x only
+    const rolln = (x, n0, n1, rad, col, o = {}) => { const seg = 8, zc = (o.z0 || 0) + rad, ctr = [x, (n0 + n1) / 2, zc];
+      for (let i = 0; i < seg; i++) { const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2, p = (n, a) => [x + Math.cos(a) * rad, n, zc + Math.sin(a) * rad]; t3face(M, [p(n0, a0), p(n1, a0), p(n1, a1), p(n0, a1)], col, ctr, o) }
+      for (const n of [n0, n1]) { const pts = []; for (let i = 0; i < seg; i++) { const a = i / seg * Math.PI * 2; pts.push([x + Math.cos(a) * rad, n, zc + Math.sin(a) * rad]) } t3face(M, pts, o.endCol || cmul(col, 1.15), ctr, o) } };
+    // the curb: four courses of notched logs; the logs of one course run along x and stick out at the corners, the next run along n and stick out the other way.
+    // The far wall of the shaft (what shows over the near rim) goes dark, deeper the lower it is
+    for (let c = 0; c < 4; c++) { const z0 = c * 2.2, col = LG[c % 2], far = (X, N, Z) => mixc([30, 26, 24], cmul(col, .75), (Z - 1.5) / 7);
+      if (c % 2 === 0) { t3roll(M, -W - 1.4, W + 1.4, r, r, col, { z0, endCol: LGE }); t3roll(M, -W - 1.4, W + 1.4, D - r, r, col, { z0, endCol: LGE, tex: far });
+        for (const x of [-(W - r), W - r]) rolln(x, r * 2, D - r * 2, r, col, { z0, endCol: LGE }) }
+      else { for (const x of [-(W - r), W - r]) rolln(x, -1.4, D + 1.4, r, col, { z0, endCol: LGE });
+        t3roll(M, -W + r * 2, W - r * 2, r, r, col, { z0, endCol: LGE }); t3roll(M, -W + r * 2, W - r * 2, D - r, r, col, { z0, endCol: LGE, tex: far }) } }
+    t3box(M, -W + 2, 2.2, 0, W - 2, D - 2.2, 4, [10, 10, 12]); // (the dark of the shaft, where the logs leave a gap)
+    // the sweep: a tall post behind the curb, a long pole on a fork at its top, a heavy stone on the short end, a thin rod and the bucket on the long end
+    const px = 10.2, pn = 6.6, zp = 25, tip = [-2.2, pn, zp + 4.6], butt = [px + 6.4, pn, zp - 2.4];
+    t3limb(M, [px, pn, 0], [px, pn, zp + .8], 1.5, 1.2, [132, 102, 70], { capCol: [196, 164, 118] });
+    t3box(M, px - 1.8, pn - .9, zp - 1.4, px + 1.8, pn + .9, zp - .6, [96, 72, 48]); // the cross-pin of the fork
+    t3limb(M, tip, butt, .7, 1.15, [150, 116, 78], { capCol: LGE });
+    t3line(M, [butt[0] - .6, pn, butt[2] - .8], [butt[0] - .6, pn, butt[2] - 4.4], ROPE); t3box(M, butt[0] - 2.4, pn - 1.5, butt[2] - 8, butt[0] + 1.2, pn + 1.5, butt[2] - 4.4, [128, 124, 116]);
+    // the rod down to the bucket's bail, the bucket (dark wet staves, two iron hoops, an iron handle) hanging just over the rim
+    const bz = 10.6, bt = 14.2; t3line(M, [tip[0], pn, tip[2] - .6], [tip[0], pn, bt + 1.7], [124, 96, 66]);
+    t3line(M, [tip[0] - 1.9, pn, bt], [tip[0], pn, bt + 1.7], IRON); t3line(M, [tip[0] + 1.9, pn, bt], [tip[0], pn, bt + 1.7], IRON);
+    t3cyl(M, tip[0], pn, 2.2, bz, bt, [120, 94, 64], { topCol: [18, 14, 12], tex: (X, N, Z) => Z > bt - .1 ? [18, 14, 12] : (Z > bz + .8 && Z < bz + 1.5 || Z > bt - 1.5 && Z < bt - .7) ? [92, 94, 102] : (Math.round(X * 2.4) % 3 === 0 ? [96, 72, 50] : [128, 100, 68]) });
+    // a zinc pail on the ground by the curb: wider at the mouth, a bail over it
+    t3limb(M, [-W - 3.8, 2.2, 0], [-W - 3.8, 2.2, 4.4], 1.7, 2.2, [164, 170, 174], { capCol: [40, 44, 50] }); t3line(M, [-W - 5.8, 2.2, 4.3], [-W - 3.8, 2.2, 6.3], [92, 94, 100]); t3line(M, [-W - 1.8, 2.2, 4.3], [-W - 3.8, 2.2, 6.3], [92, 94, 100]);
+    return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8.8, -14, 8.8, 1.6], [-12.4, -4.4, -8.2, .4], [8.4, -8.4, 12, -4.8], [14.2, -8.4, 17.8, -4.8]].map(t3w) } };
 
 // ---- old cars for the village: a «копейка» (VAZ-2101, the Russian Fiat 124) with fishing rods on the roof, and a VW «жук» ----
 // Parked nose to the east like the car park's cars; x along the car, n from its near side (0) to the far side (W), z up.

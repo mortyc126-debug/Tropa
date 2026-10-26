@@ -3,7 +3,14 @@
 // about on the wet sand; every so often one is up and circles over the water, and now and then it folds its wings and drops to the surface (a ring spreads).
 // Come near and they go up with a cry. By day only: at dusk they leave to roost, in rain and fog there are few.
 // =====================================================================================================================
-const GCOL = { W: [244, 244, 240], G: [188, 196, 206], B: [150, 160, 178], K: [36, 36, 42], Y: [238, 176, 52], O: [226, 126, 52] };
+// the end of October: most are the large grey-backed gulls (herring, Caspian), many of them this year's young in their brown plumage, and a few lake gulls that have not left yet
+// (the winter plumage: a white head, a red bill and red legs); the lake gulls go in September, the others stay on the open water till the ice
+const GPAL = {
+  adult: { W: [244, 244, 240], G: [188, 196, 206], B: [150, 160, 178], K: [36, 36, 42], Y: [238, 176, 52], O: [226, 126, 52] },
+  juv: { W: [196, 178, 156], G: [138, 118, 98], B: [112, 94, 78], K: [48, 40, 36], Y: [58, 50, 46], O: [200, 140, 126] },
+  lake: { W: [248, 248, 246], G: [200, 208, 218], B: [176, 186, 200], K: [40, 40, 48], Y: [206, 58, 48], O: [206, 66, 54] }
+};
+const GCOL = GPAL.adult;
 // (all heading right; the beak is the Y; flipped for the other way)
 const GART = {
   fup: ["K...........K", "WK.........KW", ".WW.......WW.", "..GWW.WWWWG..", "...GWWWWWWY..", "....GWWWW....", "............."],
@@ -15,9 +22,9 @@ const GART = {
 };
 const GAN = { fup: [6, 4], fmid: [6, 4], fdn: [6, 3], stand: [4, 8], walk: [4, 8], peck: [4, 8] }; // anchors: the body's middle in flight, the feet on a perch
 const GSPR = new Map();
-function gullSpr(name, flip) { const key = name + (flip ? 'L' : 'R'); let r = GSPR.get(key); if (r) return r; const art = GART[name], h = art.length, w = art[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+function gullSpr(name, flip, gk) { const key = name + (flip ? 'L' : 'R') + (gk || 'adult'); let r = GSPR.get(key); if (r) return r; const PAL = GPAL[gk || 'adult'], art = GART[name], h = art.length, w = art[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const g = cv.getContext('2d'), img = g.createImageData(w, h), d = img.data;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = art[y][x]; if (ch === '.') continue; const c = GCOL[ch], xx = flip ? w - 1 - x : x, i = (y * w + xx) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255 }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = art[y][x]; if (ch === '.') continue; const c = PAL[ch], xx = flip ? w - 1 - x : x, i = (y * w + xx) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255 }
   g.putImageData(img, 0, 0); r = { cv, w, h, ax: flip ? w - 1 - GAN[name][0] : GAN[name][0], ay: GAN[name][1] }; GSPR.set(key, r); return r }
 const GULLS = []; let GPERCH = [], GBEACH = [];
 function gullsInit() {
@@ -37,7 +44,7 @@ function gullUp(g, from) { // takes off: a climb, away from what scared it
   if (g.perch) { g.perch.g = null; g.perch = null } if (g.target && g.target.g === g) g.target.g = null; g.target = null; g.st = 'fly'; g.t = 14 + Math.random() * 18; const aw = from ? Math.atan2(g.y - from[1], g.x - from[0]) : Math.random() * TAU; g.vx = Math.cos(aw) * 20; g.vy = Math.sin(aw) * 12; g.vz = 16 + Math.random() * 6; g.gl = false; g.ph = Math.random();
   const [cx, cy] = gullOver(g); g.cx = cx; g.cy = cy; g.rad = 36 + Math.random() * 40; g.ang = Math.atan2(g.y - cy, g.x - cx); g.dir = Math.random() < .5 ? 1 : -1; g.spd = 22 + Math.random() * 10; g.f = g.vx >= 0 ? 1 : -1; g.call = Math.random() < .6 ? .2 : 5 + Math.random() * 10; g.wz = 12 + Math.random() * 8; g.mv = false }
 function gullSet(g, P) { g.st = 'perch'; g.perch = P; P.g = g; g.x = P.x; g.y = P.y; g.z = P.z; g.vx = g.vy = g.vz = 0; g.t = 3 + Math.random() * 8; g.pk = 0; g.f = Math.random() < .5 ? 1 : -1 }
-function gullsSpawn(n) { for (let i = 0; i < n; i++) { const free = GPERCH.filter(P => !P.g); const g = { id: GULLS.length, x: 0, y: 0, z: 0, st: 'perch', f: 1, t: 0, ph: Math.random(), pk: 0, vx: 0, vy: 0, vz: 0, perch: null, call: 8 };
+function gullsSpawn(n) { for (let i = 0; i < n; i++) { const free = GPERCH.filter(P => !P.g); const q = Math.random(), g = { id: GULLS.length, gk: q < .45 ? 'adult' : q < .8 ? 'juv' : 'lake', x: 0, y: 0, z: 0, st: 'perch', f: 1, t: 0, ph: Math.random(), pk: 0, vx: 0, vy: 0, vz: 0, perch: null, call: 8 };
     if (free.length && Math.random() < .75) gullSet(g, free[Math.floor(Math.random() * free.length)]); else if (GBEACH.length) { const [x, y] = GBEACH[Math.floor(Math.random() * GBEACH.length)]; g.st = 'walk'; g.x = x; g.y = y; g.z = 0; g.t = 2 + Math.random() * 5; g.f = Math.random() < .5 ? 1 : -1; g.mv = false }
     else continue; GULLS.push(g) } }
 let GSTART = false;
@@ -47,7 +54,7 @@ function gullCall(g) { if (!SND.on || !SND.ctx || !SND.ready || paused) return; 
     o.frequency.setValueAtTime(base * (1.05 - .02 * i), t0); o.frequency.linearRampToValueAtTime(base * 1.55, t0 + .075); o.frequency.exponentialRampToValueAtTime(base * (1 - .03 * i), t0 + .23); f.type = 'bandpass'; f.frequency.value = base * 1.9; f.Q.value = 2.4;
     gn.gain.setValueAtTime(0, t0); gn.gain.linearRampToValueAtTime(.55 - .08 * i, t0 + .025); gn.gain.exponentialRampToValueAtTime(.001, t0 + .26); o.connect(f); f.connect(gn); gn.connect(out); o.start(t0); lf.start(t0); o.stop(t0 + .3); lf.stop(t0 + .3) } }
 function stepGulls(dt) { if (!GPERCH.length && !GBEACH.length) return;
-  const act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = Math.round(8 * act);
+  const act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = Math.round(5 * act);
   if (!GSTART) { GSTART = true; gullsBeach(); gullsSpawn(want) }
   const live = GULLS.filter(g => !g.leave).length; GSPAWNT = (typeof GSPAWNT === 'undefined' ? 0 : GSPAWNT) - dt;
   if (live < want && GSPAWNT <= 0) { GSPAWNT = 2 + Math.random() * 4; gullsSpawn(1); const g = GULLS[GULLS.length - 1]; if (g && Math.random() < .5) { g.x = CAM.x + (Math.random() < .5 ? -30 : W + 30); g.y = CAM.y + Math.random() * H * .6; if (g.perch) { g.perch.g = null; g.perch = null } g.st = 'fly'; gullUp(g, [g.x + (g.x < CAM.x ? -50 : 50), g.y]); g.z = 18; g.vz = 0; const P = GPERCH.find(gullFree); if (P) { g.st = 'land'; g.target = P; P.g = g } } }
@@ -83,6 +90,6 @@ let GSPAWNT, GUPT;
 function drawGull(g) { const flip = g.f < 0, perched = g.st === 'perch', walking = g.st === 'walk';
   let name; if (perched) name = g.pk > 0 ? 'peck' : 'stand'; else if (walking) name = g.pk > 0 ? 'peck' : g.mv ? (Math.floor(g.ph) % 2 ? 'walk' : 'stand') : 'stand';
   else if (g.st === 'dive') name = 'fdn'; else if (g.gl && g.st === 'fly') name = 'fmid'; else { const p = g.ph % 1; name = p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid' }
-  const S = gullSpr(name, flip), lift = deckLift(g.x, g.y), gz = g.z; // (the shadow lies on the ground, or on the deck when it is over the jetty)
+  const S = gullSpr(name, flip, g.gk), lift = deckLift(g.x, g.y), gz = g.z; // (the shadow lies on the ground, or on the deck when it is over the jetty)
   if (gz > .5 || perched) { ctx.fillStyle = `rgba(8,16,20,${clamp(.24 - gz * .004, .05, .22).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(g.x + .5 + gz * .25, g.y + .5 - (perched && g.perch && g.perch.z > 10 ? 0 : lift) , Math.max(2, 4 - gz * .05), 1.3, 0, 0, TAU); ctx.fill() }
   ctx.drawImage(S.cv, Math.round(g.x) - S.ax, Math.round(g.y - gz) - S.ay) }
