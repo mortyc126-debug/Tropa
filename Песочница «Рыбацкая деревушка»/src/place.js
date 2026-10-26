@@ -50,7 +50,7 @@
     ...[[126, 478], [135, 485], [156, 484], [166, 482], [128, 471], [172, 474], [112, 469], [104, 465]].map(([x, y], i) => ({ id: 'weed-b' + i, t: i % 3 === 2 ? 'fern' : 'grass', x, y, seed: 90 + i })),
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
-    { id: 'booth', p: 'booth', x: 1432, y: 148, seed: 4 }, { id: 'gate', p: 'gate', x: 1458, y: 168 },
+    { id: 'booth', p: 'booth', x: 1432, y: 148, seed: 4 }, { id: 'gate', p: 'gate', x: 1458, y: 168 }, { id: 'gaterest', p: 'gaterest', x: 1458, y: 139 },
   ];
   PLACES.buhta = {
     id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
