@@ -39,9 +39,11 @@ function wStep(J, limit) { const { x0, y0, Ls, Ds, Bs, F, PN, ZN, blk } = J;
       blk[b] = d > 30 ? 0 : (d < -30 && !special) ? 1 : 2 }
     for (let c = 0; c < CK; c++) { const k = blk[c >> 3]; if (!k) continue; const x = x0 + c, i = r * CK + c; let w;
       if (k === 1) { let d = 1e9; for (const B of Ls) d = Math.min(d, layerD(B, x, y)); w = -d }
-      else { const h = layerAt(x, y), top = h.L, isW = top && top.mat === 'lake' && top.pal === 'bay';
-        if (isW) w = -h.d; else { let d = 1e9; for (const B of Ls) d = Math.min(d, layerD(B, x, y)); if (d < 0) { w = -1e9; if (!(top && top.mat === 'dam')) continue } else w = -d }
-        for (const D of Ds) { const g = damGeom(D, x, y), dd = g.sd < 0 ? g.best - g.rim : layerD(D, x, y); if (top === D) { w = g.sd < 0 ? dd : -1e9 } else if (w > 0 && dd < 1e8) w = Math.min(w, dd) } }
+      else { let h = layerAt(x, y), top = h.L, own = null; // (a dam's slope is land; where its layer shows the ground below, it is that ground's)
+        if (top && top.mat === 'dam') { if (damPart(top, x, y)) continue; own = top; h = underLayer(x, y); top = h.L }
+        const isW = top && top.mat === 'lake' && top.pal === 'bay';
+        if (isW) w = -h.d; else { let d = 1e9; for (const B of Ls) d = Math.min(d, layerD(B, x, y)); if (d < 0) continue; w = -d } // (not water, though the lake's layer lies under it: a jetty)
+        for (const D of Ds) { damPart(D, x, y); if (D.pad && D.side && DAMG.sd !== D.side) continue; if (w > 0 && DP.edge > 0) w = Math.min(w, DP.edge) } }
       if (w < -16) continue; F[i] = clamp(Math.round(w * 8), -128, 32000); J.any++;
       PN[i] = Math.floor((vn(x * .016, y * .021, SEED + 760) * .72 + Math.abs(((x + y * .35) / 300) % 2 - 1) * .28) * 255); ZN[i] = Math.floor((h2(x, y, SEED + 761) * .55 + h2(x >> 2, y >> 1, SEED + 762) * .45) * 255) }
     J.r++ }
@@ -100,7 +102,7 @@ function drawWater(cx0, cy0) {
             else if (s > .2) col = pk(HLc, .1 * sunK + .02); else if (s < -.42) col = pk(DKc, .28); else if (s < -.24) col = pk(DKc, .15) } }
         buf[orow + x] = col } } }
   // rings: round the boats afloat and the jetty's pilings, and (in a calm) where a fish has risen
-  const put = (x, y, c, a) => { x = Math.round(x) - cx0; y = Math.round(y) - cy0; if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x, a8 = (a * 255 + .5) | 0; if (a8 > (buf[i] >>> 24)) buf[i] = (a8 << 24) | (c[2] << 16) | (c[1] << 8) | c[0] };
+  const put = (x, y, c, a) => { x = Math.round(x); y = Math.round(y); const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)), f = J && J.f; if (!f || f.F[(y - f.y0) * CK + x - f.x0] === WNONE) return; x -= cx0; y -= cy0; if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x, a8 = (a * 255 + .5) | 0; if (a8 > (buf[i] >>> 24)) buf[i] = (a8 << 24) | (c[2] << 16) | (c[1] << 8) | c[0] };
   const ring = (cx, cy, rx, ry, c, a, sd, gap) => { const n = Math.max(12, Math.ceil(TAU * Math.sqrt((rx * rx + ry * ry) / 2) / 1.15)); for (let i = 0; i < n; i++) { if (gap && h2(i, sd, 91) < gap) continue; const an = i / n * TAU; put(cx + Math.cos(an) * rx, cy + Math.sin(an) * ry, c, a) } };
   for (const o of objsIn(cx0 - 40, cy0 - 30, cx0 + W + 40, cy0 + H + 30)) { if (o.p !== 'boat' && o.p !== 'piling') continue;
     if (o._wk === undefined) { const m = matAt(o.x, o.y); o._wk = (m === 'lake' && o.p === 'boat') ? 2 : (o.p === 'piling' && (m === 'lake' || m === 'bridge')) ? 1 : 0 }

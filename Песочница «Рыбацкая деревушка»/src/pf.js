@@ -13,26 +13,91 @@ function stoneCell(x, y, S, sd) { const gx = x / S, gy = y / S, ix = Math.floor(
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const a = ix + i, b = iy + j, cx = a + .15 + .7 * h2(a, b, sd), cy = b + .15 + .7 * h2(a, b, sd + 1), dx = gx - cx, dy = (gy - cy) * 1.25, d = dx * dx + dy * dy;
     if (d < d1) { d2 = d1; d1 = d; id = h2(a, b, sd + 2); ox = dx; oy = dy } else if (d < d2) d2 = d }
   return { gap: Math.sqrt(d2) - Math.sqrt(d1), id, ox, oy } }
-// an embankment across the water: a gravel top with two ruts and dry sedge verges, rough stone riprap on both slopes (the south slope,
-// turned to us, is the broader), waves breaking white on the north side. L.w is the whole width from the middle to the south toe.
-let SKIPL = null; // (a layer asked for the ground that lies below it)
-const DAM_NS = 14.5; // (where the stones of the north slope end and the water begins)
-const DAMG = { best: 0, sd: 1, rim: 0 }; // the distance to the dam's line, which side, and the distance of the water's edge from the line
-function damGeom(L, x, y) { let best = 1e9, sd = 1; const P = L.line; for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1), dd = Math.hypot(x - ax - dx * u, y - ay - dy * u); if (dd < best) { best = dd; sd = dx * (y - ay) - dy * (x - ax) >= 0 ? 1 : -1 } }
-  DAMG.best = best; DAMG.sd = sd; DAMG.rim = DAM_NS + (vn(x * .2, 1, SEED + 51) - .5) * 1.6; return DAMG }
-function damColor(L, x, y, d) {
-  const g = damGeom(L, x, y), best = g.best, sd = g.sd;
-  const TOP = 9, VG = 12, NS = DAM_NS, e = g.rim - DAM_NS;
-  if (best < TOP + e * .5) { if (Math.abs(best - 4.8) < 1) return G.rut; const v = .55 + (fbm(x * .05, y * .05, SEED + 9) - .5) * .3 + (vn(x * .18, y * .18, SEED + 12) - .5) * .1; let c = PAL.stone[quant(clamp(v, 0, 1), x, y, 5, .35)]; const st = h2(x, y, SEED + 10); if (st < .012) c = PAL.stone[4]; else if (st < .03) c = PAL.stone[2]; return c }
-  if (best < VG + e) return K_sedge(x, y);
-  if (sd < 0) { if (best < NS + e) { const s = stoneCell(x, y, 3.4, 61); if (s.gap < .12) return [52, 50, 46]; return PAL.stone[quant(.5 + (-s.oy * .8 - s.ox * .5 + (s.id - .5) * .4), x, y, 5, .4)] }
-    SKIPL = L; const c = groundColor(x, y); SKIPL = null;  return c }
-  const t = clamp((best - VG - e) / Math.max(4, L.w - VG - 3), 0, 1), s = stoneCell(x, y * 1.15, 4.2, 72); // the broad stone face on the south
+// an embankment across the water, rising out of the ground: where the street comes onto it the gravel is spread over the dirt road bit by bit and the
+// slopes grow out of nothing; across the water it has a gravel top with two ruts, dry sedge verges and rough stone riprap on both slopes (the
+// south slope, turned to us, is the broader), waves breaking on it. A layby (L.pad, on L.side) is a short second embankment beside the first.
+const SKIPS = []; // (the layers asked for the ground that lies below them)
+const DAM = { top: 11, vg: 13.4, ns: 17, st: 24 }; // the half-widths: the gravel top, the verge, the north riprap's end, the south stone face's end
+const DAMG = { best: 0, sd: 1, rim: 0, u: 0, tot: 0, e: 0 }; // the distance to the line, which side, where the water begins on the north side, how far along it, how long it is
+const ssm = (a, b, v) => { const u = clamp((v - a) / (b - a), 0, 1); return u * u * (3 - 2 * u) };
+function damGeom(L, x, y) { let best = 1e9, sd = 1, u = 0; const P = L.line; if (!L._cum) { L._cum = [0]; for (let i = 1; i < P.length; i++) L._cum.push(L._cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1])) }
+  for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, v = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1), dd = Math.hypot(x - ax - dx * v, y - ay - dy * v); if (dd < best) { best = dd; sd = dx * (y - ay) - dy * (x - ax) >= 0 ? 1 : -1; u = L._cum[i] + v * Math.sqrt(l2) } }
+  const K = L.dam || DAM, tot = L._cum[L._cum.length - 1], e = (vn(x * .2, 1, SEED + 51) - .5) * 1.6, sw = L.pad ? ssm(0, 14, u) * ssm(0, 14, tot - u) : ssm(0, 130, u);
+  DAMG.best = best; DAMG.sd = sd; DAMG.u = u; DAMG.tot = tot; DAMG.e = e; DAMG.sw = sw; DAMG.rim = K.top + (K.ns - K.top) * sw + e; return DAMG }
+// which part of it a point is: 1 the gravel top, 2 the verge, 3 the north riprap, 4 the south stone face, 0 none (the ground below shows: the road under the
+// thin gravel, the water beyond the slope); DAMG.edge: how far beyond the slope's end (the water's edge) it is
+const DP = { part: 0, edge: 0, gf: 1 };
+function damPart(L, x, y) { const g = damGeom(L, x, y), K = L.dam || DAM, best = g.best, sd = g.sd, e = g.e, sw = g.sw, side = L.side || 0, pad = !!L.pad; DP.part = 0; DP.gf = pad ? 1 : ssm(8, 110, g.u);
+  const TOP = K.top, VG = TOP + (K.vg - TOP) * sw, NS = TOP + (K.ns - TOP) * sw, ST = TOP + (K.st - TOP) * sw, lim = sd < 0 ? NS : ST; DP.edge = best - lim - e;
+  if (pad && side && sd !== side) { DP.edge = -1; return 0 }
+  if (best < TOP * (pad ? sw : 1) + e * .5) { if (!pad && (vn(x * .12, y * .12, SEED + 60) * .6 + h2(x, y, SEED + 61) * .4) > DP.gf) return 0; DP.part = 1; return 1 }
+  if (best < VG + e) { if (sw < .14) return 0; DP.part = 2; return 2 }
+  if (best < lim + e) { if (sw < .5 && h2(x, y, SEED + 62) > sw * 2) return 0; DP.part = sd < 0 ? 3 : 4; return DP.part }
+  return 0 }
+function damColor(L, x, y, d) { const part = damPart(L, x, y), g = DAMG, best = g.best, sd = g.sd, e = g.e, sw = g.sw, K = L.dam || DAM, TOP = K.top, VG = TOP + (K.vg - TOP) * sw, ST = TOP + (K.st - TOP) * sw, gf = DP.gf;
+  if (part === 0) { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c }
+  if (part === 1) { if (Math.abs(best - 5.4) < 1 && gf > .6) return G.rut; const v = .55 + (fbm(x * .05, y * .05, SEED + 9) - .5) * .3 + (vn(x * .18, y * .18, SEED + 12) - .5) * .1; let c = PAL.stone[quant(clamp(v, 0, 1), x, y, 5, .35)]; const st = h2(x, y, SEED + 10); if (st < .012) c = PAL.stone[4]; else if (st < .03) c = PAL.stone[2]; return c }
+  if (part === 2) return K_sedge(x, y);
+  if (part === 3) { const s = stoneCell(x, y, 3.4, 61); if (s.gap < .12) return [52, 50, 46]; return PAL.stone[quant(.5 + (-s.oy * .8 - s.ox * .5 + (s.id - .5) * .4), x, y, 5, .4)] }
+  const t = clamp((best - VG - e) / Math.max(4, ST - VG), 0, 1), s = stoneCell(x, y * 1.15, 4.2, 72); // the broad stone face on the south
   if (t < .1) return PAL.stone[3]; if (s.gap < .1) return [40, 38, 36];
   let c = PAL.stone[quant(clamp(.55 - s.oy * .5 - s.ox * .3 + (s.id - .5) * .5 - t * .55, 0, 1), x, y, 5, .45)];
   if (t > .8 && vn(x * .3, y, SEED + 74) > .45) c = PAL.moss[1 + (h2(x, y, SEED + 75) < .5 ? 1 : 0)]; return c }
+// the layer under the dams that show nothing here (their thin gravel, the water beyond their slopes)
+function underLayer(x, y) { const n = SKIPS.length; let h; for (;;) { h = layerAt(x, y); const L = h.L; if (L && L.mat === 'dam' && damPart(L, x, y) === 0) SKIPS.push(L); else break } SKIPS.length = n; return h }
+// a point of a dam's layer where there is no slope any more but the water below: the bike may not go there
+function damWater(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'dam' || layerD(L, x, y) >= 0) continue; if (damPart(L, x, y) !== 0) return false; if (L.pad && L.side && DAMG.sd !== L.side) continue;
+    const h = underLayer(x, y); if (h.L && h.L.mat === 'lake') return true } return false }
 const K_sedge = (x, y) => K_q(h2(x, y, SEED + 67) < .45 ? PAL.straw : PAL.sedge, .4 + vn(x * .3, y * .3, SEED + 68) * .5, x, y);
 const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
+// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it from the sand ----
+// It is drawn into the ground like the rest of the plan, but as the eye sees a raised deck: its top lies H px up from the plan footprint (the rider
+// riding on it is drawn lifted by as much), under the south edge a front face of boards, in the middle of it a ramp, the east side a little thick, a hard
+// dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
+const PIER = { x: 640, w: 24, y0: 100, y1: 248, ramp: 14, rw: 13, H: 6 };
+const PIERC = { gap: [36, 27, 20], line: [26, 19, 14], wood: [[146, 117, 82], [140, 112, 78], [134, 107, 75], [156, 126, 90]], grey: [128, 120, 106], dark: [84, 66, 46], fresh: [188, 154, 106], rot: [74, 68, 50] };
+// a board at distance n along the deck, x across: rows of planks, each of one or two pieces; some replaced (pale), some rotten (dark, soft), a knot here and there
+function pierBoard(lx, n, k) { const row = Math.floor(n / 3.4), f = n / 3.4 - row, sd = SEED + 810; if (f < .2) return cmul(PIERC.gap, k);
+  const jx = PIER.x - PIER.w + 9 + h2(row, 2, sd) * 30, left = lx < jx, pc = h2(row, left ? 3 : 4, sd), jn = Math.abs(lx - jx) < .55;
+  let c = PIERC.wood[Math.floor(h2(row, left ? 5 : 6, sd) * 4)]; if (pc < .06) c = PIERC.fresh; else if (pc > .965) c = PIERC.rot; else if (pc > .86) c = PIERC.grey;
+  c = cmix(c, PIERC.grey, .2 * vn(lx * .06, row * 1.7, sd + 7)); if (jn) return cmul(PIERC.gap, k);
+  const stain = vn(lx * .12 + row * .7, n * .1, sd + 11); if (stain > .74) c = cmul(c, .84); if (pc > .965 && stain > .45) c = cmix(c, [64, 86, 48], .3); // (rotten boards go green)
+  if (h2(Math.floor(lx / 2), row, sd + 13) < .02) c = cmul(c, .7); // knots
+  const b = f < .4 ? 1.08 : f > .9 ? .9 : 1; return cmul(c, k * b) }
+function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
+  const under = k => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return k === 1 ? c : cmul(c, k) };
+  if (ly >= yt0 && ly < P.y1 && lx >= X1 && lx < X1 + 3.5) { // the east face of the deck, seen edge-on: the fascia board and the shadow under it
+    if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.wood[3], .82 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .82), k) }
+  if (ly >= yt0 && ly < yt1 && lx >= X0 && lx < X1) { // the top of the deck
+    if (lx < X0 + 1 || ly < yt0 + 1) return LN; const n = yt1 - ly;
+    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side
+      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e < 2 || e >= 3.2 && e < 4) return e < 2 && lx < X0 + 4 ? cmul(PIERC.wood[3], .94) : cmul(PIERC.gap, 1.15); const seg = Math.floor((n + 17 * (lx < P.x ? 1 : 2)) / 46); if (((n + 17 * (lx < P.x ? 1 : 2)) % 46) < .6) return PIERC.gap;
+      return cmix(PIERC.wood[seg % 3], PIERC.grey, .22 + .3 * vn(n * .05, lx * .3, sd + 3)) }
+    const c = pierBoard(lx, n, 1); const nl = Math.floor(n / 3.4); // (the nails: a pair on each board over every joist)
+    if ((n / 3.4 - nl) > .5 && (n / 3.4 - nl) < .66) for (const jx of [X0 + 8, X0 + 20, P.x + 4, X1 - 20, X1 - 8]) if (Math.abs(lx - jx) < .5 && h2(nl, jx, sd + 17) < .8) return cmul(c, .55);
+    return c }
+  if (ly >= yt1 && ly < yb && lx >= R0 && lx < R1) { // the ramp: boards across, strips nailed over them
+    if (lx < R0 + 1 || lx >= R1 - 1 || ly >= yb - 1) return LN; const n = (yb - ly) / 1.4286, nl = Math.floor(n / 3.4);
+    let c = pierBoard(lx, n, 1.06); if (nl % 3 === 1 && n / 3.4 - nl > .3 && n / 3.4 - nl < .6) c = cmul(PIERC.dark, 1.05); return c }
+  if (ly >= yt1 && ly < yb && lx >= R1 && lx < R1 + 3.1 * (yb - ly) / (yb - yt1)) return lx >= R1 + 3.1 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
+  if (ly >= yt1 && ly < P.y1 && lx >= X0 && lx < X1 && !(lx >= R0 && lx < R1)) { // the front face of the deck, boards on end, shaded toward the sand
+    if (lx < X0 + 1 || ly >= P.y1 - 1) return LN; const k = .96 - .38 * (ly - yt1) / H, col = Math.floor((lx - X0) / 3.4), fr = (lx - X0) / 3.4 - col; if (fr < .2) return cmul(PIERC.gap, k);
+    if (ly < yt1 + 1) return cmul(PIERC.wood[3], .96); return cmul(cmix(PIERC.wood[Math.floor(h2(col, 7, sd) * 3)], PIERC.grey, .3 * vn(col, 3, sd + 5)), k) }
+  if (ly >= yt0 + 5 && ly < P.y1 + 1 && lx >= X1 + 3.5 && lx < X1 + 6) return under(1 - .24 * (1 - (lx - X1 - 3.5) / 2.5)); // the shadow of the deck on the water
+  if (ly >= yt0 - 3 && ly < yt0 && lx >= X0 && lx < X1 + 5) return under(.8);
+  return under(1) }
+// how high above the ground a figure stands at (x, y) (world coordinates): on the deck, H; up the ramp, from 0 to H
+function deckLift(x, y) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
+  if (ly <= P.y1) return P.H; return Math.abs(lx - P.x) < P.rw ? P.H * (1 - (ly - P.y1) / P.ramp) : 0 }
+const objLift = o => o._lf === undefined ? (o._lf = deckLift(o.x, o.y)) : o._lf;
+// the kerbs: along the sides of the deck and of the ramp, across its end and under its front face, nothing for a bike to cross
+const DECKO = { id: 'jetty', type: 'jetty' };
+function deckBlocked(x, y, rad) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
+  const X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
+  return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 - 2) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 - 2) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)
+    || hit(X0 - 2, P.y1 - 3, R0 + .5, P.y1 + 1.4) || hit(R1 - .5, P.y1 - 3, X1 + 3, P.y1 + 1.4) || hit(R0 - 3, P.y1 - 3, R0 + .5, P.y1 + P.ramp) || hit(R1 - .5, P.y1 - 3, R1 + 3, P.y1 + P.ramp)) ? DECKO : false }
+let RLIFT = 0; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
+
 // ---- the village's own colours and textures ----
 const FV = { glass: [52, 64, 74], door: [112, 78, 52], plinth: [124, 120, 110], brick: [150, 70, 52], tar: [40, 36, 32], wood: [150, 114, 76], woodD: [100, 72, 48], woodL: [186, 152, 108] };
 // painted upright boards: a seam every few pixels, the paint faded and peeling in patches
@@ -48,23 +113,35 @@ const fvShingle = (c, seed = 1) => (x, n, z) => { const row = Math.floor(n / 2.4
 // w, d, h: width, depth, wall height; wall: 'board' or 'log'; col: the paint of the boards (the logs' own colour); roof: 'tin' or 'shingle';
 // wins: the x of the front windows; door: its x; shut: the colour of shutters; deco: things about it
 PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], trim = [236, 232, 216], roof = 'tin', roofCol = [120, 74, 56], porch = true, pw = 10, chim = 'brick', chimX = -16,
-    wins = [-18, 18], door = 0, shut = null, deco = [], seed = 3, sideWin = true, gate = 0 } = {}) => {
+    wins = [-18, 18], door = 0, shut = null, deco = [], seed = 3, sideWin = true, gate = 0, decay = .5, shutBad = [], fallen = 0, lampC = '255,214,160', lampFlick = false, tarp = null, dishAt = null, meter = null, lampX = null } = {}) => {
   const HW = w / 2, D = d, WALL = h, OVR = 3, RISE = Math.round(d * .3), RIDGE = WALL + RISE, eave = WALL - OVR * RISE / (D / 2), PD = 14, PZ = 4;
   const wallC = wall === 'log' ? col : col, wallT = wall === 'log' ? fvLogs(col, 3.2, seed) : fvBoards(col, 3.4, seed), roofT = roof === 'tin' ? fvTin(roofCol, seed) : fvShingle(roofCol, seed);
   const winZ0 = 9, winH = 11, winW = 9;
+  // the weather and the years on the walls: paint peeled to grey wood (mostly at the foot and under the eaves), boards gone soft and dark, a board missing, stains under the windows, damp green at the ground
+  const wearW = (base, sw) => (x0, n0, z) => { const x = sw ? n0 : x0, n = sw ? x0 : n0; let c = base(x0, n0, z), sd = seed + 40;
+    if (vn(x * .16 + n * .12, z * .3, sd) + (z < 9 ? .12 : 0) + (z > WALL - 4 ? .08 : 0) - decay * .2 > .78 - decay * .12) c = cmix(c, [146, 134, 116], .72);
+    if (z < 13 && vn(x * .35, z * .45, sd + 1) > .92 - decay * .08) c = cmix(c, [62, 48, 36], .75);
+    const bc = Math.floor(x / 3.4); if (z < 16 && h2(bc, 9, sd) < decay * .06 && ((z + h2(bc, 10, sd) * 9) % 12) < 6.5) c = [30, 26, 22];
+    for (const cx of sw ? [] : wins) if (Math.abs(x - cx) < winW / 2 + 1.2 && z < winZ0 && z > winZ0 - 8 && vn(x * .6, z * .25, sd + 2) > .35) c = cmul(c, .84);
+    if (z < 3.6 && vn(x * .4, n * .4 + z, sd + 3) > .5) c = cmix(c, [74, 92, 52], .4); return c };
+  const wallW = wearW(wallT);
+  // patches on the roof: a new sheet of bright tin, a repainted one, a square of tar paper, here and there a shingle gone
+  const roofP = (x, n, z) => { let c = roofT(x, n, z); const cx = Math.floor(x / 7), cn = Math.floor(n / 5), r = h2(cx, cn, seed + 60), sd = seed + 61;
+    if (r < decay * .24) { const q = h2(cx, cn, sd); const base = q < .4 ? [176, 176, 170] : q < .7 ? [92, 70, 62] : [44, 40, 36]; const fx = x - cx * 7, fn = n - cn * 5; if (fx < .5 || fn < .5) return cmul(base, .66); if (q < .4 && Math.abs(fx - 3.5) < .4) return cmul(base, .84); c = cmix(base, c, .12) }
+    else if (roof === 'shingle' && h2(Math.floor(x / 3), Math.floor(n / 2.4), seed + 62) < decay * .05) c = [38, 34, 30]; return c };
   const build = () => { const M = T3(), ctr = [0, D / 2, WALL / 2], rnd = mulberry(seed + 77);
     // the walls
-    t3face(M, [[-HW, 0, 3], [HW, 0, 3], [HW, 0, WALL], [-HW, 0, WALL]], wallC, ctr, { tex: wallT });
-    t3face(M, [[-HW, D, 3], [HW, D, 3], [HW, D, WALL], [-HW, D, WALL]], wallC, ctr, { tex: wallT });
-    t3face(M, [[-HW, 0, 3], [-HW, D, 3], [-HW, D, WALL], [-HW, 0, WALL]], wallC, ctr, { tex: wall === 'log' ? wallT : fvBoards(col, 3.4, seed + 1) });
-    t3face(M, [[HW, 0, 3], [HW, D, 3], [HW, D, WALL], [HW, 0, WALL]], wallC, ctr, { tex: wall === 'log' ? wallT : fvBoards(col, 3.4, seed + 1) });
+    t3face(M, [[-HW, 0, 3], [HW, 0, 3], [HW, 0, WALL], [-HW, 0, WALL]], wallC, ctr, { tex: wallW });
+    t3face(M, [[-HW, D, 3], [HW, D, 3], [HW, D, WALL], [-HW, D, WALL]], wallC, ctr, { tex: wallW });
+    t3face(M, [[-HW, 0, 3], [-HW, D, 3], [-HW, D, WALL], [-HW, 0, WALL]], wallC, ctr, { tex: wall === 'log' ? wearW(wallT, true) : wearW((x, n, z) => fvBoards(col, 3.4, seed + 1)(n, x, z), true) });
+    t3face(M, [[HW, 0, 3], [HW, D, 3], [HW, D, WALL], [HW, 0, WALL]], wallC, ctr, { tex: wall === 'log' ? wearW(wallT, true) : wearW((x, n, z) => fvBoards(col, 3.4, seed + 1)(n, x, z), true) });
     // the plinth of field stone, the corner boards (or the log ends)
     t3box(M, -HW - 1, -1, 0, HW + 1, D + 1, 3, FV.plinth, { tex: (x, n, z) => h2(Math.floor(x / 4), Math.floor(z / 1.5), seed) < .3 ? cmul(FV.plinth, .82) : FV.plinth });
     if (wall === 'log') for (let z = 3; z < WALL - 1; z += 3.2) for (const sx of [-1, 1]) t3box(M, sx * HW - (sx < 0 ? 3 : 1), -2.4, z, sx * HW + (sx < 0 ? 1 : 3), 1, z + 2.8, wallC, { zb: .3 });
     else for (const sx of [-1, 1]) t3box(M, sx * HW - 1, -.8, 3, sx * HW + 1, .4, WALL, trim, { zb: .3 });
     // the roof: two slopes, a ridge, the gables
-    t3face(M, [[-HW - OVR, -OVR, eave], [HW + OVR, -OVR, eave], [HW + OVR, D / 2, RIDGE], [-HW - OVR, D / 2, RIDGE]], roofCol, [0, D / 2, 0], { tex: roofT });
-    t3face(M, [[-HW - OVR, D + OVR, eave], [HW + OVR, D + OVR, eave], [HW + OVR, D / 2, RIDGE], [-HW - OVR, D / 2, RIDGE]], roofCol, [0, D / 2, 0], { tex: roofT });
+    t3face(M, [[-HW - OVR, -OVR, eave], [HW + OVR, -OVR, eave], [HW + OVR, D / 2, RIDGE], [-HW - OVR, D / 2, RIDGE]], roofCol, [0, D / 2, 0], { tex: roofP });
+    t3face(M, [[-HW - OVR, D + OVR, eave], [HW + OVR, D + OVR, eave], [HW + OVR, D / 2, RIDGE], [-HW - OVR, D / 2, RIDGE]], roofCol, [0, D / 2, 0], { tex: roofP });
     for (const x of [-HW, HW]) t3face(M, [[x, 0, WALL], [x, D, WALL], [x, D / 2, RIDGE]], wallC, ctr, { tex: wall === 'log' ? fvLogs(col, 3.2, seed + 2) : (X, N, Z) => ((Math.round(N) % 3) + 3) % 3 === 0 ? cmul(col, .82) : col });
     t3line(M, [-HW - OVR, D / 2, RIDGE + .4], [HW + OVR, D / 2, RIDGE + .4], cmul(roofCol, .65));
     t3line(M, [-HW - OVR, -OVR, eave - .3], [HW + OVR, -OVR, eave - .3], cmul(roofCol, .6));
@@ -76,11 +153,16 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
       t3box(M, chimX - 4.2, cn - 3.7, RIDGE + 9, chimX + 4.2, cn + 3.7, RIDGE + 10.6, [96, 92, 88]) }
     else { t3cyl(M, chimX, cn, 2, cz0, RIDGE + 12, [118, 110, 104], { topCol: [60, 56, 54] }); t3cyl(M, chimX, cn, 3.4, RIDGE + 12, RIDGE + 13.4, [88, 84, 82], { topCol: [60, 56, 54] }) }
     // the windows: frames, dark glass with a cross (lit by the engine at night), shutters, a flower box
-    const win = cx => { const fx0 = cx - winW / 2 - 1.4, fx1 = cx + winW / 2 + 1.4;
+    const win = (cx, wi) => { const fx0 = cx - winW / 2 - 1.4, fx1 = cx + winW / 2 + 1.4;
       t3face(M, [[fx0, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 + winH + 1.6], [fx0, -.3, winZ0 + winH + 1.6]], trim, null, { both: true, zb: .2 });
       t3face(M, [[cx - winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0 + winH], [cx - winW / 2, -.5, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(x - cx) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : null });
-      if (shut) for (const sd of [-1, 1]) { const x0 = cx + sd * (winW / 2 + 1.6), x1 = cx + sd * (winW / 2 + 5.4); t3face(M, [[Math.min(x0, x1), -.8, winZ0 - .6], [Math.max(x0, x1), -.8, winZ0 - .6], [Math.max(x0, x1), -.8, winZ0 + winH + .6], [Math.min(x0, x1), -.8, winZ0 + winH + .6]], shut, null, { both: true, zb: .6, tex: (x, n, z) => Math.abs(z - winZ0 - winH / 2) < .4 ? cmul(shut, .72) : shut }) } };
+      if (shut) for (const sd of [-1, 1]) { const st = shutBad[wi * 2 + (sd < 0 ? 0 : 1)] || 0; if (st === 2) continue; // (0: in its place, 1: hanging by one hinge, 2: gone)
+        const x0 = cx + sd * (winW / 2 + 1.6), x1 = cx + sd * (winW / 2 + 5.4), xa = Math.min(x0, x1), xb = Math.max(x0, x1), z0 = winZ0 - .6, z1 = winZ0 + winH + .6;
+        const stx = (x, n, z) => Math.abs(z - winZ0 - winH / 2) < .4 ? cmul(shut, .72) : (vn(x * .5, z * .3, seed + 44) > .8 - decay * .1 ? cmix(shut, [150, 140, 120], .6) : shut);
+        if (st === 1) { const hx = sd < 0 ? xb : xa, fx = sd < 0 ? xa : xb; t3face(M, [[hx, -.8, z0], [hx, -.8, z1], [fx - sd * -.6, -2.6, z1 - 4.4], [fx - sd * -.6, -2.6, z0 - 4.4]], shut, null, { both: true, zb: .6, tex: stx }) }
+        else t3face(M, [[xa, -.8, z0], [xb, -.8, z0], [xb, -.8, z1], [xa, -.8, z1]], shut, null, { both: true, zb: .6, tex: stx }) } };
     wins.forEach(win);
+    if (shut && fallen) { const fx = (fallen < 0 ? wins[0] - 14 : wins[wins.length - 1] + 14); t3box(M, fx, -17, 0, fx + 3.8, -5.5, 1.1, shut, { tex: (x, n, z) => (Math.round(n * 1.1) % 3) === 0 ? cmul(shut, .72) : shut }); t3box(M, fx + 4.4, -12, 0, fx + 7, -6, 1, cmul(shut, .86)) } // (a shutter that fell off lies where it fell)
     if (gate) { // wide double gates thrown open: the dark inside between the leaves, the planks of the floor
       const gw = gate / 2, gh = Math.min(WALL - 3, 19); t3face(M, [[door - gw, -.4, 3], [door + gw, -.4, 3], [door + gw, -.4, gh], [door - gw, -.4, gh]], [36, 30, 26], null, { both: true, inside: true, zb: .3 });
       t3face(M, [[door - gw, 0, 3], [door + gw, 0, 3], [door + gw, 12, 3], [door - gw, 12, 3]], [66, 54, 42], null, { both: true, zb: .2 });
@@ -105,17 +187,35 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
       if (k === 'net') t3face(M, [[-HW + 3, -1, 20], [-HW + 16, -1, 20], [-HW + 15, -1, 9], [-HW + 4, -1, 11]], [78, 74, 52], null, { both: true, zb: .55, tex: (x, n, z) => ((Math.round(x + z) % 3 === 0) || (Math.round(x - z) % 3 === 0)) ? [90, 86, 60] : null });
       if (k === 'oars') for (const ox of [HW - 7, HW - 4.5]) { t3line(M, [ox, -1.4, 3], [ox + 1.4, -1.4, 26], FV.woodL); t3line(M, [ox + .5, -1.4, 3], [ox + 1.9, -1.4, 26], FV.woodD); t3box(M, ox - .4, -2.2, 2, ox + 1.4, -1, 8, FV.woodL) }
       if (k === 'aerial') { t3line(M, [HW - 10, D / 2, RIDGE], [HW - 10, D / 2, RIDGE + 14], [80, 82, 86]); for (let q = 0; q < 4; q++) t3line(M, [HW - 10 - 5 + q * .8, D / 2, RIDGE + 8 + q * 1.6], [HW - 10 + 5 - q * .8, D / 2, RIDGE + 8 + q * 1.6], [80, 82, 86]) }
-      if (k === 'lamp') { t3line(M, [door + 8, -1.2, 22], [door + 8, -4, 22], [64, 64, 68]); t3box(M, door + 7, -5.2, 19.6, door + 9, -3.4, 21.8, [255, 236, 190], { clean: true }) }
+      if (k === 'dish') { const dx = HW - 15, dn = D * .62, dz = RIDGE + 3, pts = []; for (let q = 0; q < 12; q++) { const a = q / 12 * TAU; pts.push([dx + Math.cos(a) * 3.6, dn - 1.4 + Math.sin(a) * 1.5, dz + 2.2 + Math.sin(a) * 3.1]) }
+        t3face(M, pts, [196, 198, 194], [dx, dn + 3, dz], { both: true, zb: .5, tex: (x, n, z) => Math.hypot(x - dx, z - dz - 2.2) < 1 ? [90, 92, 96] : null }); t3line(M, [dx, dn + 1, RIDGE], [dx, dn - 1, dz + 2], [90, 92, 96]); t3line(M, [dx, dn - 1.4, dz + 2.2], [dx + 1, dn - 4.6, dz + 4.4], [70, 70, 74]) }
+      if (k === 'laundry') { const lx0 = -HW - 6, lx1 = -HW - 36, ln = D * .3, lz = 21, rnd2 = mulberry(seed + 91); t3post(M, lx0, ln, 1, lz + 1, FV.wood); t3post(M, lx1, ln, 1, lz + 1, FV.wood);
+        let prev = [lx0, ln, lz]; for (let i = 1; i <= 10; i++) { const u = i / 10, p2 = [lx0 + (lx1 - lx0) * u, ln, lz - 2.2 * Math.sin(u * Math.PI)]; t3line(M, prev, p2, [186, 180, 164]); prev = p2 }
+        for (const [u, c, wdt, hh] of [[.2, [226, 226, 214], 5, 8], [.42, [196, 70, 58], 4, 6], [.64, [84, 112, 150], 5, 9], [.84, [226, 206, 130], 4, 5]]) { const x = lx0 + (lx1 - lx0) * u, z = lz - 2.2 * Math.sin(u * Math.PI); t3face(M, [[x - wdt / 2, ln - .3, z], [x + wdt / 2, ln - .3, z], [x + wdt / 2 + rnd2() * .6, ln - .3, z - hh], [x - wdt / 2, ln - .3, z - hh + rnd2() * .8]], c, null, { both: true, fabric: true, zb: .4, clean: true }) } }
+      if (k === 'planter') for (const cx of wins.slice(0, 1)) { t3box(M, cx - 5.4, -3.2, 5.2, cx + 5.4, -.4, 8.2, [96, 70, 48]); for (let q = 0; q < 9; q++) M.dots.push([[cx - 4.6 + q * 1.15, -2, 8.6 + h2(q, 3, seed) * 2.4], q % 3 === 0 ? [164, 52, 46] : q % 3 === 1 ? [118, 98, 52] : [86, 110, 56]]) }
+      if (k === 'bucket') { t3cyl(M, door - pw - 6, -5, 2.2, 0, 5, [124, 128, 130], { topCol: [40, 44, 48] }); t3box(M, door - pw - 12, -7, 0, door - pw - 8, -3, 4.4, FV.wood) }
+      if (k === 'ladder') { const lx = HW + 2.4; for (const n of [10, 14.4]) t3line(M, [lx, n, 0], [lx - 1.2, n - 1.2, 25], FV.woodL); for (let z = 3; z < 24; z += 3.4) t3line(M, [lx - z * .05, 10, z], [lx - z * .05 - .3, 14.4 - z * .05, z], FV.woodD) }
+      if (k === 'tarp' && tarp) { const [tx0, tx1, tn0, tn1] = tarp, rz = n => eave + (n + OVR) * (RIDGE - eave) / (D / 2 + OVR) + .45, tc = [64, 112, 150];
+        t3face(M, [[tx0, tn0, rz(tn0)], [tx1, tn0, rz(tn0)], [tx1, tn1, rz(tn1)], [tx0, tn1, rz(tn1)]], tc, [0, D / 2, 0], { clean: true, tex: (x, n, z) => { const f = vn(x * .35, n * .5, seed + 70); const c = cmul(tc, .86 + .3 * f); return (Math.abs(x - (tx0 + tx1) / 2) < .35 || Math.abs(n - (tn0 + tn1) / 2) < .35) ? cmul(c, .8) : c } });
+        for (const [x, n] of [[tx0 + 3, tn0 + 2], [tx1 - 3, tn0 + 2.4], [(tx0 + tx1) / 2, tn1 - 2], [tx0 + 2, tn1 - 3.5], [tx1 - 2, tn1 - 3]]) t3box(M, x - 1.2, n - 1, rz(n), x + 1.2, n + 1, rz(n) + 1.8, [112, 108, 100], { clean: true }) }
+      if (k === 'kennel') { const kx = door + pw + 10; t3box(M, kx, -12, 0, kx + 10, -4, 6, [118, 82, 54], { tex: (x, n, z) => z > 5 ? [88, 62, 42] : ((Math.round(x * 1.2) % 3) === 0 ? [96, 66, 44] : [118, 82, 54]) }); t3face(M, [[kx - 1, -13, 6], [kx + 11, -13, 6], [kx + 11, -8, 9], [kx - 1, -8, 9]], [84, 78, 74], [kx + 5, -8, 0], { both: true }); t3face(M, [[kx + 3, -12.2, 0], [kx + 7, -12.2, 0], [kx + 7, -12.2, 4.4], [kx + 3, -12.2, 4.4]], [26, 22, 20], null, { both: true, inside: true, zb: .3 }) }
+      if (k === 'lamp') { const lx = lampX ?? door + 8; t3line(M, [lx, -1.2, 22], [lx, -4, 22], [64, 64, 68]); const lc = lampC.split(',').map(Number); t3box(M, lx - 1, -5.2, 19.6, lx + 1, -3.4, 21.8, lc.map(v => Math.min(255, v + 18)), { clean: true }) }
     }
+    // the electricity: a meter box on the front wall (glass, a turning disc, seals), a little switch box beside it, the cable up to the insulator under the eave
+    if (meter !== null) { const mx = meter, GL = [40, 50, 56];
+      t3box(M, mx - 2.8, -2.1, 12.2, mx + 2.8, -.3, 19.2, [160, 162, 158], { tex: (x, n, z) => (n < -1.9 && Math.abs(x - mx) < 2 && z > 14 && z < 18) ? (Math.abs(x - mx - .6) < .5 && Math.abs(z - 16) < .4 ? [214, 64, 52] : GL) : [160, 162, 158] });
+      t3box(M, mx + 3.6, -1.7, 14, mx + 5.8, -.3, 17.2, [118, 120, 120]); t3box(M, mx - .6, -2.5, 19.2, mx + .6, -2.1, 19.8, [64, 64, 68], { clean: true });
+      t3line(M, [mx, -1, 19.2], [mx, -1, WALL - 1.6], [30, 30, 32]); t3line(M, [mx + 4.7, -1, 17.2], [mx + 4.7, -1, 20.5], [30, 30, 32]); t3line(M, [mx + 4.7, -1, 20.5], [mx + 9, -1, 21.5], [30, 30, 32]);
+      t3box(M, mx - .8, -1.5, WALL - 2.8, mx + .8, -.2, WALL - 1.2, [236, 232, 220], { clean: true }) }
     return M };
   const sp = t3sprite(build, [0]), ax = sp[0].ax, ay = sp[0].ay;
   const P = (x, n, z) => t3p([x, n, z]);
   const L = [], WINS = []; wins.forEach((cx, i) => { const q = P(cx, 0, winZ0 + winH / 2); L.push({ x: q[0], y: q[1], r: 12, c: '255,206,128', a: .6, k: 'window', win: i }); L.push({ x: q[0], y: 2, r: 26, sy: .5, c: '255,196,120', a: .32, k: 'window', win: i });
     const a = P(cx - winW / 2, -.5, winZ0 + winH), b = P(cx + winW / 2, -.5, winZ0); WINS.push({ x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]), cx: Math.round(P(cx, -.5, 0)[0]), cz: Math.round(P(cx, -.5, winZ0 + winH * .62)[1]) }) });
-  if (deco.includes('lamp')) { const q = P(door + 8, -4.4, 20.6); L.push({ x: q[0], y: q[1], r: 8, c: '255,214,160', a: .9, k: 'lamp', glare: true }); L.push({ x: 0, y: 14, r: 44, sy: .6, c: '255,190,120', a: .6, k: 'lamp', fall: 'sq' }) }
+  if (deco.includes('lamp')) { const q = P(lampX ?? door + 8, -4.4, 20.6); L.push({ x: q[0], y: q[1], r: 8, c: lampC, a: .9, k: 'lamp', glare: true, flick: lampFlick }); L.push({ x: q[0] - 8, y: 14, r: 44, sy: .6, c: lampC, a: .6, k: 'lamp', fall: 'sq', flick: lampFlick }) }
   const ch = P(chimX, D * .55, RIDGE + (chim === 'brick' ? 11 : 14)), e0 = P(-HW - 3, -OVR, eave), e1 = P(HW + 3, -OVR, eave);
   const solids = [[-HW - 2, -D - 1, HW + 2, 0]]; if (porch && !gate) solids.push([door - pw, 0, door + pw, PD + 3]);
-  return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(HW - 2, 0, WALL), solids: solids.map(t3w) } };
+  return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
 
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.
 // kind: 'row' or 'motor' (an outboard on the stern); up: turned over on the beach; water: afloat (the ripples round it and its rocking are the water's: water.js) ----
@@ -206,6 +306,12 @@ PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W
 // ---- old cars for the village: a «копейка» (VAZ-2101, the Russian Fiat 124) with fishing rods on the roof, and a VW «жук» ----
 // Parked nose to the east like the car park's cars; x along the car, n from its near side (0) to the far side (W), z up.
 const CARC = { glass: [54, 68, 80], glassL: [124, 144, 156], dark: [36, 36, 38], chrome: [200, 202, 198], rust: [150, 86, 52] };
+// the weather on an old body: rust blooming from the sills, wheel arches and roof edges, primer and bare metal where the paint has gone, streaks of dirt
+// from the glass, green damp at the foot. Only the paint is worn (what the model gives back as the body's own colour).
+function carWear(c, x, n, z, sd, o = {}) { const lowZ = z < (o.low ?? 6), edge = z > (o.top ?? 99); let k = vn(x * .27 + n * .21, z * .42 + n * .15, sd + 30), thr = .7 - (lowZ ? .12 : 0) - (edge ? .08 : 0) - (o.age || 0) * .05;
+  if (k > thr + .1) return cmix(c, [118, 64, 40], .8); if (k > thr) return cmix(c, [158, 92, 56], .68);
+  if (vn(x * .5 + n * .3, z * .7, sd + 31) > .9 - (o.age || 0) * .02) return cmix(c, [124, 116, 108], .7); // primer
+  if (vn(x * .55, z * .05 + n * .4, sd + 32) > .66) c = cmul(c, .86); if (lowZ && z < 3.8 && vn(x * .35, z * .6, sd + 33) > .5) return cmix(c, [76, 92, 52], .45); return c }
 function oldCarWheels(M, hl, WHx, kind) { const rim = kind === 'beetle' ? [206, 206, 200] : [186, 190, 186];
   for (const [wx, wz] of WHx) { const tyre = [], hub = [], cap = []; for (let i = 0; i < 14; i++) { const a = i / 14 * TAU; tyre.push([wx + Math.cos(a) * 3.2, -.5, wz + Math.sin(a) * 3.2]); hub.push([wx + Math.cos(a) * 1.9, -.7, wz + Math.sin(a) * 1.9]); cap.push([wx + Math.cos(a) * .8, -.8, wz + Math.sin(a) * .8]) }
     t3face(M, tyre, [30, 30, 32], null, { both: true, zb: .6, clean: true }); t3face(M, hub, rim, null, { both: true, zb: .8, clean: true }); t3face(M, cap, [150, 154, 150], null, { both: true, zb: .9, clean: true }) } }
@@ -222,15 +328,15 @@ function copeikaModel(M, o) { const { body, rods = true } = o, L = 41, W = 15, H
       if (n > 5.4 && n < W - 5.4 && z > BH - 4.6 && z < BH - 1.8) return Math.round(z * 2) % 2 ? CARC.dark : CARC.chrome; if (z > BH - 6.2 && z < BH - 5.2) return CARC.chrome }
     if (x < -hl + .5) { if ((n < 4.2 || n > W - 4.2) && z > BH - 3.6 && z < BH - 1.8) return [196, 44, 36]; if (Math.abs(n - W / 2) < 2.4 && z > BH - 4.2 && z < BH - 2.8) return [236, 236, 228] }
     return null };
-  for (let i = 0; i < plan.length; i++) { const [x0, n0] = plan[i], [x1, n1] = plan[(i + 1) % plan.length]; t3face(M, [[x0, n0, G], [x1, n1, G], [x1, n1, BH], [x0, n0, BH]], body, ctr, { tex: (x, n, z) => side(x, n, z) || body }) }
-  t3face(M, plan.map(([x, n]) => [x, n, BH]), body, ctr, { tex: (x, n, z) => { const r = vn(x * .3, n * .3, 21); if (r > .86 && x > c1 + 1) return cmix(body, CARC.rust, .25); return (x > c1 + 1 && Math.abs(n - W / 2) < .4) || (x < c0 - 1 && Math.abs(n - W / 2) < .3) ? bodyD : body } }); // (the bonnet and the boot lid)
+  for (let i = 0; i < plan.length; i++) { const [x0, n0] = plan[i], [x1, n1] = plan[(i + 1) % plan.length]; t3face(M, [[x0, n0, G], [x1, n1, G], [x1, n1, BH], [x0, n0, BH]], body, ctr, { tex: (x, n, z) => side(x, n, z) || carWear(body, x, n, z, 40, { low: 6.2, top: BH - 2.4, age: 1 }) }) }
+  t3face(M, plan.map(([x, n]) => [x, n, BH]), body, ctr, { clean: true, tex: (x, n, z) => { if ((x > c1 + 1 && Math.abs(n - W / 2) < .4) || (x < c0 - 1 && Math.abs(n - W / 2) < .3)) return bodyD; return carWear(body, x * 1.4, n, 1 + (n < 3 || n > W - 3 ? 7 : 0) + (x > hl - 4 || x < -hl + 4 ? 0 : 4), 41, { low: 6, age: 1 }) } }); // (the bonnet and the boot lid)
   // the cabin: a short trapezoid, the screens sloping, the side glass split by a pillar
   const t0 = c0 + 4, t1 = c1 - 5, i0 = 1.2, i1 = W - 1.2, gctr = [(c0 + c1) / 2, W / 2, BH + 2];
   const glassT = (x, n, z) => (Math.abs(x - (c0 + c1) / 2 + 1.6) < .5 || z > H - .5) ? body : ((x - z * .5) % 6 < .9 ? CARC.glassL : CARC.glass);
   t3face(M, [[c0, i0, BH], [c1, i0, BH], [t1, i0 + .8, H], [t0, i0 + .8, H]], CARC.glass, gctr, { tex: glassT }); t3face(M, [[c0, i1, BH], [c1, i1, BH], [t1, i1 - .8, H], [t0, i1 - .8, H]], CARC.glass, gctr);
   t3face(M, [[c1, i0, BH], [c1, i1, BH], [t1, i1 - .8, H], [t1, i0 + .8, H]], CARC.glass, gctr, { tex: (x, n, z) => (n - z * .5) % 7 < .9 ? CARC.glassL : CARC.glass });
   t3face(M, [[c0, i0, BH], [c0, i1, BH], [t0, i1 - .8, H], [t0, i0 + .8, H]], CARC.glass, gctr);
-  t3face(M, [[t0, i0 + .8, H], [t1, i0 + .8, H], [t1, i1 - .8, H], [t0, i1 - .8, H]], body, gctr, { clean: true, tex: (x, n) => vn(x * .35, n * .35, 3) > .84 ? cmix(body, CARC.rust, .25) : body });
+  t3face(M, [[t0, i0 + .8, H], [t1, i0 + .8, H], [t1, i1 - .8, H], [t0, i1 - .8, H]], body, gctr, { clean: true, tex: (x, n) => carWear(body, x * 1.2, n, 3, 42, { low: 6, age: 1 }) });
   oldCarWheels(M, hl, WHx, 'copeika');
   for (const sx of [-1, 1]) { t3box(M, sx * (hl + .4) - .9, -.4, 3, sx * (hl + .4) + .9, W + .4, 4.4, CARC.chrome); t3box(M, sx * (hl + .4) - .5, 2.4, 2.4, sx * (hl + .4) + .5, 3.6, 4.4, [150, 152, 148]); t3box(M, sx * (hl + .4) - .5, W - 3.6, 2.4, sx * (hl + .4) + .5, W - 2.4, 4.4, [150, 152, 148]) }
   t3line(M, [c1 + .6, -.2, BH + 1.4], [c1 + 1.3, -1.8, BH + 2], [30, 30, 32]); t3box(M, c1 + .9, -2.6, BH + 1.4, c1 + 2.3, -1.6, BH + 2.6, [60, 60, 64]); // the driver's mirror
@@ -253,8 +359,8 @@ function beetleModel(M, o) { const { body } = o, L = 40, W = 15, hl = L / 2, nc 
     if (n < nc) { for (const wx of [-12.6, 12.2]) { const r = Math.hypot(x - wx, z - 3.2); if (r < 4.2 && z < 5.6) return CARC.dark }
       if (z < G + 1.8 + 1.4 * vn(x * .3, 2, 5)) return cmix(body, [92, 76, 56], .5); if (vn(x * .4, z * .5, 19) > .8 && z < 6.4) return CARC.rust }
     return null };
-  for (let i = 0; i < N; i++) for (let j = 0; j < rings[i].length - 1; j++) t3face(M, [rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], rings[i + 1][j]], body, [rings[i][0][0], nc, G + 2], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || body });
-  for (const i of [0, N]) t3face(M, rings[i], body, [rings[i][0][0] + (i ? -4 : 4), nc, G + 3], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || body });
+  for (let i = 0; i < N; i++) for (let j = 0; j < rings[i].length - 1; j++) t3face(M, [rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], rings[i + 1][j]], body, [rings[i][0][0], nc, G + 2], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 6, top: 7.8, age: .6 }) });
+  for (const i of [0, N]) t3face(M, rings[i], body, [rings[i][0][0] + (i ? -4 : 4), nc, G + 3], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 6, top: 7.8, age: .6 }) });
   // the cabin: an egg, narrower than the tub: a band of glass under a body-coloured roof, a pillar behind the doors, the windscreen split, a small rear window
   const xm = -1.6, hx = 11.2, roofT = [[-1, 8.8], [-.55, 12.6], [-.15, 15], [.2, 15], [.6, 13.2], [1, 9.2]], cw = x => 6.1 * Math.pow(Math.max(0, 1 - ((x - xm) / hx) ** 2), .36), roof = x => interp(roofT, (x - xm) / hx);
   const cab = []; for (let i = 0; i <= 16; i++) { const x = xm - hx + 2 * hx * i / 16, w = cw(x), t = roof(x), z0 = tub(x) - .6, R = []; for (let k = 0; k <= 8; k++) { const th = Math.PI - k * Math.PI / 8; R.push([x, nc + w * Math.cos(th), z0 + Math.max(.3, t - z0) * Math.pow(Math.sin(th), .8)]) } cab.push(R) }
@@ -263,7 +369,7 @@ function beetleModel(M, o) { const { body } = o, L = 40, W = 15, hl = L / 2, nc 
     if (x < -8.6) return dn < cw(x) * .8 ? GL : null; // the rear window
     if (z > t - 1.3 && dn < cw(x) * .62) return null; // the roof
     if (Math.abs(x + 2.9) < .6) return null; return ((x - z * .5) % 6 < .9) ? GLL : GL };
-  for (let i = 0; i < 16; i++) for (let j = 0; j < 8; j++) t3face(M, [cab[i][j], cab[i][j + 1], cab[i + 1][j + 1], cab[i + 1][j]], body, [xm, nc, G + 5], { clean: true, tex: (x, n, z) => cabTex(x, n, z) || body });
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 8; j++) t3face(M, [cab[i][j], cab[i][j + 1], cab[i + 1][j + 1], cab[i + 1][j]], body, [xm, nc, G + 5], { clean: true, tex: (x, n, z) => cabTex(x, n, z) || carWear(body, x, n, z * .7, 51, { low: 3, age: .6 }) });
   oldCarWheels(M, hl, [[-12.6, 3.2], [12.2, 3.2]], 'beetle');
   t3box(M, -12.6 - 5, -.2, G - .4, 12.2 + 5, 1.6, G + .8, CARC.dark); // the running board
   for (const sx of [-1, 1]) { const x = sx * (hl + .9); t3box(M, x - .8, nc - 5.8, 3, x + .8, nc + 5.8, 4.3, CARC.chrome); t3box(M, x - .5, nc - 4.2, 2.4, x + .5, nc - 3.2, 4.3, [150, 152, 148]); t3box(M, x - .5, nc + 3.2, 2.4, x + .5, nc + 4.2, 4.3, [150, 152, 148]) }
