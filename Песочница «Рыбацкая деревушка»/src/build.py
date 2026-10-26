@@ -1,8 +1,8 @@
 """Build the sandbox «Рыбацкая деревушка» from the main game: python3 build.py   (writes ../index.html)
-The sandbox's own work is in pf.js (the village's prefabs) and place.js (PLACES.buhta): edit those and build again. Everything else is
+The sandbox's own work is in pf.js (the village's prefabs), water.js (the living water) and place.js (PLACES.buhta): edit those and build again. Everything else is
 the main game (Осенняя тропа (2)/index.html) with the small engine changes listed below.
 Takes the main game (Осенняя тропа (2)/index.html), switches it to the one-place sandbox mode, adds the engine bits the village
-needs (a sandy beach, the open water of a bay, glints, the sound of water), and injects pf.js (prefabs) and place.js (PLACES.buhta).
+needs (a sandy beach, the open water of a bay, its waves and surf, the sound of water), and injects pf.js (prefabs), water.js and place.js (PLACES.buhta).
 Every replacement must match exactly once (or nothing is written)."""
 import os, sys, re
 
@@ -11,7 +11,7 @@ SRC = os.path.join(HERE, '..', '..', 'Осенняя тропа (2)', 'index.htm
 out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..')
 
 s = open(SRC, encoding='utf-8').read()
-PF = open(os.path.join(HERE, 'pf.js'), encoding='utf-8').read()
+PF = open(os.path.join(HERE, 'pf.js'), encoding='utf-8').read() + '\n' + open(os.path.join(HERE, 'water.js'), encoding='utf-8').read()
 PLACE = open(os.path.join(HERE, 'place.js'), encoding='utf-8').read()
 
 
@@ -72,10 +72,16 @@ rep("if (l.y >= l.gy) { l.state = 1; l.y = l.gy } }", "if (l.y >= l.gy) { l.stat
 rep("mat === 'pond' ? .05 : mat === 'forest' ? .7 : .34", "mat === 'pond' ? .05 : mat === 'lake' ? .02 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34")
 
 # ---- glints on the open water, and the sound of it near the shore ----
-rep("drawBrooks(cx0, cy0); drawPuddles(cx0, cy0);", "drawBrooks(cx0, cy0); drawLakeGlints(cx0, cy0); drawPuddles(cx0, cy0);")
+rep("drawBrooks(cx0, cy0); drawPuddles(cx0, cy0);", "drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);")
 rep("  lvl(SND.stream, .32 * Math.max(prox * prox, Math.min(1.4, fl * fl)), 1.2);",
     "  { let lk = 1e9; for (const L of layersNear(R.x, R.y)) if (L.mat === 'lake') lk = Math.min(lk, layerD(L, R.x, R.y)); const wl = clamp(1 - Math.max(0, lk) / 90, 0, 1) * (.35 + .4 * Math.min(1, WIND.s * 1.5)); // (the water of a big lake lapping, near its shore)\n"
-    "    lvl(SND.stream, .32 * Math.max(prox * prox, Math.min(1.4, fl * fl), wl * wl), 1.2) }")
+    "    lvl(SND.stream, .32 * Math.max(prox * prox, Math.min(1.4, fl * fl), wl * wl * (.72 + .28 * Math.sin(WS.ph * TAU))), 1.2) }") # (the lapping swells and ebbs with the waves)
+
+# ---- boats afloat rock on the water (an object's own offset, set by the water's code) ----
+rep("const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));", "const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0));")
+
+# ---- the game clock and the pause, for the debug hooks (a still frame at a given moment of the waves) ----
+rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, WLAY:')
 
 # ---- the prefabs and the place ----
 banner = "// =====================================================================================================================\n// PLACE: Турбаза «Студёный ключ» — the start of the game and the player's base."

@@ -5,10 +5,9 @@ const BAYP = P(['#22394a', '#284456', '#2e4e60', '#36596b', '#466a7a', '#5f8090'
 // the colour of the open water of a bay at distance d (negative: inside) from its shore
 function bayColor(x, y, d) {
   if (d > -1.3) return GW.wetsand[quant(vn(x * .3, y * .3, SEED + 590), x, y, 2)];
-  if (d > -3.4 && vn(x * .35 - y * .1, y * .5, SEED + 591) > .42) return [214, 226, 228]; // foam
   if (d > -9) return cmix(BAYP[5], BEACHP[1], clamp(.55 - (-d - 3.4) * .09, 0, .55)); // sand showing through the shallows
   const dep = clamp(-d / 110, 0, 1), nn = vn(x * .05, y * .12, SEED + 593) * .6 + vn(x * .16, y * .5, SEED + 594) * .4; let c = BAYP[quant(.18 + dep * .24 + nn * .5, x, y, 6, .5)];
-  const st = vn(x * .05 + y * .01, y * .75, SEED + 595); if (st > .8) c = BAYP[4]; if (st > .9) c = [150, 176, 186]; return c }
+  return c } // (no streaks of light baked in: the glints and the ripples are the water's own, drawn moving)
 // jagged stones on a jittered grid, lit from the upper left: how far from the gap between stones, the stone's tone and where on it
 function stoneCell(x, y, S, sd) { const gx = x / S, gy = y / S, ix = Math.floor(gx), iy = Math.floor(gy); let d1 = 9, d2 = 9, id = 0, ox = 0, oy = 0;
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const a = ix + i, b = iy + j, cx = a + .15 + .7 * h2(a, b, sd), cy = b + .15 + .7 * h2(a, b, sd + 1), dx = gx - cx, dy = (gy - cy) * 1.25, d = dx * dx + dy * dy;
@@ -17,26 +16,23 @@ function stoneCell(x, y, S, sd) { const gx = x / S, gy = y / S, ix = Math.floor(
 // an embankment across the water: a gravel top with two ruts and dry sedge verges, rough stone riprap on both slopes (the south slope,
 // turned to us, is the broader), waves breaking white on the north side. L.w is the whole width from the middle to the south toe.
 let SKIPL = null; // (a layer asked for the ground that lies below it)
+const DAM_NS = 14.5; // (where the stones of the north slope end and the water begins)
+const DAMG = { best: 0, sd: 1, rim: 0 }; // the distance to the dam's line, which side, and the distance of the water's edge from the line
+function damGeom(L, x, y) { let best = 1e9, sd = 1; const P = L.line; for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1), dd = Math.hypot(x - ax - dx * u, y - ay - dy * u); if (dd < best) { best = dd; sd = dx * (y - ay) - dy * (x - ax) >= 0 ? 1 : -1 } }
+  DAMG.best = best; DAMG.sd = sd; DAMG.rim = DAM_NS + (vn(x * .2, 1, SEED + 51) - .5) * 1.6; return DAMG }
 function damColor(L, x, y, d) {
-  let best = 1e9, sd = 1; const P = L.line; for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1), dd = Math.hypot(x - ax - dx * u, y - ay - dy * u); if (dd < best) { best = dd; sd = dx * (y - ay) - dy * (x - ax) >= 0 ? 1 : -1 } }
-  const TOP = 9, VG = 12, NS = 14.5, e = (vn(x * .2, 1, SEED + 51) - .5) * 1.6;
+  const g = damGeom(L, x, y), best = g.best, sd = g.sd;
+  const TOP = 9, VG = 12, NS = DAM_NS, e = g.rim - DAM_NS;
   if (best < TOP + e * .5) { if (Math.abs(best - 4.8) < 1) return G.rut; const v = .55 + (fbm(x * .05, y * .05, SEED + 9) - .5) * .3 + (vn(x * .18, y * .18, SEED + 12) - .5) * .1; let c = PAL.stone[quant(clamp(v, 0, 1), x, y, 5, .35)]; const st = h2(x, y, SEED + 10); if (st < .012) c = PAL.stone[4]; else if (st < .03) c = PAL.stone[2]; return c }
   if (best < VG + e) return K_sedge(x, y);
   if (sd < 0) { if (best < NS + e) { const s = stoneCell(x, y, 3.4, 61); if (s.gap < .12) return [52, 50, 46]; return PAL.stone[quant(.5 + (-s.oy * .8 - s.ox * .5 + (s.id - .5) * .4), x, y, 5, .4)] }
-    SKIPL = L; const c = groundColor(x, y); SKIPL = null; const lk = layersNear(x, y).some(B => B.mat === 'lake' && layerD(B, x, y) < 0); if (lk && best < NS + e + 2.4 && vn(x * .3 - 2, y * .4, SEED + 53) > .5) return [214, 226, 228]; return c }
+    SKIPL = L; const c = groundColor(x, y); SKIPL = null;  return c }
   const t = clamp((best - VG - e) / Math.max(4, L.w - VG - 3), 0, 1), s = stoneCell(x, y * 1.15, 4.2, 72); // the broad stone face on the south
   if (t < .1) return PAL.stone[3]; if (s.gap < .1) return [40, 38, 36];
   let c = PAL.stone[quant(clamp(.55 - s.oy * .5 - s.ox * .3 + (s.id - .5) * .5 - t * .55, 0, 1), x, y, 5, .45)];
   if (t > .8 && vn(x * .3, y, SEED + 74) > .45) c = PAL.moss[1 + (h2(x, y, SEED + 75) < .5 ? 1 : 0)]; return c }
 const K_sedge = (x, y) => K_q(h2(x, y, SEED + 67) < .45 ? PAL.straw : PAL.sedge, .4 + vn(x * .3, y * .3, SEED + 68) * .5, x, y);
 const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
-// glints on the open water: small bright flecks that come and go, more of them in wind and sun
-function drawLakeGlints(cx0, cy0) { const sun = (.25 + .75 * LT.day) * (.5 + .5 * Math.min(1, WIND.s * 1.6 + .25)); if (sun < .05) return;
-  const n = 90, tt = Math.floor(t * 2.2);
-  for (let k = 0; k < n; k++) { const ph = (t * 2.2 + h2(k, 3, 7) * 9) % 3, a = Math.sin(Math.min(1, ph / 3) * Math.PI); if (a < .15) continue; const g = Math.floor(t * 2.2 / 3 + h2(k, 4, 8) * 9);
-    const x = Math.floor(cx0 + h2(k, g, 11) * W), y = Math.floor(cy0 + h2(k, g, 12) * H), h = layerAt(x, y); if (!h.L || h.L.mat !== 'lake' || h.L.pal !== 'bay' || h.d > -6) continue;
-    ctx.fillStyle = `rgba(214,232,238,${(a * .75 * sun).toFixed(2)})`; ctx.fillRect(x, y, h2(k, g, 13) < .3 ? 2 : 1, 1) } }
-
 // ---- the village's own colours and textures ----
 const FV = { glass: [52, 64, 74], door: [112, 78, 52], plinth: [124, 120, 110], brick: [150, 70, 52], tar: [40, 36, 32], wood: [150, 114, 76], woodD: [100, 72, 48], woodL: [186, 152, 108] };
 // painted upright boards: a seam every few pixels, the paint faded and peeling in patches
@@ -122,7 +118,7 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
   return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(HW - 2, 0, WALL), solids: solids.map(t3w) } };
 
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.
-// kind: 'row' or 'motor' (an outboard on the stern); up: turned over on the beach; water: afloat, with the ripples round it ----
+// kind: 'row' or 'motor' (an outboard on the stern); up: turned over on the beach; water: afloat (the ripples round it and its rocking are the water's: water.js) ----
 PF.boat = ({ kind = 'row', col = [66, 112, 150], L = 46, up = false, water = false, flip = false, seed = 1 } = {}) => {
   const B = kind === 'motor' ? 9.2 : 7.6, H = kind === 'motor' ? 8 : 6.8, N = 18, ZM = H + 2.4, sg = flip ? -1 : 1, inner = [176, 142, 94], rim = [214, 186, 136];
   const beam = t => { const u = 2 * t - 1, a = Math.abs(u); return B * (u > 0 ? Math.pow(Math.max(0, 1 - Math.pow(a, 2.2)), .8) : Math.pow(Math.max(0, 1 - Math.pow(a, 4)), .55)) };
@@ -145,7 +141,6 @@ PF.boat = ({ kind = 'row', col = [66, 112, 150], L = 46, up = false, water = fal
     // the stem post
     t3line(M, G(1, 0), [X(1), 0, Z(sheer(1) + 1.4)], rim);
     if (up) for (const t of [.3, .7]) t3box(M, X(t) - 1.2, -beam(t) * .5, 0, X(t) + 1.2, beam(t) * .5, Z(sheer(t) * .34), cmul(FV.wood, .8)); // (rests under a turned-over boat)
-    if (water) t3face(M, Array.from({ length: 20 }, (_, i) => [Math.cos(i / 20 * TAU) * (L / 2 + 5), Math.sin(i / 20 * TAU) * (B + 3.4), .2]), [150, 190, 204], null, { both: true, flat: true, z: -50, tex: (x, n) => { const rr = Math.hypot(x / (L / 2 + 5), n / (B + 3.4)); if (rr > 1 || rr < .82) return null; return h2(Math.round(x), Math.round(n), seed) < .5 ? [150, 190, 204] : null } });
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, flat: false, solids: water ? [] : [[-L / 2 - 1, -B - 1.5, L / 2 + 1, B + 1.5]].map(t3w) } };
 
@@ -207,3 +202,73 @@ PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W
     t3face(M, [[W + 2, -2, rz - 5], [0, -2, rz + 4], [0, D + 2, rz + 4], [W + 2, D + 2, rz - 5]], [96, 70, 48], [0, D / 2, 14], { tex: x => ((Math.round(x) % 3) + 3) % 3 === 0 ? [72, 52, 36] : [102, 76, 52] });
     t3face(M, [[-W - 2, -2.2, rz - 5], [W + 2, -2.2, rz - 5], [0, -2.2, rz + 4]], FV.wood, null, { both: true, zb: .2 }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-9.5, -10, 9.5, 2]].map(t3w) } };
+
+// ---- old cars for the village: a «копейка» (VAZ-2101, the Russian Fiat 124) with fishing rods on the roof, and a VW «жук» ----
+// Parked nose to the east like the car park's cars; x along the car, n from its near side (0) to the far side (W), z up.
+const CARC = { glass: [54, 68, 80], glassL: [124, 144, 156], dark: [36, 36, 38], chrome: [200, 202, 198], rust: [150, 86, 52] };
+function oldCarWheels(M, hl, WHx, kind) { const rim = kind === 'beetle' ? [206, 206, 200] : [186, 190, 186];
+  for (const [wx, wz] of WHx) { const tyre = [], hub = [], cap = []; for (let i = 0; i < 14; i++) { const a = i / 14 * TAU; tyre.push([wx + Math.cos(a) * 3.2, -.5, wz + Math.sin(a) * 3.2]); hub.push([wx + Math.cos(a) * 1.9, -.7, wz + Math.sin(a) * 1.9]); cap.push([wx + Math.cos(a) * .8, -.8, wz + Math.sin(a) * .8]) }
+    t3face(M, tyre, [30, 30, 32], null, { both: true, zb: .6, clean: true }); t3face(M, hub, rim, null, { both: true, zb: .8, clean: true }); t3face(M, cap, [150, 154, 150], null, { both: true, zb: .9, clean: true }) } }
+// the «копейка»: a three-box saloon: a long low bonnet, a short cabin with sloping screens, a boot; round headlamps, a chrome grille and bumpers
+function copeikaModel(M, o) { const { body, rods = true } = o, L = 41, W = 15, H = 14.2, BH = 8.4, hl = L / 2, G = 2.6, ch = 2, c0 = -9.5, c1 = 6.5, bodyD = cmul(body, .78), ctr = [0, W / 2, BH / 2];
+  const plan = [[-hl + ch, 0], [hl - ch, 0], [hl, ch], [hl, W - ch], [hl - ch, W], [-hl + ch, W], [-hl, W - ch], [-hl, ch]], WHx = [[-hl + 7.2, 3.2], [hl - 7, 3.2]];
+  const side = (x, n, z) => {
+    if (n < .5) { for (const [wx, wz] of WHx) { const r = Math.hypot(x - wx, z - wz); if (r < 4.2 && z < 5.4) return CARC.dark; if (r < 5 && z < 6.2) return bodyD }
+      if (z < 5 + 1.4 * vn(x * .3, 2, 5)) return cmix(body, [96, 74, 54], .5);
+      if (vn(x * .35, z * .6, 17) > .8 && z < 6.6) return CARC.rust; if (z > BH - 1.2 && z < BH - .5) return bodyD; // the sill's rust, the swage line
+      for (const dx of [c0 + 4.2, c0 + 10.4]) if (Math.abs(x - dx) < .28 && z > 3.4) return bodyD; // door seams
+      for (const dx of [c0 + 9.4, c0 + 15.6]) if (Math.abs(x - dx) < .9 && Math.abs(z - (BH - 2)) < .35) return CARC.chrome } // handles
+    if (x > hl - .5) { if (Math.hypot(n - 3.1, z - (BH - 3.2)) < 1.5 || Math.hypot(n - (W - 3.1), z - (BH - 3.2)) < 1.5) return [246, 242, 216]; if (Math.hypot(n - 3.1, z - (BH - 3.2)) < 1.9 || Math.hypot(n - (W - 3.1), z - (BH - 3.2)) < 1.9) return CARC.chrome;
+      if (n > 5.4 && n < W - 5.4 && z > BH - 4.6 && z < BH - 1.8) return Math.round(z * 2) % 2 ? CARC.dark : CARC.chrome; if (z > BH - 6.2 && z < BH - 5.2) return CARC.chrome }
+    if (x < -hl + .5) { if ((n < 4.2 || n > W - 4.2) && z > BH - 3.6 && z < BH - 1.8) return [196, 44, 36]; if (Math.abs(n - W / 2) < 2.4 && z > BH - 4.2 && z < BH - 2.8) return [236, 236, 228] }
+    return null };
+  for (let i = 0; i < plan.length; i++) { const [x0, n0] = plan[i], [x1, n1] = plan[(i + 1) % plan.length]; t3face(M, [[x0, n0, G], [x1, n1, G], [x1, n1, BH], [x0, n0, BH]], body, ctr, { tex: (x, n, z) => side(x, n, z) || body }) }
+  t3face(M, plan.map(([x, n]) => [x, n, BH]), body, ctr, { tex: (x, n, z) => { const r = vn(x * .3, n * .3, 21); if (r > .86 && x > c1 + 1) return cmix(body, CARC.rust, .25); return (x > c1 + 1 && Math.abs(n - W / 2) < .4) || (x < c0 - 1 && Math.abs(n - W / 2) < .3) ? bodyD : body } }); // (the bonnet and the boot lid)
+  // the cabin: a short trapezoid, the screens sloping, the side glass split by a pillar
+  const t0 = c0 + 4, t1 = c1 - 5, i0 = 1.2, i1 = W - 1.2, gctr = [(c0 + c1) / 2, W / 2, BH + 2];
+  const glassT = (x, n, z) => (Math.abs(x - (c0 + c1) / 2 + 1.6) < .5 || z > H - .5) ? body : ((x - z * .5) % 6 < .9 ? CARC.glassL : CARC.glass);
+  t3face(M, [[c0, i0, BH], [c1, i0, BH], [t1, i0 + .8, H], [t0, i0 + .8, H]], CARC.glass, gctr, { tex: glassT }); t3face(M, [[c0, i1, BH], [c1, i1, BH], [t1, i1 - .8, H], [t0, i1 - .8, H]], CARC.glass, gctr);
+  t3face(M, [[c1, i0, BH], [c1, i1, BH], [t1, i1 - .8, H], [t1, i0 + .8, H]], CARC.glass, gctr, { tex: (x, n, z) => (n - z * .5) % 7 < .9 ? CARC.glassL : CARC.glass });
+  t3face(M, [[c0, i0, BH], [c0, i1, BH], [t0, i1 - .8, H], [t0, i0 + .8, H]], CARC.glass, gctr);
+  t3face(M, [[t0, i0 + .8, H], [t1, i0 + .8, H], [t1, i1 - .8, H], [t0, i1 - .8, H]], body, gctr, { clean: true, tex: (x, n) => vn(x * .35, n * .35, 3) > .84 ? cmix(body, CARC.rust, .25) : body });
+  oldCarWheels(M, hl, WHx, 'copeika');
+  for (const sx of [-1, 1]) { t3box(M, sx * (hl + .4) - .9, -.4, 3, sx * (hl + .4) + .9, W + .4, 4.4, CARC.chrome); t3box(M, sx * (hl + .4) - .5, 2.4, 2.4, sx * (hl + .4) + .5, 3.6, 4.4, [150, 152, 148]); t3box(M, sx * (hl + .4) - .5, W - 3.6, 2.4, sx * (hl + .4) + .5, W - 2.4, 4.4, [150, 152, 148]) }
+  t3line(M, [c1 + .6, -.2, BH + 1.4], [c1 + 1.3, -1.8, BH + 2], [30, 30, 32]); t3box(M, c1 + .9, -2.6, BH + 1.4, c1 + 2.3, -1.6, BH + 2.6, [60, 60, 64]); // the driver's mirror
+  t3line(M, [c0 + 4, W - 1.4, H], [c0 + 3.4, W - 1.4, H + 4], [60, 60, 64]); // the aerial
+  if (rods) { for (const x of [c0 + 3, c1 - 6]) t3line(M, [x, 1.8, H + .4], [x, W - 1.8, H + .4], [40, 40, 42]); // a rack of two bars, three fishing rods lashed on it pointing back, a tackle box
+    for (const [n, dz, c] of [[4.4, .9, [118, 96, 60]], [7.5, 1.3, [70, 58, 40]], [10.4, .9, [150, 120, 70]]]) t3line(M, [-hl - 6, n, H + .6 + dz], [c1 - 2, n - .4, H + .6 + dz + .2], c);
+    t3box(M, c0 + 6, 9.4, H + .4, c0 + 11.5, 12.6, H + 2.2, [64, 88, 66], { clean: true }) }
+}
+// the «жук»: a low round tub with a bulge at each wheel, an egg-shaped cabin on it, the headlamps on the front fenders, chrome bumpers, the engine lid
+function beetleModel(M, o) { const { body } = o, L = 40, W = 15, hl = L / 2, nc = W / 2, G = 2.8, bodyD = cmul(body, .8), N = 22, K = 8, GL = [44, 62, 78], GLL = [118, 142, 158];
+  const interp = (T, u) => { for (let i = 0; i < T.length - 1; i++) if (u <= T[i + 1][0]) { const f = (u - T[i][0]) / (T[i + 1][0] - T[i][0]), s = f * f * (3 - 2 * f); return T[i][1] + (T[i + 1][1] - T[i][1]) * s } return T[T.length - 1][1] };
+  const tubT = [[-1, 6.6], [-.8, 8.2], [-.5, 8.6], [0, 8.6], [.5, 8.8], [.8, 8.6], [1, 7.2]], wT = [[-1, 10.4], [-.85, 13], [-.6, 14.4], [-.2, 14], [.3, 14], [.6, 14.4], [.85, 13.2], [1, 10.6]];
+  const tub = x => interp(tubT, x / hl), wid = x => interp(wT, x / hl) + 1.4 * Math.exp(-(((x - 12.4) / 4) ** 2)) + 1.3 * Math.exp(-(((x + 12.6) / 4.2) ** 2));
+  // the tub: from the ground up the sides, over a low arch (the bonnet and the engine lid)
+  const rings = []; for (let i = 0; i <= N; i++) { const x = -hl + L * i / N, w = wid(x), t = tub(x), zs = t - 1.7, R = [[x, nc - w / 2 * .93, G], [x, nc - w / 2, zs - .8]];
+    for (let k = 0; k <= K; k++) { const th = Math.PI - k * Math.PI / K; R.push([x, nc + w / 2 * Math.cos(th) * (1 - .1 * Math.sin(th)), zs + 1.7 * Math.pow(Math.sin(th), .7)]) } R.push([x, nc + w / 2, zs - .8], [x, nc + w / 2 * .93, G]); rings.push(R) }
+  const tubTex = (x, n, z) => { const dn = Math.abs(n - nc);
+    if (x > hl - 7.4 && x < hl - 2.4 && Math.abs(dn - 5) < 1.7 && z > 6) { const d = Math.hypot(x - (hl - 4.8), dn - 5); return d < 1.2 ? [250, 246, 220] : d < 1.65 ? CARC.chrome : null } // the headlamps, set on the fenders
+    if (x < -hl + 8 && x > -hl + 2.2 && dn < 4.6 && z > 7 && Math.round(x * 1.2) % 2 === 0) return bodyD; // the engine lid's louvres
+    if (n < nc) { for (const wx of [-12.6, 12.2]) { const r = Math.hypot(x - wx, z - 3.2); if (r < 4.2 && z < 5.6) return CARC.dark }
+      if (z < G + 1.8 + 1.4 * vn(x * .3, 2, 5)) return cmix(body, [92, 76, 56], .5); if (vn(x * .4, z * .5, 19) > .8 && z < 6.4) return CARC.rust }
+    return null };
+  for (let i = 0; i < N; i++) for (let j = 0; j < rings[i].length - 1; j++) t3face(M, [rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], rings[i + 1][j]], body, [rings[i][0][0], nc, G + 2], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || body });
+  for (const i of [0, N]) t3face(M, rings[i], body, [rings[i][0][0] + (i ? -4 : 4), nc, G + 3], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || body });
+  // the cabin: an egg, narrower than the tub: a band of glass under a body-coloured roof, a pillar behind the doors, the windscreen split, a small rear window
+  const xm = -1.6, hx = 11.2, roofT = [[-1, 8.8], [-.55, 12.6], [-.15, 15], [.2, 15], [.6, 13.2], [1, 9.2]], cw = x => 6.1 * Math.pow(Math.max(0, 1 - ((x - xm) / hx) ** 2), .36), roof = x => interp(roofT, (x - xm) / hx);
+  const cab = []; for (let i = 0; i <= 16; i++) { const x = xm - hx + 2 * hx * i / 16, w = cw(x), t = roof(x), z0 = tub(x) - .6, R = []; for (let k = 0; k <= 8; k++) { const th = Math.PI - k * Math.PI / 8; R.push([x, nc + w * Math.cos(th), z0 + Math.max(.3, t - z0) * Math.pow(Math.sin(th), .8)]) } cab.push(R) }
+  const cabTex = (x, n, z) => { const dn = Math.abs(n - nc), t = roof(x);
+    if (x > 3.6) return dn < .4 ? bodyD : (((x - z * .4 + dn) % 5 < .9) ? GLL : GL); // the windscreen: it climbs over the front of the roof
+    if (x < -8.6) return dn < cw(x) * .8 ? GL : null; // the rear window
+    if (z > t - 1.3 && dn < cw(x) * .62) return null; // the roof
+    if (Math.abs(x + 2.9) < .6) return null; return ((x - z * .5) % 6 < .9) ? GLL : GL };
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 8; j++) t3face(M, [cab[i][j], cab[i][j + 1], cab[i + 1][j + 1], cab[i + 1][j]], body, [xm, nc, G + 5], { clean: true, tex: (x, n, z) => cabTex(x, n, z) || body });
+  oldCarWheels(M, hl, [[-12.6, 3.2], [12.2, 3.2]], 'beetle');
+  t3box(M, -12.6 - 5, -.2, G - .4, 12.2 + 5, 1.6, G + .8, CARC.dark); // the running board
+  for (const sx of [-1, 1]) { const x = sx * (hl + .9); t3box(M, x - .8, nc - 5.8, 3, x + .8, nc + 5.8, 4.3, CARC.chrome); t3box(M, x - .5, nc - 4.2, 2.4, x + .5, nc - 3.2, 4.3, [150, 152, 148]); t3box(M, x - .5, nc + 3.2, 2.4, x + .5, nc + 4.2, 4.3, [150, 152, 148]) }
+}
+PF.oldcar = ({ kind = 'copeika', color = null, flip = false, rods = true } = {}) => { const sp = t3sprite(() => { const M = T3();
+    if (kind === 'beetle') beetleModel(M, { body: color || [118, 158, 190] }); else copeikaModel(M, { body: color || [210, 190, 130], rods });
+    return flip ? t3flipX(M) : M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-21.5, -16.5, 21.5, 1]].map(t3w) } };

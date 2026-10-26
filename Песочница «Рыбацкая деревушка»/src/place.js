@@ -30,7 +30,7 @@
     // by the fire on the beach
     { id: 'fire-1', p: 'fire', kind: 'ring', x: 792, y: 216 }, { id: 'bench-1', p: 'bench', x: 764, y: 230 }, { id: 'bench-2', p: 'bench', x: 822, y: 232 },
     // cars, the power, the signposts, the end of the dam
-    { id: 'car-niva', p: 'car', kind: 'niva', x: 662, y: 456, flip: true }, { id: 'car-lada', p: 'car', kind: 'lada', x: 150, y: 482 },
+    { id: 'car-kopeika', p: 'oldcar', kind: 'copeika', x: 662, y: 456, flip: true }, { id: 'car-beetle', p: 'oldcar', kind: 'beetle', x: 150, y: 482 },
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
     { id: 'barrier', p: 'barrier', x: 1438, y: 156, dir: 1 },
