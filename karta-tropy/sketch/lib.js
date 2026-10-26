@@ -4,6 +4,19 @@ const K = {};
 (function () {
   const g = window.G;
   K.g = g;
+  // Pebbles of a ford (g.pebAt), which the game build does not carry: round stones on a jittered grid, `fill` the share of
+  // grid cells that hold one. Gives where the point lies on its pebble (ox: -1 left .. 1 right, oy: -1 below .. 1 above)
+  // and the pebble's own tone id, or null between pebbles.
+  if (!g.pebAt) g.pebAt = (x, y, sd, fill) => {
+    const S = 4, ix = Math.floor(x / S), iy = Math.floor(y / S);
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      const a = ix + i, b = iy + j; if (g.h2(a, b, sd + 1) >= fill * 2.4) continue;
+      const cx = (a + .2 + .6 * g.h2(a, b, sd + 2)) * S, cy = (b + .2 + .6 * g.h2(a, b, sd + 3)) * S, r = 1.3 + .9 * g.h2(a, b, sd + 4);
+      const ox = (x - cx) / r, oy = (cy - y) / (r * .8);
+      if (ox * ox + oy * oy < 1) return { ox, oy, id: g.h2(a, b, sd + 5) };
+    }
+    return null;
+  };
   K.init = (w, h) => {
     K.w = w; K.h = h;
     K.cv = document.createElement('canvas'); K.cv.width = w; K.cv.height = h;
