@@ -28,21 +28,21 @@
     { id: 'mtp', p: 'mtp', x: 84, y: 438 },
     { id: 'boat-1', p: 'boat', x: 318, y: 224, col: [66, 112, 150], seed: 2 }, { id: 'boat-2', p: 'boat', x: 410, y: 232, col: [168, 60, 48], up: true, seed: 3 },
     { id: 'boat-5', p: 'boat', x: 905, y: 228, col: [60, 120, 104], up: true, flip: true, seed: 5 },
-    { id: 'boat-3', p: 'boat', x: 706, y: 140, col: [214, 210, 196], kind: 'motor', water: true, seed: 4 }, { id: 'boat-4', p: 'boat', x: 574, y: 150, col: [60, 120, 104], water: true, flip: true, seed: 6 },
+    { id: 'boat-3', p: 'boat', x: 688, y: 146, col: [214, 210, 196], kind: 'motor', water: true, seed: 4 }, { id: 'boat-4', p: 'boat', x: 597, y: 164, col: [60, 120, 104], water: true, flip: true, seed: 6 },
     // the jetty's pilings, both sides
-    ...[232, 196, 160, 124].flatMap((y, i) => [-1, 1].map(s => ({ id: `piling-${i}${s > 0 ? 'e' : 'w'}`, p: 'piling', x: PIER.x + s * (PIER.w + (s > 0 ? 5 : -2.5)), y, h: 15 + (i % 2) * 2, tire: i === 3, seed: 5 + i }))),
+    ...[226, 186, 146, 112].flatMap((y, i) => [-1, 1].map(s => ({ id: `piling-${i}${s > 0 ? 'e' : 'w'}`, p: 'piling', x: PIER.x + s * (PIER.w + (s > 0 ? 4.5 : 2.5)), y, h: 15 + (i % 2) * 2, tire: i === 3, seed: 5 + i }))),
     // the cowshed south of the street, its paddock, the hay
     { id: 'cowshed', p: 'cowshed', x: 925, y: 456, seed: 31, meter: 25, deco: ['ladder', 'lamp'], lampC: '255,222,140', lampX: 22, lampFlick: true }, { id: 'strawpad', p: 'strawpad', x: 925, y: 462, w: 46, d: 16 },
     { id: 'fence-nw', p: 'fence', axis: 'x', len: 33, x: 860, y: 460, seed: 41 }, { id: 'fence-ne', p: 'fence', axis: 'x', len: 43, x: 957, y: 460, seed: 42 },
     { id: 'fence-w', p: 'fence', axis: 'n', len: 76, x: 860, y: 536, seed: 43 }, { id: 'fence-e', p: 'fence', axis: 'n', len: 76, x: 1000, y: 536, seed: 44 }, { id: 'fence-s', p: 'fence', axis: 'x', len: 140, x: 860, y: 536, seed: 45 },
-    { id: 'trough', p: 'trough', len: 26, x: 972, y: 482 }, { id: 'bales-in', p: 'bales', n: 2, x: 890, y: 478, seed: 6 }, { id: 'haystack', p: 'haystack', x: 1034, y: 476, R: 10, H: 21, seed: 2 }, { id: 'bales-out', p: 'bales', n: 3, x: 842, y: 500, seed: 9 },
+    { id: 'trough', p: 'trough', len: 26, x: 972, y: 482 }, { id: 'bales-in', p: 'bales', n: 2, x: 890, y: 478, seed: 6 }, { id: 'haystack', p: 'haystack', x: 1040, y: 480, R: 14, H: 28, seed: 2 }, { id: 'bales-out', p: 'bales', n: 3, x: 842, y: 500, seed: 9 },
     // at the foot of the ramp: a post each side
     { id: 'bollard-r0', p: 'bollard', x: PIER.x - PIER.w - 3, y: PIER.y1 + PIER.ramp - 3, seed: 20 }, { id: 'bollard-r1', p: 'bollard', x: PIER.x + PIER.w + 3, y: PIER.y1 + PIER.ramp - 3, seed: 21 },
     // on the jetty: cleats, coils of rope, a stack of crates and barrels at the edge, lanterns at the far end
-    ...[[PIER.x - 20, 132], [PIER.x + 20, 132], [PIER.x - 20, 198], [PIER.x + 20, 198], [PIER.x - 20, 160], [PIER.x + 20, 160]].map(([x, y], i) => ({ id: 'bollard-' + i, p: 'bollard', x, y, seed: i })),
-    { id: 'coil-1', p: 'coil', x: PIER.x + 15, y: 164, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 14, y: 202, seed: 2, col: [150, 140, 120] },
-    { id: 'crates-2', p: 'crates', x: PIER.x - 12, y: 122, seed: 8 }, { id: 'barrels-3', p: 'barrels', x: PIER.x + 14, y: 112, seed: 14, n: 2 },
-    { id: 'lantern-1', p: 'lantern', x: PIER.x - 21, y: 108, c: '255,196,120', seed: 1 }, { id: 'lantern-2', p: 'lantern', x: PIER.x + 21, y: 108, c: '255,236,200', flick: true, seed: 2 },
+    ...[[PIER.x - 10.5, 134], [PIER.x + 10.5, 134], [PIER.x - 10.5, 200], [PIER.x + 10.5, 200]].map(([x, y], i) => ({ id: 'bollard-' + i, p: 'bollard', x, y, seed: i })),
+    { id: 'coil-1', p: 'coil', x: PIER.x + 5, y: 168, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 5, y: 206, seed: 2, col: [150, 140, 120] },
+    { id: 'crates-2', p: 'crates', x: PIER.x - 2, y: 118, seed: 8 },
+    { id: 'lantern-1', p: 'lantern', x: PIER.x - 11, y: 106, c: '255,196,120', seed: 1 }, { id: 'lantern-2', p: 'lantern', x: PIER.x + 11, y: 106, c: '255,236,200', flick: true, seed: 2 },
     // by the fire on the beach
     { id: 'fire-1', p: 'fire', kind: 'ring', x: 792, y: 216 }, { id: 'bench-1', p: 'bench', x: 764, y: 230 }, { id: 'bench-2', p: 'bench', x: 822, y: 232 },
     // cars, the power, the signposts, the end of the dam
@@ -53,9 +53,9 @@
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
     // the checkpoint at the foot of the dam, on the last of the land: the booth north of the road, the barrier across it
-    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .583, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .827, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
     // the cable from the booth's panel to the barrier, over the ground
-    { id: 'cable-gate', p: 'cable', x: 1172, y: 227.5, pts: [[0, 0], [5, 1.2], [11, -1.5], [16, -6], [19.5, -10], [21.4, -13.5]], seed: 3 },
+    { id: 'cable-gate', p: 'cable', x: 1178.5, y: 230, pts: [[0, 0], [4.5, .8], [9, -2], [11.8, -7], [12.4, -12], [11.4, -16.5]], seed: 3 },
   ];
   PLACES.buhta = {
     id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
@@ -72,18 +72,18 @@
       { id: 'yard-1', mat: 'trodden', ellipse: [252, 392, 70, 34], rough: .2 }, { id: 'yard-2', mat: 'trodden', ellipse: [482, 372, 66, 32], rough: .2 }, { id: 'yard-3', mat: 'trodden', ellipse: [762, 358, 62, 30], rough: .2 },
       { id: 'yard-shed', mat: 'trodden', ellipse: [968, 332, 74, 30], rough: .2 }, { id: 'yard-fish', mat: 'trodden', ellipse: [620, 268, 120, 30], rough: .3 },
       { id: 'path-1', mat: 'path', line: [[252, 392], [254, 428]], w: 6 }, { id: 'path-2', mat: 'path', line: [[482, 374], [482, 414]], w: 6 }, { id: 'path-3', mat: 'path', line: [[762, 358], [764, 396]], w: 6 },
-      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 278, 34, 9], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
+      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 274, 22, 8], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
       { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
       { id: 'dirt-well', mat: 'dirt', ellipse: [386, 372, 16, 6], rough: .4 },
       // a patch of firm ground at the foot of the dam for the checkpoint: grass and soil, not sand, which the waves would wash from under it
-      { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1182, 222, 17, 8], rough: .35 },
+      { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1188, 222, 14, 8], rough: .35 },
       // the way into the village from the forest, the street and the embankment out over the bay
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 392], [1010, 345], [1130, 275], [1215, 214]], w: 13 },
       { id: 'dam', mat: 'dam', line: [[1130, 275], [1215, 214], [1300, 184], [1400, 160], [1560, 140], [1760, 135]], w: 26, rough: .3 },
       // the jetty: a broad raised pier, a ramp up to it from the sand (PIER in pf.js)
-      { id: 'jetty', mat: 'bridge', pier: true, rect: [PIER.x - PIER.w - 1, PIER.y0 - PIER.H - 3, PIER.x + PIER.w + 6, PIER.y1 + PIER.ramp], rough: 0, bridge: { ux: 0, uy: -1 } },
+      { id: 'jetty', mat: 'bridge', pier: true, rect: [PIER.x - PIER.w - 1, PIER.y0 - PIER.H - 1, PIER.x + PIER.w + 3.6, PIER.y1 + PIER.ramp], rough: 0, bridge: { ux: 0, uy: -1 } },
       // the old wheel tracks to the cars: two ruts and the hump of grass between them, overgrown, lumpy
       ...CARWAYS.flatMap(W => [{ id: 'hump-' + W.id, mat: 'hump', line: W.L, w: 4.4, rough: .6, relief: { h: 1, lump: true } },
         ...[-7, 7].map(o => ({ id: 'rut-' + W.id + (o < 0 ? 'a' : 'b'), mat: 'rut', line: side(W.L, o), w: 2.6, rough: .5, grow: W.grow, relief: { h: -1, lump: true } }))]),
@@ -112,7 +112,8 @@
         route: [[560, 252, 20], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
         route: [[250, 400, 30], [196, 396, 0], [170, 326, 55], [196, 396, 0]] },
-      { id: 'guard', smoker: true, dir: 2, x: 1187, y: 221, look: { id: 'guard', sex: 'm', h: 18.4, build: 1.12, skin: 1, hair: [70, 62, 54], cut: 'short', hat: 'cap', hatCol: [40, 48, 58], top: [52, 64, 80], topKind: 'jacket', legs: [46, 50, 58], boots: [30, 30, 32] }, route: [[1187, 221, 0]] },
+      // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
+    { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
         route: [[386, 378, 22], [440, 398, 0], [482, 392, 40], [440, 398, 0]] },
     ],

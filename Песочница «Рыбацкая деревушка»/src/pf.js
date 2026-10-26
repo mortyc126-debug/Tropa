@@ -50,42 +50,42 @@ function damWater(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'dam
     const h = underLayer(x, y); if (h.L && h.L.mat === 'lake') return true } return false }
 const K_sedge = (x, y) => K_q(h2(x, y, SEED + 67) < .45 ? PAL.straw : PAL.sedge, .4 + vn(x * .3, y * .3, SEED + 68) * .5, x, y);
 const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
-// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it across its whole south end ----
-// It is drawn into the ground like the rest of the plan, but as the eye sees a raised deck: its top lies H px up from the plan footprint (the rider
-// riding on it is drawn lifted by as much), the ramp running up to it from the sand, the east side a little thick, a hard dark outline all round.
-// Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
-const PIER = { x: 640, w: 24, y0: 100, y1: 244, ramp: 26, H: 6 };
-const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [124, 100, 72], dark: [84, 66, 46] };
-// the decking: planks laid across the deck, each row in two lengths that meet over a joist (the joint slides along from row to row), one weathered tone
-// with only a faint difference from board to board, a very few replaced ones a shade lighter, grain along each; a nail at each end of every piece
-function pierBoard(lx, n, k) { const P = PIER, X0 = P.x - P.w, row = Math.floor(n / 3.6), f = n / 3.6 - row, sd = SEED + 810; if (f < .14) return cmul(PIERC.gap, k);
-  const jx = X0 + [14, 24, 33][row % 3] + (h2(Math.floor(row / 3), 2, sd) < .5 ? -1 : 1), left = lx < jx;
-  if (Math.abs(lx - jx) < .5) return cmul(PIERC.gap, k);
-  const pc = h2(row, left ? 3 : 4, sd); let m = .97 + .06 * pc; if (pc > .94) m *= 1.09; else if (pc < .04) m *= .9;
-  const grain = vn(lx * .22, row * 2.3 + (left ? 0 : 5), sd + 7); m *= .96 + .08 * grain; if (vn(lx * .04 + row * .05, n * .03, sd + 9) > .62) m *= .94; // (the damp patches of an old deck)
-  m *= f < .38 ? 1.05 : f > .92 ? .93 : 1; // the board's bevel
-  const nx = left ? [X0 + 3.5, jx - 3] : [jx + 3, X0 + 2 * P.w - 3.5]; if (f > .45 && f < .62 && (Math.abs(lx - nx[0]) < .5 || Math.abs(lx - nx[1]) < .5)) m *= .55;
+// ---- the jetty: a plank pier 2.8 m wide (a village jetty: a cart can go out on it, a house is wider) standing 60 cm above the water, with a ramp up to it
+// across its whole south end. It is drawn into the ground like the rest of the plan (as the roads are: the ground is the map, it does not lean), but as the
+// eye sees a raised deck: its top lies H px up from the plan footprint (the rider riding on it is drawn lifted by as much), the ramp running up to it from
+// the sand, the east side a little thick, a hard dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left
+// by it. (Coordinates: the place's own.)
+const PIER = { x: 640, w: 14, y0: 100, y1: 244, ramp: 22, H: 6, bm: 3.5 };
+const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [122, 98, 70], dark: [84, 66, 46] };
+// the decking: boards across the deck (one board across, a joint now and then over the middle joist), one weathered tone with only a faint difference from
+// board to board, a very few replaced ones a shade lighter, the grain along each; a nail at each end of every board and one at the joist on every other row
+function pierBoard(lx, n, k) { const P = PIER, X0 = P.x - P.w + P.bm, X1 = P.x + P.w - P.bm, row = Math.floor(n / 3), f = n / 3 - row, sd = SEED + 810; if (f < .15) return cmul(PIERC.gap, k);
+  const cj = (X0 + X1) / 2 + (h2(row, 2, sd) - .5) * 6, jn = h2(row, 5, sd) < .24, left = lx < cj;
+  if (jn && Math.abs(lx - cj) < .5) return cmul(PIERC.gap, k);
+  const pc = h2(row, jn ? (left ? 3 : 4) : 3, sd); let m = .97 + .06 * pc; if (pc > .95) m *= 1.09; else if (pc < .04) m *= .9;
+  m *= .96 + .08 * vn(lx * .22, row * 2.3 + (left ? 0 : 5), sd + 7); if (vn(lx * .05 + row * .06, n * .03, sd + 9) > .62) m *= .94; // (the damp patches of an old deck)
+  m *= f < .4 ? 1.05 : f > .92 ? .93 : 1; // the board's bevel
+  if (f > .45 && f < .64) { const nl = jn ? (left ? [X0 + 1.4, cj - 1.4] : [cj + 1.4, X1 - 1.4]) : [X0 + 1.4, X1 - 1.4]; if (Math.abs(lx - nl[0]) < .5 || Math.abs(lx - nl[1]) < .5 || (row % 2 && Math.abs(lx - (X0 + X1) / 2) < .5)) m *= .55 }
   return cmul(PIERC.plank, k * m) }
-function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
-  const under = k => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return k === 1 ? c : cmul(c, k) };
+function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810, B = P.bm;
+  const under = () => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c };
   if (ly >= yt0 && ly < P.y1 && lx >= X1 && lx < X1 + 3.5) { // the east face of the deck, seen edge-on: the fascia board and the shadow under it
     if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.plank, .92 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .86), k) }
   if (ly >= yt0 && ly < yt1 && lx >= X0 && lx < X1) { // the top of the deck
     if (lx < X0 + 1 || ly < yt0 + 1) return LN; const n = yt1 - ly;
-    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side: one timber, darker than the boards, a joint every so often
-      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2 && e < 4) return cmul(PIERC.gap, 1.15); const off = lx < P.x ? 17 : 41; if (((n + off) % 62) < .6) return PIERC.gap;
-      return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
+    if (n > P.y1 - P.y0 - 4) return cmul(PIERC.beam, (n > P.y1 - P.y0 - 1 ? .78 : 1.08) * (.96 + .08 * vn(lx * .3, n * .2, sd + 4))); // the head beam across the far end
+    if (lx < X0 + B || lx >= X1 - B) { // the long beams along each side: one timber, a shade darker than the boards, a joint every so often
+      const e = lx < X0 + B ? lx - X0 : X1 - lx; if (e >= B - .8 && e < B) return cmul(PIERC.gap, 1.15); const off = lx < P.x ? 17 : 41; if (((n + off) % 62) < .6) return PIERC.gap;
+      return cmul(PIERC.beam, (e < 1.8 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
     return pierBoard(lx, n, 1) }
-  if (ly >= yt1 && ly < yb && lx >= X0 && lx < X1) { // the ramp across the whole end: the same boards, the long timbers each side running down, a threshold beam at the foot, sand blown on the boards
+  if (ly >= yt1 && ly < yb && lx >= X0 && lx < X1) { // the ramp across the whole end: the same boards, the long timbers each side running down, a cross-beam where it meets the deck, a threshold beam at the foot, sand blown on the boards
     const n = (yb - ly) / (1 + H / P.ramp);
     if (lx < X0 + 1 || ly >= yb - 1) return LN; if (ly >= yb - 3) return cmul(PIERC.dark, ly >= yb - 2 ? .9 : 1.12); // the threshold
-    if (lx < X0 + 4 || lx >= X1 - 4) { const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2) return cmul(PIERC.gap, 1.15); return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
-    if (ly < yt1 + 1.4) return ly < yt1 + .5 ? cmul(PIERC.beam, 1.1) : cmul(PIERC.gap, 1.2); // (the joint where the ramp meets the deck: a cross-beam)
+    if (ly < yt1 + 1.4) return ly < yt1 + .5 ? cmul(PIERC.beam, 1.1) : cmul(PIERC.gap, 1.2);
+    if (lx < X0 + B || lx >= X1 - B) { const e = lx < X0 + B ? lx - X0 : X1 - lx; if (e >= B - .8) return cmul(PIERC.gap, 1.15); return cmul(PIERC.beam, (e < 1.8 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
     let c = pierBoard(lx, n + 3, 1.03); if (n < 9 && h2(x, y, sd + 21) < .5 * (1 - n / 9) * (.5 + vn(x * .3, y * .5, sd + 22))) c = cmix(c, [178, 160, 118], .75); return c }
   if (ly >= yt1 && ly < yb && lx >= X1 && lx < X1 + 3.4 * (yb - ly) / (yb - yt1)) return lx >= X1 + 3.4 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
-  if (ly >= yt0 + 5 && ly < P.y1 + 1 && lx >= X1 + 3.5 && lx < X1 + 6) return under(1 - .24 * (1 - (lx - X1 - 3.5) / 2.5)); // the shadow of the deck on the water
-  if (ly >= yt0 - 3 && ly < yt0 && lx >= X0 && lx < X1 + 5) return under(.8);
-  return under(1) }
+  return under() }
 // how high above the ground a figure stands at (x, y) (world coordinates): on the deck, H; up the ramp, from 0 to H
 function deckLift(x, y) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
   return ly <= P.y1 ? P.H : P.H * (1 - (ly - P.y1) / P.ramp) }
@@ -214,6 +214,12 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
   if (deco.includes('lamp')) { const q = P(lampX ?? door + 8, -4.4, 20.6); L.push({ x: q[0], y: q[1], r: 8, c: lampC, a: .9, k: 'lamp', glare: true, flick: lampFlick }); L.push({ x: q[0] - 8, y: 14, r: 44, sy: .6, c: lampC, a: .6, k: 'lamp', fall: 'sq', flick: lampFlick }) }
   const ch = P(chimX, D * .55, RIDGE + (chim === 'brick' ? 11 : 14)), e0 = P(-HW - 3, -OVR, eave), e1 = P(HW + 3, -OVR, eave);
   const solids = [[-HW - 2, -D - 1, HW + 2, 0]]; if (porch && !gate) solids.push([door - pw, 0, door + pw, PD + 3]);
+  // the things set about it are in the way too (plan y = -n: in front of the wall is +y)
+  if (deco.includes('barrel')) solids.push([-HW + .9, .9, -HW + 8.1, 8.1]);
+  if (deco.includes('logs')) solids.push([-HW - 10.5, -11.5, -HW - 1, -.5]);
+  if (deco.includes('bench')) solids.push([HW - 20, 1.6, HW - 4, 5]);
+  if (deco.includes('bucket')) solids.push([door - pw - 12.2, 2.8, door - pw - 3.8, 7.2]);
+  if (deco.includes('kennel')) solids.push([door + pw + 9, 4, door + pw + 21, 12.5]);
   return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
 
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.

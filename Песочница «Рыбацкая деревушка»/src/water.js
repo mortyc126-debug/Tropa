@@ -123,6 +123,11 @@ function drawWater(cx0, cy0) {
     for (let j = slot - 2; j <= slot; j++) { for (let m = 0; m < 2; m++) { if (h2(j, m, 95) > .7 * (1 - clamp(wnd / .2, 0, 1)) + .05 * rain) continue; const age = t - j * 1.3 - m * .4; if (age < 0 || age > 2.6) continue;
       const fx = cx0 + 20 + h2(j, m, 96) * (W - 40), fy = cy0 + 20 + h2(j, m, 97) * (H - 40), c = Math.floor(fx / CK), r = Math.floor(fy / CK), J = WJOBS.get(c + ',' + r), f = J && J.f; if (!f) continue; const dwv = f.F[(Math.floor(fy) - f.y0) * CK + Math.floor(fx) - f.x0]; if (dwv === WNONE || dwv < 120) continue;
       for (let k = 0; k < 3; k++) { const ph = age * .55 - k * .16; if (ph < 0 || ph > 1) continue; ring(fx, fy, 1 + ph * 9, .5 + ph * 4.5, HL, (1 - ph) * .42 * (.4 + .6 * sunK), j * 7 + m, .2) } } } }
+  // the pier's shadow on the water: the deck's footprint moved along the light by the deck's height above the water (the game's own sun: SUNV), what of it
+  // lies outside the deck itself; it follows the sun round the day, and is gone with it
+  if (typeof PIER !== 'undefined') { const Pr = PIER, x0 = OX + Pr.x - Pr.w, x1 = OX + Pr.x + Pr.w + 3.5, y0 = OY + Pr.y0, y1 = OY + Pr.y1, SHDK = [6, 20, 30];
+    for (const [v, a] of SHSET) { const dx = SUNV[v][0] * Pr.H, dy = SUNV[v][1] * Pr.H, al = clamp(a * 1.5, 0, .4);
+      for (let y = Math.max(cy0, Math.floor(y0 + dy)); y < Math.min(cy0 + H, Math.ceil(y1 + dy)); y++) for (let x = Math.max(cx0, Math.floor(x0 + dx)); x < Math.min(cx0 + W, Math.ceil(x1 + dx)); x++) put(x, y, SHDK, al) } }
   O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0); WS.ox = cx0; WS.oy = cy0;
   const cost = performance.now() - tw0; WS.cost = (WS.cost ?? cost) * .9 + cost * .1; WS.hold = WS.cost > 11 ? 2 : WS.cost > 5.5 ? 1 : 0 }
 

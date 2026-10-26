@@ -19,7 +19,7 @@ PF.lantern = ({ h = 24, c = '255,200,120', flick = false, seed = 1 } = {}) => { 
 
 // ---- the guard's booth at the end of the dam: a green board cabin, a sliding window onto the road, a door in the east wall, a tar-paper shed roof
 // with a stovepipe, a sign, a lamp over the door; the window is lit at night ----
-PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'ОХРАНА' } = {}) => {
+PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'ОХРАНА', K = 1.16 } = {}) => {
   const HW = w / 2, WALL = h, winW = 13, winZ0 = 9.5, winH = 7.6, TRIM = [214, 210, 192], CON = [130, 128, 122], roofC = [66, 68, 72];
   const wallT = (x, n, z) => { const row = Math.floor(z / 2.2), f = z / 2.2 - row; if (f < .12) return cmul(col, .62); let c = cmul(col, .94 + .12 * h2(row, 3, seed));
     if (z > WALL - 4.5 && vn(x * .25, z * .1, seed + 3) > .55) c = cmix(c, [150, 84, 52], .5); // rust running down from the roof edge
@@ -64,15 +64,15 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
     // a stack of tyres, a bucket by the wall
     for (let q = 0; q < 3; q++) t3cyl(M, -HW + 4.2, -3.6, 3, q * 2.2, q * 2.2 + 2, [38, 38, 40], { topCol: [58, 58, 60] });
     t3cyl(M, -HW + 11, -3.2, 1.8, 0, 3.6, [186, 56, 44], { topCol: [90, 30, 26] });
-    return M };
-  const sp = t3sprite(build, [0]), ax = sp[0].ax, ay = sp[0].ay, P = (x, n, z) => t3p([x, n, z]);
-  t3text(sp, sign, [(-HW + 1.5 + HW - 5.5) / 2, -.45, WALL - 3.5], [44, 70, 54]);
+    t3scale(M, K); return M };
+  const sp = t3sprite(build, [0]), ax = sp[0].ax, ay = sp[0].ay, P = (x, n, z) => t3p([x * K, n * K, z * K]);
+  t3text(sp, sign, [(-HW + 1.5 + HW - 5.5) / 2 * K, -.45 * K, (WALL - 3.5) * K], [44, 70, 54]);
   const q = P(-2, 0, winZ0 + winH / 2), a = P(-2 - winW / 2, -.5, winZ0 + winH), b = P(-2 + winW / 2, -.5, winZ0), lq = P(HW + 3.6, 5.4, 20.2);
   const WINS = [{ x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]), cx: Math.round(P(-2, -.5, 0)[0]), cz: Math.round(P(-2, -.5, winZ0 + winH * .62)[1]) }];
   const ch = P(HW - 5.5, d - 4, WALL + 15), e0 = P(-HW - 2.4, -3, WALL + 1.4), e1 = P(HW + 2.4, -3, WALL + 1.4);
   return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW - 2.9 + .3, -1, WALL - .5), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
-    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 6, c: '255,226,170', a: .9, k: 'lamp', glare: true, flick: true }, { x: lq[0], y: 10, r: 34, sy: .6, c: '255,214,150', a: .55, k: 'lamp', fall: 'sq', flick: true }],
-    solids: [[-HW - 2, -d - 1, HW + 2, 1]].map(t3w) } };
+    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 38, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 6, c: '255,226,170', a: .9, k: 'lamp', glare: true, flick: true }, { x: lq[0], y: 10, r: 34, sy: .6, c: '255,214,150', a: .55, k: 'lamp', fall: 'sq', flick: true }],
+    solids: [[(-HW - 2) * K, (-d - 1) * K, (HW + 2) * K, K]].map(t3w) } };
 
 // ---- the barrier at the entrance of the dam: a housing on the north verge and a red and white arm that crosses the road. Shut, the arm lies down across the
 // road toward us (it runs down the picture); open, it stands up (it runs up the picture): the post is on the far side of the road for this, so the two
@@ -104,8 +104,10 @@ function gateIdx(o) { const n = o.pfr.length, tgt = o.shut ? 0 : 1; if (o.gv ===
 // ---- the cowshed, its paddock, the hay ----
 // the cowshed is the house's own model with the gates thrown open and the years on it
 PF.cowshed = (o = {}) => PF.house(Object.assign({ w: 64, d: 40, h: 24, wall: 'board', col: [124, 98, 70], roof: 'tin', roofCol: [112, 100, 92], porch: false, wins: [], door: 0, gate: 30, chim: 'pipe', chimX: 22, sideWin: false, decay: .85, deco: ['ladder'], seed: 31 }, o));
-// a fence: posts and two rails along x (axis 'x') or away from us (axis 'n'); some posts lean, a rail has broken
-PF.fence = ({ len = 60, axis = 'x', seed = 1 } = {}) => { const r = mulberry(seed), sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = u => axis === 'x' ? [u, 0] : [0, u], at = (u, z, o = 0) => { const [x, n] = P(u); return axis === 'x' ? [x, n + o, z] : [x + o, n, z] };
+// a fence: posts and two rails along x (axis 'x') or away from us (axis 'n'); some posts lean, a rail has broken. The view leans everything that runs away from
+// us up and to the right (T3S a pixel for each); the ground it stands on is drawn upright, so a fence that runs away from us is sheared back by as much and
+// stands upright on the screen (and its solid is the upright strip it shows).
+PF.fence = ({ len = 60, axis = 'x', seed = 1 } = {}) => { const r = mulberry(seed), sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = u => axis === 'x' ? [u, 0] : [-T3S * u, u], at = (u, z, o = 0) => { const [x, n] = P(u); return axis === 'x' ? [x, n + o, z] : [x + o, n, z] };
     const posts = Math.max(2, Math.round(len / 15) + 1), step = len / (posts - 1), W = [[124, 98, 70], [108, 84, 60], [138, 112, 82]];
     for (let i = 0; i < posts; i++) { const u = i * step, lean = (r() - .5) * 1.6, c = W[i % 3]; const [x, n] = P(u); t3cyl(M, x, n, 1.25, 0, 13, c, { topCol: [170, 142, 104] }); if (Math.abs(lean) > .6) t3line(M, [x, n, 13], [x + (axis === 'x' ? lean : 0), n + (axis === 'x' ? 0 : lean), 14], c) }
     for (const [z, th] of [[10.4, 1], [6, 0]]) for (let i = 0; i < posts - 1; i++) { if (r() < .1 && z > 8) continue; const a = at(i * step, z), b = at((i + 1) * step, z + (r() - .5) * .8); const c = W[(i + (z > 8 ? 1 : 0)) % 3];
@@ -114,7 +116,7 @@ PF.fence = ({ len = 60, axis = 'x', seed = 1 } = {}) => { const r = mulberry(see
   const solids = axis === 'x' ? [[-1.4, -1.4, len + 1.4, 1.4]] : [[-1.4, -len - 1.4, 1.4, 1.4]];
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: solids.map(q => q) } };
 // a haystack: a pole with the hay stacked round it, its rings combed down; a round bale or two
-PF.haystack = ({ R = 10, H = 20, seed = 2 } = {}) => { const sp = t3sprite(() => { const M = T3(), N = 12, rings = [], prof = u => R * Math.pow(Math.max(0, 1 - Math.pow(u, 2.2)), .62) * (u < .1 ? .85 + u * 1.5 : 1); M.seed = seed;
+PF.haystack = ({ R = 14, H = 28, seed = 2 } = {}) => { const sp = t3sprite(() => { const M = T3(), N = 12, rings = [], prof = u => R * Math.pow(Math.max(0, 1 - Math.pow(u, 2.2)), .62) * (u < .1 ? .85 + u * 1.5 : 1); M.seed = seed;
     for (let k = 0; k <= 9; k++) { const u = k / 9, z = 1 + u * (H - 1), rr = prof(u) + .6 * Math.sin(k * 2.1 + seed), ring = []; for (let i = 0; i < N; i++) { const a = i / N * TAU; ring.push([Math.cos(a) * rr, Math.sin(a) * rr * .92, z]) } rings.push(ring) }
     const hay = (x, n, z) => { const g = vn(x * .4 + z * .5, n * .4 + z * .9, seed + 3), f = h2(Math.round(x * 1.3), Math.round(z * 1.1), seed + 4); const c = [[190, 160, 84], [172, 142, 70], [206, 178, 100]][f < .3 ? 1 : f > .8 ? 2 : 0]; return cmul(c, .82 + g * .3) };
     for (let k = 0; k < 9; k++) for (let i = 0; i < N; i++) t3face(M, [rings[k][i], rings[k][(i + 1) % N], rings[k + 1][(i + 1) % N], rings[k + 1][i]], [186, 156, 82], [0, 0, H / 2], { tex: hay, clean: true });
@@ -129,7 +131,7 @@ PF.trough = ({ len = 26, seed = 3 } = {}) => { const sp = t3sprite(() => { const
     t3face(M, [[-len / 2 + 1, -1.6, 4.1], [len / 2 - 1, -1.6, 4.1], [len / 2 - 1, 1.6, 4.1], [-len / 2 + 1, 1.6, 4.1]], [58, 98, 118], [0, 0, 0], { flat: true, zb: .2, tex: (x, n) => h2(Math.round(x), Math.round(n), seed) < .1 ? [150, 190, 204] : null }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-len / 2 - 1, -3, len / 2 + 1, 3]].map(t3w) } };
 // trampled straw before the gates: a flat patch, lighter where it is fresh
-PF.strawpad = ({ w = 40, d = 18, seed = 7 } = {}) => { const sp = t3sprite(() => { const M = T3(), pts = []; M.seed = seed; for (let i = 0; i < 20; i++) { const a = i / 20 * TAU; pts.push([Math.cos(a) * w / 2 * (.9 + .1 * Math.sin(a * 3 + seed)), Math.sin(a) * d / 2 * (.9 + .1 * Math.cos(a * 4)) + d / 2, .1]) }
+PF.strawpad = ({ w = 40, d = 18, seed = 7 } = {}) => { const sp = t3sprite(() => { const M = T3(), pts = []; M.seed = seed; for (let i = 0; i < 20; i++) { const a = i / 20 * TAU, nn = Math.sin(a) * d / 2 * (.9 + .1 * Math.cos(a * 4)) + d / 2; pts.push([Math.cos(a) * w / 2 * (.9 + .1 * Math.sin(a * 3 + seed)) - T3S * nn, nn, .1]) }
     t3face(M, pts, [176, 148, 84], [0, d / 2, -1], { flat: true, z: -55, clean: true, tex: (x, n) => { const v = vn(x * .5, n * .6, seed + 1), f = h2(Math.round(x), Math.round(n), seed + 2); return f < .06 ? [214, 188, 110] : v > .62 ? [158, 130, 70] : v < .3 ? [146, 120, 66] : null } }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, flat: true, noShadow: true } };
 
@@ -185,7 +187,7 @@ PF.mtp = ({ seed = 3 } = {}) => { const PH = 60, CON = [138, 136, 128], steel = 
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8, -2.6, -3, 2.6], [3, -2.6, 8, 2.6]].map(t3w), tops: [A(-8, 0, PH + 2), A(0, 0, PH + 2), A(8, 0, PH + 2)], top: A(0, 0, PH + 2), outs: [A(9.5, 0, 21)] } };
 
 // ---- a cable lying on the ground (flat): rubber, black, with a sheen along it, held down with a clip here and there; the points are relative to the object ----
-PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = pts.map(([x, y]) => [x, -y]);
+PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = pts.map(([x, y]) => [x + T3S * y, -y]); // (flat on the ground: the lean of the view is taken out, so it lies where its points say)
     for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; t3line(M, [a[0], a[1], .1], [b[0], b[1], .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + 1, .1], [b[0], b[1] + 1, .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + .5, .1], [b[0], b[1] + .5, .1], [58, 58, 64], { over: true }) }
     for (let i = 1; i < P.length - 1; i++) M.dots.push([[P[i][0], P[i][1] + .5, .3], [150, 150, 146]]);
     return M }, [0]);
