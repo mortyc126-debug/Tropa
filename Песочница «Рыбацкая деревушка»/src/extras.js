@@ -229,5 +229,7 @@ function scatterOK(S, L, t, x, y) { const dL = layerD(L, x, y);
   if (S.box && !(lx >= S.box[0] && lx <= S.box[2] && ly >= S.box[1] && ly <= S.box[3])) return false;
   if (S.avoid && S.avoid.some(b => lx >= b[0] && lx <= b[2] && ly >= b[1] && ly <= b[3])) return false;
   if (S.shore) { const d = lakeDist(x, y); if (d < S.band[0] || d > S.band[1]) return false }
-  if (S.upland && S.upland.includes(t)) { const m = visMat(x, y); if (m === 'dam') return false; if (m === 'beach' && lakeDist(x, y) < (S.dry ?? 24)) return false }
+  if (S.upland && S.upland.includes(t)) { const m = visMat(x, y); if (m === 'dam' || m === 'beach' || lakeDist(x, y) < 30) return false } // (nothing of the dry ground's grows on the sand or the dam)
   return true }
+
+const BEACHLESS = new Set(['grass', 'fern', 'lowshrub', 'juniper', 'bush', 'barebush', 'sapling', 'mush', 'rosehip']); // (low growth that does not take to sand)

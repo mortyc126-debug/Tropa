@@ -99,8 +99,6 @@
     objects,
     scatter: [
       { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 3], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
-      // reeds only in the sheltered shallows of the west end of the shore, where the lake is quiet and the bottom silty: none on the beaten sand, none by the dam
-      { id: 'reeds', n: 40, seed: 21, in: 'bay-a', band: [-9, -3], shore: true, box: [-90, 60, 400, 330], clear: 14, kinds: [['reed', 1]] },
       { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], shore: true, clear: 14, kinds: [['rock', 1]] },
       { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],

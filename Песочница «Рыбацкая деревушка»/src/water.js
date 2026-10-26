@@ -112,9 +112,9 @@ function drawWater(cx0, cy0) {
   // rings: round the boats afloat and the jetty's pilings, and (in a calm) where a fish has risen
   const put = (x, y, c, a) => { x = Math.round(x); y = Math.round(y); const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)), f = J && J.f; if (!f || f.F[(y - f.y0) * CK + x - f.x0] === WNONE) return; x -= cx0; y -= cy0; if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x, a8 = (a * 255 + .5) | 0; if (a8 > (buf[i] >>> 24)) buf[i] = (a8 << 24) | (c[2] << 16) | (c[1] << 8) | c[0] };
   const ring = (cx, cy, rx, ry, c, a, sd, gap) => { const n = Math.max(12, Math.ceil(TAU * Math.sqrt((rx * rx + ry * ry) / 2) / 1.15)); for (let i = 0; i < n; i++) { if (gap && h2(i, sd, 91) < gap) continue; const an = i / n * TAU; put(cx + Math.cos(an) * rx, cy + Math.sin(an) * ry, c, a) } };
-  for (const o of objsIn(cx0 - 40, cy0 - 30, cx0 + W + 40, cy0 + H + 30)) { if (o.t === 'rock') { if (o._wk === undefined) o._wk = wLocal(o.x, o.y) ? 3 : 0; if (o._wk === 3 && o.ready) { const rx = Math.max(5, o.mw * .5), ry = Math.max(2.4, rx * .36), sd = (Math.round(o.x * 7 + o.y * 3) % 17) + 1;
-        for (let yy = -2; yy <= 2; yy++) for (let xx = -rx; xx <= rx; xx++) if (Math.abs(xx) / rx + Math.abs(yy) / (ry - .6) < 1.3) put(o.x + xx, o.y + 1 + yy, DKc, .24);
-        for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .5 + k * .5 + sd * .17); ring(o.x, o.y + 1, rx + 1 + ph * 3, ry + .5 + ph * 1.4, FM, (1 - ph) * (.4 + .35 * A), sd + k, .3) } } continue }
+  for (const o of objsIn(cx0 - 40, cy0 - 30, cx0 + W + 40, cy0 + H + 30)) { if (o.t === 'rock') { if (o._wk === undefined) o._wk = matAt(o.x, o.y) === 'lake' ? 3 : 0; if (o._wk === 3 && o.ready) { if (!o._sunk) sinkRock(o); const wl = o._wl; if (wl) { const sd = (Math.round(o.x * 7 + o.y * 3) % 17) + 1, rx = wl.rx, ry = Math.max(2, rx * .38);
+        for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .4 + k * .5 + sd * .17); ring(o.x, wl.y + 1, rx + 1 + ph * 4, ry + .5 + ph * 1.6, FM, (1 - ph) * (.32 + .3 * A), sd + k, .3) }
+        for (let yy = 0; yy <= 2; yy++) for (let xx = -rx; xx <= rx; xx++) if (Math.abs(xx) / rx + yy / (ry + 1) < 1.1) put(o.x + xx + 1, wl.y + 1 + yy, DKc, .16 - .04 * yy) } } continue }
     if (o.p !== 'boat' && o.p !== 'piling') continue;
     if (o._wk === undefined) { const m = matAt(o.x, o.y); o._wk = (m === 'lake' && o.p === 'boat') ? 2 : (o.p === 'piling' && (m === 'lake' || m === 'bridge')) ? 1 : 0 }
     if (!o._wk) continue; const sd = (Math.round(o.x * 7 + o.y * 3) % 17) + 1;
@@ -166,3 +166,18 @@ function driftLeaves(dt) { if (!WS.tile || !WS.A) return; let n = 0; for (const 
       const c = LEAFCOL[Math.floor(Math.random() * LEAFCOL.length)], K = lkPick(LEAFSP[Math.floor(Math.random() * LEAFSP.length)], Math.random, c);
       leaves.push({ x, y, gy: y, ph: Math.random() * 6.28, ph2: 0, vy: 0, fl: 1, state: 3, life: 60 + Math.random() * 40, k: K.id, rot: Math.floor(Math.random() * 8), age: 2, fi: 0, nx: 0, ny: -1, hop: 0 }); n++; break } }
   if (DRIFTACC > 4) DRIFTACC = 0 }
+
+// a rock in the shallows is not set on the water: its lower part is under it. Only the top is left of the sprite; at the waterline a line of foam, above it a band wet
+// and dark, below it what is under the water: tinted like the water, fading in three rows. (Done once, in place of the sprite.)
+function sinkRock(o) { const src = o.cv; if (!src) return; const w = src.width, h = src.height, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(src, 0, 0); const img = g.getImageData(0, 0, w, h), d = img.data;
+  let y0 = h, y1 = -1; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 40) { y0 = Math.min(y0, y); y1 = Math.max(y1, y) } if (y1 < y0) { o._sunk = true; return }
+  const H = y1 - y0 + 1, yw = y0 + Math.round(H * .56), sd = Math.round(o.x * 3 + o.y * 7), WC = [32, 60, 76];
+  let xa = w, xb = -1; for (let y = Math.max(y0, yw - 1); y <= Math.min(y1, yw + 1); y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 40) { xa = Math.min(xa, x); xb = Math.max(xb, x) }
+  const cx = (xa + xb) / 2, rx = Math.max(2.5, (xb - xa) / 2 + 1);
+  for (let x = 0; x < w; x++) { const u = (x - cx) / rx, arc = Math.max(0, 1 - u * u) * 1.7, wy = yw + Math.round(arc + (vn(x * .6, sd, 5) - .5) * 1.2); // (the water's edge on a round rock is an arc, lower in the middle: the front of a ring)
+    for (let y = 0; y < h; y++) { const i = (y * w + x) * 4; if (d[i + 3] < 40) continue; if (y < wy - 2) continue;
+      if (y < wy) { d[i] *= .78; d[i + 1] *= .84; d[i + 2] *= .9; continue }
+      const k = y - wy; if (k === 0) { const f = vn(x * .9, sd + 3, 6) > .32; d[i] = f ? 226 : 150; d[i + 1] = f ? 236 : 176; d[i + 2] = f ? 238 : 186; d[i + 3] = f ? 235 : 190; continue }
+      const a = k === 1 ? .8 : k === 2 ? .55 : k === 3 ? .3 : 0; if (a <= 0) { d[i + 3] = 0; continue }
+      d[i] = d[i] * .4 + WC[0] * .6; d[i + 1] = d[i + 1] * .4 + WC[1] * .6; d[i + 2] = d[i + 2] * .4 + WC[2] * .6; d[i + 3] = Math.round(255 * a) } }
+  g.putImageData(img, 0, 0); o.cv = c; o._sunk = true; o._wl = { y: o.y - o.ay + yw, rx: Math.max(3, rx) } }

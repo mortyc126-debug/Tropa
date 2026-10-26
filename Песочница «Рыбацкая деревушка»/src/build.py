@@ -136,6 +136,15 @@ rep("function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt) }", "f
 rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
 rep("    if (o && o.cow) { drawCow(o.cow); continue }", "    if (o && o.cow) { drawCow(o.cow); continue }\n    if (o && o.gull) { drawGull(o.gull); continue }")
 
+# ---- the forest's low growth (grass, ferns, shrubs...) does not stand on the sand of the beach: only trees, logs, branches and stones do ----
+rep("  FMEMO.set(key, c); return c }", "  if (c && !c.tree && BEACHLESS.has(c.t) && matAt(x, y) === 'beach') c = null;\n  FMEMO.set(key, c); return c }")
+
+rep("t = wpick(r, c.S.under); sz = 1 }\n    list.push(addGen(`f${ci}_${cj}`,", "t = wpick(r, c.S.under); sz = 1 }\n    if (BEACHLESS.has(t) && matAt(c.x, c.y) === 'beach') continue; // (a crowded tree turned into low growth: not on the sand)\n    list.push(addGen(`f${ci}_${cj}`,")
+rep("if (!nearPath(x2, y2, 14) && !inPlace(x2, y2, 8) && !nearPlaceThing(x2, y2, 10)) list.push(", "if (!nearPath(x2, y2, 14) && !inPlace(x2, y2, 8) && !nearPlaceThing(x2, y2, 10) && matAt(x2, y2) !== 'beach') list.push(")
+
+# ---- a rock standing in the water has no contact shadow on it (it stands in the water) ----
+rep("ctx.fillStyle = 'rgba(10,14,8,.2)'; for (const o of VIS) { if (o.flat) continue;", "ctx.fillStyle = 'rgba(10,14,8,.2)'; for (const o of VIS) { if (o.flat || o._wk === 3) continue;")
+
 # ---- boats afloat rock on the water (an object's own offset, set by the water's code) ----
 rep("const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));", "const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));")
 
