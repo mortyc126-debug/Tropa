@@ -789,11 +789,13 @@ const RIDER_N=16,ROX=16;
 const R3B=.5,R3SS=3,R3W=32+2*ROX,R3H=44;
 const R3Z=new Float32Array(R3W*R3SS*R3H*R3SS),R3C=new Int32Array(R3W*R3SS*R3H*R3SS),R3T=new Uint8Array(R3W*R3SS*R3H*R3SS);
 const rgbI=c=>(c[0]<<16)|(c[1]<<8)|c[2];
-function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1){
+function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0){
   const SS=R3SS,Wd=R3W,Ht=R3H,SW=Wd*SS,SH=Ht*SS,B=R3B,D=Math.PI/180,zb=R3Z,cb=R3C,tb=R3T;zb.fill(-1e9);cb.fill(-1);tb.fill(0);
   // ps (0..1): the foot of side fs (-1 left, 1 right) put down on the ground, the bike leaning a little toward it;
   // br (0..1): the breath of the standing rider
-  const pe=ps*ps*(3-2*ps),ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),LN=lean+6*pe*fs,ls=Math.sin(LN*D),lc=Math.cos(LN*D);
+  // gk, gu: an idle gesture (1 look left, 2 look right, 3 look up, 4 a hand to the beanie, 5 a shift of weight, 6 a sigh)
+  // and how far it has gone (0..1)
+  const pe=ps*ps*(3-2*ps),GE=gu*gu*(3-2*gu),ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),LN=lean+6*pe*fs-(gk===5?2.6*GE*fs:0),ls=Math.sin(LN*D),lc=Math.cos(LN*D);
   // the model's own axes in the world (X right on screen, N away from the camera along the ground, H up)
   const Fw=[ys,yc,0],Sw=[lc*yc,-lc*ys,-ls],Hw=[ls*yc,-ls*ys,lc];
   const BBF=8,OX=16+ROX,OY=31.75; // the bottom bracket's ground point sits here on the sprite at every heading
@@ -852,8 +854,8 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1){
   const C=RC,th=fr/RIDER_N*Math.PI*2,spin=-fr/RIDER_N*Math.PI,
     // with a foot down the cranks turn to a standing position (the right pedal forward and a little low), and the rider
     // sits over toward the foot, a little lower and forward (PDF, PDZ), breathing (PBZ)
-    TS=(fs<0?195:15)*D,dth=((TS-th+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI,thc=th+dth*pe,o=Math.sin(thc)*.6*(1-pe)+.9*pe*fs,
-    PDZ=.7*pe,PDF=.5*pe,PBZ=.45*Math.sin(br*2*Math.PI); // half a turn of the wheel per pedal cycle,
+    TS=(fs<0?195:15)*D,dth=((TS-th+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI,thc=th+dth*pe,o=Math.sin(thc)*.6*(1-pe)+.9*pe*fs-(gk===5?.7*GE*fs:0),
+    PDZ=.7*pe,PDF=.5*pe,PBZ=.55*Math.sin(br*2*Math.PI)+(gk===6?.9*GE:0); // half a turn of the wheel per pedal cycle,
   // about its true speed; the eight glints (a quarter turn apart) and six spokes come back to the same places, so the
   // loop of frames is seamless and a glint is always rolling steadily round the tyre
   // Seen straight from behind the drawing follows the hand-made sprite, cranks close to the rear wheel; turned, the
@@ -911,7 +913,8 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1){
   const P0=[5.6+PDF,19.6-PDZ],P1=[12.3+PDF,26.6-PDZ+PBZ],ua=nrm([P1[0]-P0[0],0,P1[1]-P0[1]]),nb=[-ua[2],0,ua[0]],TC=[(P0[0]+P1[0])/2,o,(P0[1]+P1[1])/2];
   ell(TC,mul(ua,5.8),[0,5.9,0],mul(nb,3.5),d=>U0<-.78?JKD:tone(d,JK,.5,-.12));
   // arms: shoulder to the hand on the grip, the elbow bent out and a little back
-  for(const side of[-1,1]){const sh=add(TC,add(mul(ua,4.3),[0,side*4.9,0])),hd=BARP(side*6.4),el=ik(sh,hd,4.7,4.5,[-.5,side*.55,-.7]);
+  for(const side of[-1,1]){const sh=add(TC,add(mul(ua,4.3),[0,side*4.9,0])),hd0=BARP(side*6.4),hg=gk===4&&side===fs?GE:0,hd=hg?add(hd0,mul(sub([14+PDF,o+side*4.5,29.2-PDZ+PBZ],hd0),hg)):hd0,
+      el=ik(sh,hd,4.7,4.5,[-.5+.2*hg,side*(.55+.45*hg),-.7+.5*hg]);
     tube(sh,el,1.2,1.0,d=>tone(d,JK,.45,-.1));tube(el,hd,1.0,.85,d=>tone(d,JK,.45,-.1));
     ell(add(hd,[.1,side*.2,.25]),[1.1,0,0],[0,1.0,0],[0,0,.9],d=>tone(d,GLV,.45,-.15))}
   const PKC=add(TC,add(mul(ua,2.4),mul(nb,3.5+.85)));
@@ -919,17 +922,19 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1){
       if(U0===4){if(U1>.3)return Math.abs(U2)<.2&&U1<.58?BUCK:PKD;if(U1<-.85)return PKD;if(U2<-.86)return PKL;return PKc}
       return tone(d,PK,.4,-.1)});
   for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(t0,t1,.42,.42,()=>STRAP,1)}
-  const HC=[14.5+PDF,o,30.1-PDZ+PBZ];
+  const HC=[14.5+PDF-(gk===3?.5*GE:0),o+(gk===1?-.7:gk===2?.7:0)*GE,30.1-PDZ+PBZ+(gk===3?.6*GE:0)];
   ell([11.7+PDF,o,28.1-PDZ+PBZ],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
   const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];ball(KN,.95,d=>d>-.05?SCF:SCD);
   // head: the beanie over the crown and the back, a ribbed band, hair at the nape, a sliver of face in front
+  const hpsi=(gk===1?-62:gk===2?62:0)*D*GE,hth=(gk===3?38:gk===6?9:0)*D*GE,hcp=Math.cos(hth),hsp=Math.sin(hth),hcy=Math.cos(hpsi),hsy=Math.sin(hpsi),
+    HR=v=>{const f1=v[0]*hcp-v[2]*hsp,h1=v[0]*hsp+v[2]*hcp;return[f1*hcy-v[1]*hsy,f1*hsy+v[1]*hcy,h1]};
   const FD=nrm([1,0,-.45]);
-  ell(HC,[3.0,0,0],[0,3.75,0],[0,0,3.0],d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;
+  ell(HC,HR([3.0,0,0]),HR([0,3.75,0]),HR([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;
       if(fd>.42&&hh<.32)return d>.2?SKIN:SKIND;
       if(hh<-.38&&fd<.3)return HAIR;
       if(hh<-.02&&fd<.62)return Math.floor((Math.atan2(U1,U0)+Math.PI)*3.6)%2?BND:BN;
       return tone(d,BNT,.55,-.05)});
-  ball(add(HC,[1.0,0,3.5]),1.3,d=>d>-.05?POM:POMD);
+  ball(add(HC,HR([1.0,0,3.5])),1.3,d=>d>-.05?POM:POMD);
   // ---- resolve: majority colour per pixel (thin parts count for more so a crank or a stay does not vanish) ----
   const s=new Spr(Wd,Ht),kc=new Int32Array(9),kw=new Float32Array(9),dd=s.d;
   for(let y=0;y<Ht;y++)for(let x=0;x<Wd;x++){let n=0,wsum=0;
@@ -3336,7 +3341,7 @@ function rStore(yi, li, f, d) { let a = RSETS.get(rk(yi, li)); if (!a) { a = new
   if (a.n === RIDER_N) { const m = new Uint8Array(RW * RH), dd = c.getContext('2d').getImageData(0, 0, RW, RH).data; for (let i = 0; i < m.length; i++) m[i] = dd[i * 4 + 3] ? 1 : 0; a.mask = m; a.sh = [] } }
 const rReady = (yi, li) => { const a = RSETS.get(rk(yi, li)); return !!a && a.n === RIDER_N };
 const RWORK = [];
-try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
+try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs,j.gk,j.gu);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
   for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; if (m.sk !== undefined) { stStore(m.sk, m.d); return } RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); SPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
 function rJob(yi, li, f) { const yaw = yi * YSTEP; return { yi, li, f, yaw, lean: li * LEAN_DEG, steer: li * STEER_DEG } }
 function rNext() { // the next sprite to make: the present heading and lean; then the upright headings, coarse ones first
@@ -3348,9 +3353,9 @@ function rNext() { // the next sprite to make: the present heading and lean; the
 let RORDER = null;
 function rWarm() { if (RWORK.length) { let busy = RWORK.reduce((a, w) => a + w.busy, 0);
     // (the frames of a foot going down come first)
-    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi) }) }
+    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi), gk: sp.gk, gu: sp.gu }) }
     while (busy < RWORK.length * 6) { const j = rNext(); if (!j) return; RPND.add(rk(j[0], j[1]) * 32 + j[2]); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage(rJob(...j)) } return }
-  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi)); stStore(k, r.d); return }
+  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi), sp.gk, sp.gu); stStore(k, r.d); return }
   const j = rNext(); if (j) { const q = rJob(...j), r = riderLocal(q.f, q.yaw, q.lean, q.steer); rStore(j[0], j[1], j[2], r.d) } }
 function rPick(yi, li) { if (rReady(yi, li)) return [yi, li]; let best = null, bd = 1e9; for (const [k, a] of RSETS) { if (a.n !== RIDER_N) continue; const yy = Math.floor(k / 3), ll = k % 3 - 1, dy = Math.min(Math.abs(yy - yi), NY - Math.abs(yy - yi)), d = dy + Math.abs(ll - li) * 1.5; if (d < bd) { bd = d; best = [yy, ll] } } return best }
 // where the lamps are on the sprite for a heading: the front lamp on the handlebar, the rear light on the rack
@@ -3448,35 +3453,54 @@ function kickLeaf() { if (leaves.length > 260) return; const back = Math.random(
 function squash(cv) { const w = cv.width, h = cv.height, c = document.createElement('canvas'); c.width = w + 2; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(cv, 0, 0, w, h, 0, Math.ceil(h * .55), w + 2, Math.floor(h * .45)); return c }
 // ================= standing: a foot on the ground when the bike is still =================
 // Once the bike has stood still for a moment, the rider takes one foot off the pedal and sets it flat on the ground
-// beside the bike (on the side toward the camera), which leans a little toward it; as he is about to ride off the foot goes back. That is a short run of
-// frames (riderPixels' ps: 0 riding .. 1 foot down), made for the heading and the pedal position the bike stopped in:
-// frame 0 is the riding sprite itself, the last is the standing pose, and a standing rider breathes (br). The workers make
-// them on the spot, the movement waits for each frame (and never skips one) and plays back to the same riding sprite, so
-// the pedals and the wheels do not jump. The bike does not move or turn while he stands.
-const ST_N = 8, ST_I = 4, ST_IDLE = [0, 1, 0, 3], // (the breath: base, in, base, out; ST_IDLE[m] / ST_I is br)
-   STAND = { k: 0, go: 0, t: 0, yi: 0, f0: 0, cv: null, still: 0, m: 0, mt: 0, w: 0, cool: 0 }, SPR_ST = new Map(), SPND = new Set(), SQ = [];
+// beside the bike (on the side toward the camera), which leans a little toward it; as he is about to ride off the foot
+// goes back. That is a short run of frames (riderPixels' ps: 0 riding .. 1 foot down), made for the heading and the pedal
+// position the bike stopped in: frame 0 is the riding sprite itself, the last is the standing pose, and a standing rider
+// breathes (br). The workers make them on the spot, the movement waits for each frame (and never skips one) and plays
+// back to the same riding sprite, so the pedals and the wheels do not jump. The bike does not move or turn while he stands.
+// Standing, he is not a statue: he breathes (at an uneven pace), and every few seconds, at random, does something: looks
+// to one side or the other, up into the trees, puts a hand to his beanie, shifts his weight, sighs (riderPixels' gk, gu).
+// A gesture is four frames from the standing pose to its peak, held a moment (the hand to the beanie fidgets), and played
+// back the same way. It is only started when all its frames are made and the breath is at rest; a key press takes it
+// back first (a tenth of a second) and then the foot goes.
+const ST_N = 8, ST_I = 4, ST_IDLE = [0, 1, 0, 3], ST_G = 4, // (the breath: base, in, base, out; ST_IDLE[m] / ST_I is br)
+  GEST = { 1: { w: 2.2, dw: [.8, 1.7] }, 2: { w: 2.2, dw: [.8, 1.7] }, 3: { w: 1.5, dw: [1, 2] }, 4: { w: 1.6, dw: [1.2, 2], wob: 1 }, 5: { w: 2, dw: [.4, .9] }, 6: { w: 1.2, dw: [.5, 1] } },
+  STAND = { k: 0, go: 0, t: 0, yi: 0, f0: 0, cv: null, still: 0, m: 0, mt: 0, bt: .6, w: 0, cool: 0, g: null, gp: 0, gw: 0, gt: 3, ghist: [] }, SPR_ST = new Map(), SPND = new Set(), SQ = [];
 const stKey = (yi, f0, tag) => yi + '|' + f0 + '|' + tag;
 const stSide = yi => Math.sin(yi * YSTEP * D2R) > .01 ? 1 : -1; // the foot goes down on the side that faces the camera (his right when he heads east, his left heading west)
-const stSpec = tag => tag[0] === 't' ? { ps: +tag.slice(1) / ST_N, br: 0 } : { ps: 1, br: +tag.slice(1) / ST_I };
+const stSpec = tag => tag[0] === 't' ? { ps: +tag.slice(1) / ST_N, br: 0, gk: 0, gu: 0 } : tag[0] === 'g' ? { ps: 1, br: 0, gk: +tag[1], gu: +tag.slice(3) / ST_G } : { ps: 1, br: +tag.slice(1) / ST_I, gk: 0, gu: 0 };
 function stWant(yi, f0) { SQ.length = 0; const L = []; for (let j = 1; j <= ST_N; j++) L.push('t' + j); for (const m of ST_IDLE) if (m) L.push('i' + m);
   for (const tag of L) { const k = stKey(yi, f0, tag); if (!SPR_ST.has(k) && !SPND.has(k)) SQ.push([k, yi, f0, tag]) } }
+function stWantG(id) { for (let j = 1; j <= ST_G; j++) { const tag = 'g' + id + '_' + j, k = stKey(STAND.yi, STAND.f0, tag); if (!SPR_ST.has(k) && !SPND.has(k) && !SQ.some(q => q[0] === k)) SQ.push([k, STAND.yi, STAND.f0, tag]) } }
 function stStore(k, d) { const c = document.createElement('canvas'); c.width = RW; c.height = RH; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(d), RW, RH), 0, 0);
   const m = new Uint8Array(RW * RH); for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] ? 1 : 0; c.mask = m; c.sh = []; SPND.delete(k); SPR_ST.set(k, c);
-  if (SPR_ST.size > 900) { const keep = STAND.yi + '|' + STAND.f0 + '|'; let n = 0; for (const q of SPR_ST.keys()) { if (q.startsWith(keep)) continue; SPR_ST.delete(q); if (++n >= 300) break } } }
+  if (SPR_ST.size > 1200) { const keep = STAND.yi + '|' + STAND.f0 + '|'; let n = 0; for (const q of SPR_ST.keys()) { if (q.startsWith(keep)) continue; SPR_ST.delete(q); if (++n >= 400) break } } }
 const stGet = j => SPR_ST.get(stKey(STAND.yi, STAND.f0, 't' + j));
+const stGetG = (id, j) => SPR_ST.get(stKey(STAND.yi, STAND.f0, 'g' + id + '_' + j));
+const stGReady = id => { for (let j = 1; j <= ST_G; j++) if (!stGetG(id, j)) return false; return true };
+const stRnd = ([a, b]) => a + Math.random() * (b - a);
+function stPick() { const H = STAND.ghist; let tot = 0; for (const id in GEST) if (!H.includes(+id)) tot += GEST[id].w; let x = Math.random() * tot; for (const id in GEST) { if (H.includes(+id)) continue; x -= GEST[id].w; if (x <= 0) return +id } return 1 } // (never one of the last two again)
 function stepStand(dt) { const S = STAND; S.cool = Math.max(0, S.cool - dt); const move = !!wantDir() && !KEYS.has('Space'), rev = KEYS.has('KeyX') || REVHOLD || R.autoRev > 0;
   // he has stopped altogether, the bar is straight and the riding sprite of this heading is made (the movement starts from it)
   const still = Math.abs(R.v) < .8 && !move && !rev && Math.abs(R.steer) < .05 && !R.walk && rReady(R.yi, 0);
   S.still = still ? S.still + dt : 0;
-  if (!S.k && !S.go) { if (S.still < .3 || S.cool > 0) return; S.go = 1; S.yi = R.yi; S.f0 = R.f; S.t = 0; S.w = 0; stWant(S.yi, S.f0) }
-  if (S.go >= 0 && (move || rev || Math.abs(R.v) > 1.5)) S.go = -1; // about to ride off: the foot goes back
+  if (!S.k && !S.go) { if (S.still < .3 || S.cool > 0) return; S.go = 1; S.yi = R.yi; S.f0 = R.f; S.t = 0; S.w = 0; S.g = null; S.gp = 0; stWant(S.yi, S.f0) }
+  if (S.go >= 0 && (move || rev || Math.abs(R.v) > 1.5)) { S.go = -1; S.m = 0; S.gp = 0 } // about to ride off: the foot goes back
   if (S.go > 0) { S.t += dt;
-    if (stGet(S.k + 1)) { S.w = 0; if (S.t >= 1 / 18) { S.k++; S.t = 0; S.m = 0; S.mt = 0; if (S.k === ST_N) S.go = 0 } }
+    if (stGet(S.k + 1)) { S.w = 0; if (S.t >= 1 / 18) { S.k++; S.t = 0; S.m = 0; S.mt = 0; if (S.k === ST_N) { S.go = 0; S.gt = stRnd([2.5, 4]) } } }
     // a frame that does not come (a worker lost): ask again, and give the movement up rather than hold the bike
     else { S.w += dt; stWant(S.yi, S.f0); if (S.w > 1.2) { S.go = -1; S.cool = 4 } } }
-  else if (S.go < 0) { if (!S.k) S.go = 0; else { S.t += dt; if (S.t >= 1 / 26) { S.t = 0; if (--S.k <= 0) { S.k = 0; S.go = 0 } } } }
-  else if (S.k === ST_N) { S.mt += dt; if (S.mt >= .55) { S.mt = 0; S.m = (S.m + 1) % ST_IDLE.length } } // standing: he breathes
-  S.cv = !S.k ? null : S.k === ST_N && ST_IDLE[S.m] ? SPR_ST.get(stKey(S.yi, S.f0, 'i' + ST_IDLE[S.m])) || stGet(ST_N) : stGet(S.k) }
+  else if (S.go < 0) { if (S.g) { S.g.t += dt; if (S.g.t >= 1 / 40) { S.g.t = 0; if (--S.g.j <= 0) S.g = null } } // a gesture is taken back first
+    else if (!S.k) S.go = 0; else { S.t += dt; if (S.t >= 1 / 26) { S.t = 0; if (--S.k <= 0) { S.k = 0; S.go = 0 } } } }
+  else if (S.k === ST_N) { const G = S.g;
+    if (G) { G.t += dt; const Q = GEST[G.id];
+      if (G.ph === 0) { if (G.t >= 1 / 12) { G.t = 0; if (++G.j >= ST_G) { G.ph = 1; G.hold = stRnd(Q.dw) } } } // in
+      else if (G.ph === 1) { G.hold -= dt; if (Q.wob && G.t >= .22) { G.t = 0; G.j = G.j === ST_G ? ST_G - 1 : ST_G } if (G.hold <= 0) { G.ph = 2; G.t = 0; G.j = ST_G } } // held (a hand at the beanie fidgets)
+      else if (G.t >= 1 / 14) { G.t = 0; if (--G.j <= 0) { S.g = null; S.ghist.push(G.id); if (S.ghist.length > 2) S.ghist.shift(); S.gt = stRnd([2.5, 6.5]); S.m = 0; S.mt = 0; S.bt = .6 } } } // back
+    else { S.mt += dt; if (S.mt >= S.bt) { S.mt = 0; S.bt = .45 + Math.random() * .4; S.m = (S.m + 1) % ST_IDLE.length } // breathing, a little unevenly
+      if (S.gp) { S.gw += dt; if (stGReady(S.gp)) { if (!ST_IDLE[S.m]) { S.g = { id: S.gp, j: 0, ph: 0, t: 0, hold: 0 }; S.gp = 0 } } else if (S.gw > 2.5) { S.gp = 0; S.gt = 2 } } // (it starts when the breath is at rest)
+      else { S.gt -= dt; if (S.gt <= 0) { S.gp = stPick(); S.gw = 0; stWantG(S.gp) } } } }
+  S.cv = !S.k ? null : S.k === ST_N ? (S.g && S.g.j > 0 ? stGetG(S.g.id, S.g.j) : S.go >= 0 && ST_IDLE[S.m] ? SPR_ST.get(stKey(S.yi, S.f0, 'i' + ST_IDLE[S.m])) : null) || stGet(ST_N) : stGet(S.k) }
 function stepRider(dt) {
   const want = STAND.k > 0 || STAND.go ? null : wantDir(), surf = SURF[matAt(R.x, R.y)] || SURF.bor; R.surf = matAt(R.x, R.y);
   let vt = 0, stT = 0, brake = KEYS.has('Space'), refused = false;
