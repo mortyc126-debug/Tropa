@@ -68,6 +68,12 @@
       { id: 'beach-c', mat: 'beach', ellipse: [1900, 150, 740, 370], rough: .1 },
       { id: 'bay-a', mat: 'lake', pal: 'bay', ellipse: [700, -300, 1000, 500], rough: .1 },
       { id: 'bay-c', mat: 'lake', pal: 'bay', ellipse: [1900, 150, 700, 330], rough: .1 },
+      // the cape the checkpoint stands on, and the sand filling the cove south of the dam's foot: land laid over the water, so the two bays meet round a clean point
+      { id: 'cape', mat: 'beach', carve: true, ellipse: [1166, 190, 70, 56], rough: .3 }, { id: 'cove-fill', mat: 'beach', carve: true, ellipse: [1252, 268, 40, 22], rough: .3 },
+      { id: 'cape-grass', mat: 'glade', ellipse: [1128, 232, 100, 48], rough: .3 },
+      // the thin tongue of the east bay that licks the cape's north-east shoulder is filled; the little spit north of the cape is bitten off by the water
+      { id: 'cape-ne', mat: 'beach', carve: true, ellipse: [1216, 146, 20, 28], rough: .3 },
+      { id: 'bite-1', mat: 'lake', pal: 'bay', ellipse: [1196, 134, 16, 14], rough: .2 },
       // the yards, trodden bare, and the paths to the doors and down to the jetty
       { id: 'yard-1', mat: 'trodden', ellipse: [252, 392, 70, 34], rough: .2 }, { id: 'yard-2', mat: 'trodden', ellipse: [482, 372, 66, 32], rough: .2 }, { id: 'yard-3', mat: 'trodden', ellipse: [762, 358, 62, 30], rough: .2 },
       { id: 'yard-shed', mat: 'trodden', ellipse: [968, 332, 74, 30], rough: .2 }, { id: 'yard-fish', mat: 'trodden', ellipse: [620, 268, 120, 30], rough: .3 },
@@ -92,10 +98,11 @@
     ],
     objects,
     scatter: [
-      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, kinds: [['grass', 3], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
-      { id: 'reeds', n: 90, seed: 21, in: 'bay-a', band: [-9, -3], clear: 14, kinds: [['reed', 1]] },
-      { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], clear: 14, kinds: [['rock', 1]] },
-      { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4], ['grass', 1]] },
+      { id: 'scatter', n: 170, seed: 12, in: 'clearing', clear: 9, upland: ['grass', 'juniper', 'lowshrub', 'fern', 'mush', 'bush'], dry: 26, kinds: [['grass', 3], ['juniper', .6], ['lowshrub', .8], ['fern', .4], ['mush', .4], ['rock', .8], ['bush', .5], ['branch', 1.2]] },
+      // reeds only in the sheltered shallows of the west end of the shore, where the lake is quiet and the bottom silty: none on the beaten sand, none by the dam
+      { id: 'reeds', n: 40, seed: 21, in: 'bay-a', band: [-9, -3], shore: true, box: [-90, 60, 400, 330], clear: 14, kinds: [['reed', 1]] },
+      { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], shore: true, clear: 14, kinds: [['rock', 1]] },
+      { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],
     forest: { clearing: 'clearing', cell: 22, zone: .005, stands: [
       { id: 'bor', share: .42, keep: .55, size: 1.05, kinds: [['pine', 6], ['birch', 1.2], ['spruce', .8], ['decid', .25]], underKeep: .5,

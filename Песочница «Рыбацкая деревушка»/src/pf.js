@@ -2,6 +2,10 @@
 // THE FISHING VILLAGE: its palettes, the glints of the open water and the prefabs (houses, boats, nets, racks...).
 // =====================================================================================================================
 const BAYP = P(['#22394a', '#284456', '#2e4e60', '#36596b', '#466a7a', '#5f8090']), BEACHP = P(['#8d7d5a', '#9d8d68', '#ae9e78', '#bfb088', '#cfc29a']);
+// the distance to the SHORE OF THE WATER, whatever layers it is made of: the bays are ellipses that overlap (the edge of one may lie out in the open water of
+// the other, where there is no shore at all), and a layer with `carve` (a headland, a spit) is land laid over the water. Negative inside the water, as layerD.
+function bayDist(x, y) { let d = 1e9, c = 1e9; for (const B of layersNear(x, y)) { if (B.mat === 'lake') { const e = layerD(B, x, y); if (e < d) d = e } else if (B.carve) { const e = layerD(B, x, y); if (e < c) c = e } }
+  return c < 1e8 ? Math.max(d, -c) : d }
 // the colour of the open water of a bay at distance d (negative: inside) from its shore
 function bayColor(x, y, d) {
   if (d > -1.3) return GW.wetsand[quant(vn(x * .3, y * .3, SEED + 590), x, y, 2)];
@@ -44,7 +48,7 @@ function damColor(L, x, y, d) { const part = damPart(L, x, y), g = DAMG, best = 
   let c = PAL.stone[quant(clamp(.55 - s.oy * .5 - s.ox * .3 + (s.id - .5) * .5 - t * .55, 0, 1), x, y, 5, .45)];
   if (t > .8 && vn(x * .3, y, SEED + 74) > .45) c = PAL.moss[1 + (h2(x, y, SEED + 75) < .5 ? 1 : 0)]; return c }
 // the layer under the dams that show nothing here (their thin gravel, the water beyond their slopes)
-function underLayer(x, y) { const n = SKIPS.length; let h; for (;;) { h = layerAt(x, y); const L = h.L; if (L && L.mat === 'dam' && damPart(L, x, y) === 0) SKIPS.push(L); else break } SKIPS.length = n; return h }
+function underLayer(x, y) { return layerAt(x, y) }
 // a point of a dam's layer where there is no slope any more but the water below: the bike may not go there
 function damWater(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'dam' || layerD(L, x, y) >= 0) continue; if (damPart(L, x, y) !== 0) return false; if (L.pad && L.side && DAMG.sd !== L.side) continue;
     const h = underLayer(x, y); if (h.L && h.L.mat === 'lake') return true } return false }

@@ -193,7 +193,41 @@ PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprit
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, flat: true, noShadow: true } };
 
-// ---- the guard: stands by the door and smokes. A cycle of seventeen seconds: the cigarette hangs at his hip, then he lifts it, draws on it (the tip glows),
-// lowers it and breathes the smoke out; a thin wisp rises from the hanging cigarette all the time ----
-function guardStep(P, dt) { P.st += dt; P.moving = false; const T = P.st % 17, up = T > 8.2 && T < 10.4 ? 1 : 0;
-  if (up !== P.sf) { if (!up) for (let k = 0; k < 4; k++) SMOKE.push({ x: P.x + 2 + Math.random() * 2, y: P.y - 17 + Math.random(), vx: WINDX * 6 + Math.random() * 4 - 2, vy: -4 - Math.random() * 3, age: 0, life: 2.6 + Math.random() * 1.2, a0: .32, r0: 1.5, ph: Math.random() * 9 }); P.sf = up } }
+// ---- the guard: stands by the barrier and smokes. A cycle of seventeen seconds: the cigarette hangs at his hip and a thin wisp rises from it; then he lifts it to his
+// lips and draws on it (the ember brightens and glows); lowers it and breathes the smoke out in a stream that the wind takes; the ember dims again ----
+const GSM = []; // the guard's smoke: kind 0 a wisp (single pixels rising and wavering), kind 1 a breath (soft puffs that spread)
+// where the mouth is, as an offset from the anchor of the figure's sprite (the same turn and scale as the sprite's model)
+function guardMouth(look, dir) { const H = look.h || 17.6, head = H / 4.5, r = head * .5, hz = H - head * .55, T = T3(); T.dots.push([[0, 1.05 - r * .95, hz - r * .45], [0, 0, 0]]); t3rot(T, dir * 45); t3scale(T, NPC_K); return t3p(T.dots[0][0]) }
+function guardStep(P, dt) { P.st += dt; P.moving = false; const T = P.st % 17, up = (T > 8.2 && T < 10.4) ? 1 : 0, S = npcSprite(P.look, 'smoke', P.dir, up); P.sf = up;
+  // the ember: dim while held, glowing while he draws, a slow fade after
+  P.ember = (T < 8.2 ? .3 : T < 9.5 ? .3 + .7 * (T - 8.2) / 1.3 : T < 10.4 ? 1 : T < 12.4 ? 1 - .7 * (T - 10.4) / 2 : .3) * (.92 + .08 * Math.sin(P.st * 3.3));
+  if (S.tip) { P.tx = Math.round(P.x) + S.tip[0]; P.ty = Math.round(P.y) + S.tip[1];
+    if (!up) { P.wa = (P.wa || 0) + dt * 9; while (P.wa >= 1) { P.wa--; GSM.push({ k: 0, x: P.tx + (Math.random() - .5) * .4, y: P.ty - .5, vx: 0, vy: -(6 + Math.random() * 3), age: 0, life: 3.2 + Math.random() * 1.8, ph: Math.random() * 6.28, a0: .7, c: 0 }) } } }
+  if (T > 10.5 && T < 12.0 && S.mouth) { P.ba = (P.ba || 0) + dt * 15; const th = P.dir * Math.PI / 4, fx = Math.sin(th), fy = -Math.cos(th);
+    while (P.ba >= 1) { P.ba--; const sp = 16 + Math.random() * 9; GSM.push({ k: 1, x: Math.round(P.x) + S.mouth[0] + fx * 2.2, y: Math.round(P.y) + S.mouth[1] + fy * 1.6, vx: fx * sp + (Math.random() - .5) * 3.5, vy: fy * sp * .5 - 3 + (Math.random() - .5) * 3, age: 0, life: 3.2 + Math.random() * 1.6, ph: Math.random() * 6.28, a0: .48, r0: .8 + Math.random() * .5 }) } } else P.ba = 0 }
+function stepGSM(dt) { const g = gustNow(), wv = 3 + 26 * WIND.s * (.55 + .7 * g);
+  for (const p of GSM) { p.age += dt; const k = Math.min(1, dt * (p.k ? 1.7 : .8)), tx = WINDX * wv + Math.sin(p.age * 2.6 + p.ph) * (p.k ? 1.5 : 3.2) * (1 + WIND.s), ty = (p.k ? -7 : -Math.max(1.5, 6 - p.age * 1.2)) + WINDY * wv * .4;
+    p.vx += (tx - p.vx) * k; p.vy += (ty - p.vy) * k; p.x += p.vx * dt; p.y += p.vy * dt }
+  for (let i = GSM.length - 1; i >= 0; i--) if (GSM[i].age > GSM[i].life) GSM.splice(i, 1) }
+// the smoke is drawn under the light (dimmer at night, like the rest of the smoke)
+function drawGuardSmoke() { const dim = 1 - LT.dark * .55;
+  for (const p of GSM) { if (p.x < CAM.x - 20 || p.x > CAM.x + W + 20 || p.y < CAM.y - 20 || p.y > CAM.y + H + 20) continue; const u = p.age / p.life, fade = (1 - u) * (u < .12 ? u / .12 : 1);
+    if (p.k) puff(p.x, p.y, Math.min(4.6, p.r0 + p.age * 1.5), p.a0 * fade * dim, '224,228,236'); else { ctx.fillStyle = `rgba(178,184,198,${(p.a0 * fade * dim).toFixed(3)})`; const x = Math.round(p.x), y = Math.round(p.y); ctx.fillRect(x, y, 1, 1); if (u > .3) ctx.fillRect(x + (p.ph > 3.14 ? 1 : -1), y, 1, 1); if (u > .6) ctx.fillRect(x, y - 1, 1, 1) } } }
+// the ember and its small light, over the lit picture: a pixel of orange by day, a warm glow in the dark that swells when he draws
+function drawGuardGlow() { for (const P of NPCS) { if (!P.smoker || P.tx === undefined || Math.abs(P.x - CAM.x - W / 2) > W) continue; const e = P.ember, nt = clamp(LT.dark * 1.25, 0, 1);
+    if (nt > .04) { puff(P.tx, P.ty, 7 + 6 * e, (.08 + .3 * e) * nt, '255,150,70'); puff(P.tx, P.ty, 3, (.22 + .5 * e) * nt, '255,205,130') }
+    ctx.fillStyle = `rgba(255,${150 + Math.round(80 * e)},90,${(.6 + .4 * e).toFixed(2)})`; ctx.fillRect(P.tx, P.ty, 1, 1) } }
+
+// ---- where a thing sown by a scatter may stand: the distance of a layer's edge (the band), and on top of that: `shore` (the band counted from the real shore of the
+// water, not from the edge of one of the ellipses it is made of, which lies in the open water where two of them overlap), `box` and `avoid` (rectangles of the
+// place), `upland` (kinds that belong to dry ground: never on the dam, never on the sand within `dry` px of the water) ----
+const visMat = (x, y) => { const h = layerAt(x, y); if (h.L && h.L.mat === 'dam' && damPart(h.L, x, y) === 0) { const u = underLayer(x, y); return u.L ? u.L.mat : PL.base } return h.L ? h.L.mat : PL.base };
+const lakeDist = (x, y) => bayDist(x, y);
+function scatterOK(S, L, t, x, y) { const dL = layerD(L, x, y);
+  if (S.band ? dL < S.band[0] || dL > S.band[1] : dL > -6 || inPond(x, y, 4)) return false;
+  const [lx, ly] = toL(x, y);
+  if (S.box && !(lx >= S.box[0] && lx <= S.box[2] && ly >= S.box[1] && ly <= S.box[3])) return false;
+  if (S.avoid && S.avoid.some(b => lx >= b[0] && lx <= b[2] && ly >= b[1] && ly <= b[3])) return false;
+  if (S.shore) { const d = lakeDist(x, y); if (d < S.band[0] || d > S.band[1]) return false }
+  if (S.upland && S.upland.includes(t)) { const m = visMat(x, y); if (m === 'dam') return false; if (m === 'beach' && lakeDist(x, y) < (S.dry ?? 24)) return false }
+  return true }
