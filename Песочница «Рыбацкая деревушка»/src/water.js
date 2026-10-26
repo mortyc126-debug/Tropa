@@ -49,11 +49,14 @@ function wStep(J, limit) { const { x0, y0, Ls, Ds, Bs, F, PN, ZN, blk } = J;
     J.r++ }
   if (J.r >= CK) { J.done = true; J.f = J.any ? { x0, y0, F, PN, ZN } : null } }
 // (the fields in view and round it are built a little each frame, the nearest first; a little more while the place is just opening)
-function wFields(cx0, cy0) { const ci0 = Math.floor(cx0 / CK) - 1, ci1 = Math.floor((cx0 + W) / CK) + 1, cj0 = Math.floor(cy0 / CK) - 1, cj1 = Math.floor((cy0 + H) / CK) + 1, FS = [], todo = [], mx = cx0 + W / 2, my = cy0 + H / 2;
-  for (let cj = cj0; cj <= cj1; cj++) for (let ci = ci0; ci <= ci1; ci++) { const key = ci + ',' + cj; let J = WJOBS.get(key); if (!J) { J = wJob(ci, cj); WJOBS.set(key, J) }
-    if (J.done) { if (J.f && ci >= ci0 + 1 && ci <= ci1 - 1 && cj >= cj0 + 1 && cj <= cj1 - 1) FS.push(J.f) } else todo.push([Math.hypot(ci * CK + CK / 2 - mx, cj * CK + CK / 2 - my), J]) }
-  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + (t < 4 ? 14 : 3); for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } }
+function wFields(cx0, cy0) { const M = 2, ci0 = Math.floor(cx0 / CK), ci1 = Math.floor((cx0 + W) / CK), cj0 = Math.floor(cy0 / CK), cj1 = Math.floor((cy0 + H) / CK), FS = [], todo = [], mx = cx0 + W / 2, my = cy0 + H / 2; let missing = 0;
+  for (let cj = cj0 - M; cj <= cj1 + M; cj++) for (let ci = ci0 - M; ci <= ci1 + M; ci++) { const key = ci + ',' + cj; let J = WJOBS.get(key); if (!J) { J = wJob(ci, cj); WJOBS.set(key, J) }
+    const inView = ci >= ci0 && ci <= ci1 && cj >= cj0 && cj <= cj1;
+    if (J.done) { if (J.f && inView) FS.push(J.f) } else { todo.push([Math.hypot(ci * CK + CK / 2 - mx, cj * CK + CK / 2 - my), J]); if (inView) missing++ } }
+  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + (missing || t < 4 ? 12 : 3); for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } } // (more while the view itself is not ready: the place is just opening)
   return FS }
+// the depth of the water (px, + into the water, - up the beach) at a point, if its field is ready: null where it is not water (the pier, the dam), undefined where it is not known yet
+function wDw(x, y) { const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)); if (!J || !J.done) return undefined; if (!J.f) return null; const v = J.f.F[(Math.floor(y) - J.f.y0) * CK + Math.floor(x) - J.f.x0]; return v === WNONE ? null : v * .125 }
 const wFrac = u => u - Math.floor(u);
 const wHash = (x, y, k) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(k, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 24 }; // (a cheap hash, 0..255)
 let WRING = []; // (rings spreading on the water: a fish rising, a fly landing)
@@ -61,11 +64,14 @@ function drawWater(cx0, cy0) {
   if (!WS.tile) wInit();
   const FS = wFields(cx0, cy0);
   if (!FS.length) return;
+  WS.acc = (WS.acc || 0) + LASTDT;
+  if (WS.hold > 0 && WS.ov && WS.ov.w === W && WS.ov.h === H) { WS.hold--; ctx.drawImage(WS.ov.cv, WS.ox, WS.oy); return }
+  const tw0 = performance.now();
   if (!WS.ov || WS.ov.w !== W || WS.ov.h !== H) { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'), img = g.createImageData(W, H); WS.ov = { cv, g, img, buf: new Uint32Array(img.data.buffer), w: W, h: H } }
   const O = WS.ov, buf = O.buf; buf.fill(0);
   // the state of the sea: the wind, and what it makes of the waves
-  const dt = LASTDT, wnd = WIND.s, rain = WX.rain, gn = gustNow(), A = clamp(.16 + wnd * 1.2 + rain * .12, .16, 1), lowGfx = typeof GFXLOW !== 'undefined' && GFXLOW;
-  const Tw = 8.2 - 4.2 * A, SW = 7.5 + 6 * A, Lw = SW * 3, RU = .9 + 6.2 * Math.pow(A, 1.4) * (.8 + .4 * gn), foamK = clamp((A - .12) * 2.3, 0, 1);
+  const dt = WS.acc; WS.acc = 0; const wnd = WIND.s, rain = WX.rain, gn = gustNow(), A = clamp(.16 + wnd * 1.2 + rain * .12, .16, 1);
+  const Tw = 8.2 - 4.2 * A, SW = 7.5 + 6 * A, Lw = SW * 3, RU = .9 + 6.2 * Math.pow(A, 1.4) * (.8 + .4 * gn), foamK = clamp((A - .12) * 2.3, 0, 1); WS.RU = RU; WS.A = A; WS.LF = .7 + A * .5;
   WS.ph += dt / Tw; const v1 = 4 + 16 * wnd, v2 = 2.5 + 9 * wnd, vg = 6 + 40 * wnd;
   WS.x1 += WINDX * v1 * dt; WS.y1 += WINDY * v1 * .5 * dt; WS.x2 += (WINDX * .5 - WINDY * .8) * v2 * dt; WS.y2 += (WINDY * .5 + WINDX * .8) * v2 * .5 * dt; WS.gx += WINDX * vg * dt; WS.gy += WINDY * vg * .7 * dt;
   const ox1 = Math.floor(WS.x1), oy1 = Math.floor(WS.y1), ox2 = Math.floor(WS.x2), oy2 = Math.floor(WS.y2), gox = Math.floor(WS.gx), goy = Math.floor(WS.gy);
@@ -90,13 +96,14 @@ function drawWater(cx0, cy0) {
             const pc = SW - Lw * u, dc = dw - pc;
             if (foamK > 0 && pc > -1 && dc < 1.5 && dc > -(2.2 + 3.2 * A)) { const tr = 2.2 + 3.2 * A, ka = dc > 0 ? 1 - dc / 1.5 : (1 - -dc / tr) * .75; if (z < ka * 1.05 + .06) col = pk(FM, ka * .9 * foamK + .1) }
             else if (foamK > 0 && u > .333) { const fr = 1 - (u - .333) / .667, lim = 3.5 + 2 * A; if (dw < lim) { const a = .5 * fr * fr * (1 - dw / lim); if (z < a * 1.4) col = pk(FM, a * foamK + .08) } } }
-          if (!col && !lowGfx && dw > SW - 1 && dw < 150) { // the swell: a bright thread on each crest, the trough behind it a little darker
+          if (!col && dw > SW - 1 && dw < 150) { // the swell: a bright thread on each crest, the trough behind it a little darker
             const cp = (dw - SW) / Lw + u, ff = (cp - Math.floor(cp + .5)) * Lw, af = Math.abs(ff), att = (1 - dw / 150) * (1 - dw / 150) * (.35 + .65 * A);
             const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, br = clamp((gg - .25) * 2.2, 0, 1);
             if (af < 1.5) { const a = (1 - af / 1.5) * .55 * att * (.2 + .8 * br); if (a > .02) col = pk(HLc, a * sunK + .03); if (A > .5 && br > .45 && z < (A - .45) * .9 * br && dw < 110) col = pk(FM, .55 + .3 * z) }
             else if (ff > 1.6 && ff < 7.5) { const a = .34 * att * (.2 + .8 * br) * (1 - (ff - 1.6) / 6); if (a > .03) col = pk(DKc, a) } }
-          if (!col && !lowGfx && dw > 2.5) { // the ripples
-            const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, rg = clamp(rough0 * (.2 + 1.3 * gg * gg) + rain * .25, 0, 1.4),
+          if (!col && dw > 2.5) { // the ripples
+            const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, rg = clamp(Math.max(.2, rough0 * (.2 + 1.3 * gg * gg)) + rain * .25, 0, 1.4), // (even in a calm the water has its small ripples)
+             
               s = (TA[(((y - oy1) & 63) << 7) | ((x - ox1) & 127)] * .55 + TB[(((y - oy2) & 63) << 7) | ((x - ox2) & 127)] * .45 - 128) * .0078 * (.1 + 2 * rg);
             if (s > .34) { col = pk(HLc, (.27 + .25 * (s - .34)) * (.78 + .22 * WSN[((tick + (gg * 40 | 0)) & 7) << 6]) * sunK + .04); if (rg > .2 && sunK > .25 && wHash(x, y, tick) < 22 * rg) col = pk([255, 255, 250], .9 * sunK) }
             else if (s > .2) col = pk(HLc, .1 * sunK + .02); else if (s < -.42) col = pk(DKc, .28); else if (s < -.24) col = pk(DKc, .15) } }
@@ -112,8 +119,41 @@ function drawWater(cx0, cy0) {
       for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .5 + k * .5 + sd * .13); ring(o.x, o.y + 1, rx0 + ph * 9, ry0 + ph * 5, FM, (1 - ph) * (.55 + .25 * A) * (.55 + .45 * sunK), sd + k, .3) }
       const bw = .5 + .5 * Math.sin(t * 2.2 + sd); for (let i = -1; i <= 1; i += 2) put(o.x + i * (rx0 - 1) + (i > 0 ? 1 : -1) * bw, o.y + 1, FM, .4 + .3 * bw) }
     else for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .45 + k * .5 + sd * .21); ring(o.x, o.y + 1, 2.5 + ph * 6, 1.3 + ph * 3, FM, (1 - ph) * (.5 + .25 * A), sd + k, .2) } }
-  if (!lowGfx) { const slot = Math.floor(t / 1.3);
+  { const slot = Math.floor(t / 1.3);
     for (let j = slot - 2; j <= slot; j++) { for (let m = 0; m < 2; m++) { if (h2(j, m, 95) > .7 * (1 - clamp(wnd / .2, 0, 1)) + .05 * rain) continue; const age = t - j * 1.3 - m * .4; if (age < 0 || age > 2.6) continue;
       const fx = cx0 + 20 + h2(j, m, 96) * (W - 40), fy = cy0 + 20 + h2(j, m, 97) * (H - 40), c = Math.floor(fx / CK), r = Math.floor(fy / CK), J = WJOBS.get(c + ',' + r), f = J && J.f; if (!f) continue; const dwv = f.F[(Math.floor(fy) - f.y0) * CK + Math.floor(fx) - f.x0]; if (dwv === WNONE || dwv < 120) continue;
       for (let k = 0; k < 3; k++) { const ph = age * .55 - k * .16; if (ph < 0 || ph > 1) continue; ring(fx, fy, 1 + ph * 9, .5 + ph * 4.5, HL, (1 - ph) * .42 * (.4 + .6 * sunK), j * 7 + m, .2) } } } }
-  O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0) }
+  O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0); WS.ox = cx0; WS.oy = cy0;
+  const cost = performance.now() - tw0; WS.cost = (WS.cost ?? cost) * .9 + cost * .1; WS.hold = WS.cost > 11 ? 2 : WS.cost > 5.5 ? 1 : 0 }
+
+// =====================================================================================================================
+// LEAVES ON THE WATER. A leaf that comes down on the bay floats: the wind pushes it along the surface, the swell works it shoreward in a series of
+// surges (quickly in, slowly back, a little further in each time), the surge runs it up the sand and leaves it there when it draws back; a leaf on the
+// sand the next big surge reaches is floated off again. Far out the leaves are drowned slowly, so they keep to the shallows, and at the high-water mark
+// they lie in a line (the wrack, baked into the beach). A few more drift in all the time from the open water.
+// =====================================================================================================================
+const LEAFCOL = [[200, 96, 40], [214, 160, 52], [172, 64, 38], [150, 108, 56], [186, 128, 44]], LEAFSP = ['birch', 'aspen', 'maple', 'oak', 'linden', 'curl'];
+function wLocal(x, y) { const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)); if (!J || !J.f) return null; const k = (Math.floor(y) - J.f.y0) * CK + Math.floor(x) - J.f.x0, v = J.f.F[k]; return v === WNONE ? null : { dw: v * .125, pn: J.f.PN[k] * .003922 } }
+// the wave's state at a point: the water line there now (r: how far into the water the point is from the water's edge at this moment)
+function wReach(L) { const u = wFrac(WS.ph + L.pn * .55), q = WS.QL[(u * 255) | 0]; return { u, r: L.dw + WS.RU * q } }
+function leafToWater(l) { const L = wLocal(l.x, l.y); if (!L) return false; l.age = 2; l.fi = 1; l.nx = 0; l.ny = -1; l.life = Math.max(l.life, 60); l.hop = 0; return L.dw > 0 }
+function leafAfloat(l, dt) { const L = wLocal(l.x, l.y);
+  if (!L) { l.life = 0; return } // (gone under the pier or the dam)
+  const { u, r } = wReach(L), dw = L.dw, A = WS.A;
+  l.ph += dt * 1.6; l.hop = .5 + .5 * Math.sin(l.ph); if (l.fi < 1) l.fi = Math.min(1, l.fi + dt * .8);
+  // which way is the shore: where the depth falls most steeply (kept from the last look where the field is flat)
+  const a = wLocal(l.x + 3, l.y), b = wLocal(l.x - 3, l.y), c = wLocal(l.x, l.y + 3), d = wLocal(l.x, l.y - 3);
+  if (a && b && c && d) { const gx = a.dw - b.dw, gy = c.dw - d.dw, m = Math.hypot(gx, gy); if (m > .05) { l.nx += (gx / m - l.nx) * Math.min(1, dt * 3); l.ny += (gy / m - l.ny) * Math.min(1, dt * 3) } }
+  // the surface: the wind's drift, the swell's surges toward the shore (a stronger push on the way in than the pull back)
+  const drift = 1.2 + 9 * WIND.s, push = (u < .333 ? .6 : u < .5 ? 2.2 : -.3) * (2.6 + 8 * A);
+  l.x += (WINDX * drift - l.nx * push) * dt + Math.sin(l.ph * .7) * .25 * dt * 6; l.y += (WINDY * drift * .6 - l.ny * push) * dt + Math.cos(l.ph * .6) * .2 * dt * 6;
+  l.life -= dt * (dw > 40 ? 3 : .1); // far from the shore they are drowned
+  if (dw < 1.2 && r <= .3) { l.state = 1; l.life = 90 + Math.random() * 90; l.age = 0; l.hop = 0; l.sh = true } } // the water has drawn back: it is left on the sand
+function leafShore(l, dt) { const L = wLocal(l.x, l.y); if (!L || L.dw > 1.5) return; const { r } = wReach(L); if (r > WS.LF + 1.2 && Math.random() < dt * (.5 + 1.5 * WS.A)) { l.state = 3; l.age = 2; l.fi = 1; l.nx = 0; l.ny = -1; l.ph = Math.random() * 6; l.sh = false; l.life = Math.max(l.life, 40) } } // (a surge reaches it: it is floated off again)
+let DRIFTACC = 0, DRIFTINIT = false;
+function driftLeaves(dt) { if (!WS.tile || !WS.A) return; let n = 0; for (const l of leaves) if (l.state === 3) n++;
+  DRIFTACC += dt * (.18 + .5 * WIND.s) * (n < 14 ? 2 : 1); if (!DRIFTINIT) { DRIFTINIT = true; DRIFTACC += 8 }
+  while (DRIFTACC >= 1 && n < 46) { DRIFTACC--; for (let tries = 0; tries < 8; tries++) { const x = CAM.x + 6 + Math.random() * (W - 12), y = CAM.y + 6 + Math.random() * (H - 12), L = wLocal(x, y); if (!L || L.dw < 2 || L.dw > 42) continue;
+      const c = LEAFCOL[Math.floor(Math.random() * LEAFCOL.length)], K = lkPick(LEAFSP[Math.floor(Math.random() * LEAFSP.length)], Math.random, c);
+      leaves.push({ x, y, gy: y, ph: Math.random() * 6.28, ph2: 0, vy: 0, fl: 1, state: 3, life: 60 + Math.random() * 40, k: K.id, rot: Math.floor(Math.random() * 8), age: 2, fi: 0, nx: 0, ny: -1, hop: 0 }); n++; break } }
+  if (DRIFTACC > 4) DRIFTACC = 0 }

@@ -46,25 +46,32 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
       tex: (x, n, z) => (Math.abs(x - cx) < .5 || Math.abs(z - winZ0 - winH * .5) < .35 && false) ? TRIM : ((x - z * .6) % 7 < 1.1 ? [132, 156, 168] : null) });
     t3box(M, fx0 - .6, -2.6, winZ0 - 2.4, fx1 + .6, -.3, winZ0 - 1.2, [186, 156, 112]); // the sill, a board
     t3face(M, [[-HW + 1.5, -.35, WALL - 4.2], [HW - 5.5, -.35, WALL - 4.2], [HW - 5.5, -.35, WALL - 1.2], [-HW + 1.5, -.35, WALL - 1.2]], [214, 214, 206], null, { both: true, zb: .3 }); // the sign board
-    // the door in the east wall: boards, a small window, a handle, a concrete step
-    t3face(M, [[HW + .3, 3.4, 2.5], [HW + .3, 10.6, 2.5], [HW + .3, 10.6, 17.4], [HW + .3, 3.4, 17.4]], [112, 78, 52], null, { both: true, zb: .3, tex: (x, n, z) => (z > 11 && z < 15.6 && n > 5 && n < 9) ? [52, 66, 76] : ((Math.floor(n * 1.5) % 3) === 0 ? [88, 60, 40] : [112, 78, 52]) });
-    t3face(M, [[HW + .2, 2.8, 2.5], [HW + .2, 11.2, 2.5], [HW + .2, 11.2, 18], [HW + .2, 2.8, 18]], TRIM, null, { both: true, zb: .1 });
-    t3box(M, HW + .5, 9.4, 8.6, HW + 1.1, 10.2, 10.2, [200, 190, 150], { clean: true });
-    t3box(M, HW, 1.8, 0, HW + 5, 12, 1.8, CON);
-    t3line(M, [HW + 1.4, 12.8, 19.6], [HW + 4.4, 12.8, 19.6], [64, 64, 68]); t3box(M, HW + 3.6, 12.2, 19, HW + 5.2, 13.8, 20.8, [255, 232, 180], { clean: true }); // the lamp over the door
-    // the meter box on the east wall by the door's frame, the cable up to the insulator on the roof edge
-    t3box(M, HW, 13.6, 10, HW + 1.8, 17.8, 16, [160, 162, 158], { tex: (x, n, z) => (x > HW + 1.4 && Math.abs(n - 15.7) < 1.4 && z > 11.4 && z < 14.6) ? [40, 50, 56] : [160, 162, 158] }); t3line(M, [HW + .8, 15.7, 16], [HW + .8, 15.7, WALL - .6], [30, 30, 32]); t3box(M, HW + .4, 15, WALL - 1.6, HW + 1.4, 16.4, WALL - .2, [236, 232, 220], { clean: true });
-    // a stack of tyres, a bucket and a stool by the wall
+    // the door in the east wall: boards, a small window, a handle, a concrete step; over it a small caged lamp on a bracket
+    t3face(M, [[HW + .3, 2.2, 2.5], [HW + .3, 8.6, 2.5], [HW + .3, 8.6, 17.4], [HW + .3, 2.2, 17.4]], [112, 78, 52], null, { both: true, zb: .3, tex: (x, n, z) => (z > 11 && z < 15.6 && n > 3.6 && n < 7.2) ? [52, 66, 76] : ((Math.floor(n * 1.5) % 3) === 0 ? [88, 60, 40] : [112, 78, 52]) });
+    t3face(M, [[HW + .2, 1.6, 2.5], [HW + .2, 9.2, 2.5], [HW + .2, 9.2, 18], [HW + .2, 1.6, 18]], TRIM, null, { both: true, zb: .1 });
+    t3box(M, HW + .5, 7.6, 8.6, HW + 1.1, 8.3, 10.2, [200, 190, 150], { clean: true });
+    t3box(M, HW, .8, 0, HW + 5, 10.4, 1.8, CON);
+    t3line(M, [HW + .4, 5.4, 20.6], [HW + 3.4, 5.4, 20.6], [64, 64, 68]); t3line(M, [HW + 1.6, 5.4, 18.2], [HW + 3.4, 5.4, 20.4], [64, 64, 68]); // the bracket
+    t3box(M, HW + 2.6, 4.6, 19.2, HW + 4.6, 6.2, 21.4, [255, 232, 180], { clean: true }); for (const q of [4.6, 6.2]) t3line(M, [HW + 2.4, q, 19.2], [HW + 4.8, q, 21.6], [60, 60, 64]); t3box(M, HW + 2.4, 4.4, 21.4, HW + 4.8, 6.4, 22, [60, 60, 64], { clean: true }); // (a lamp in a wire cage)
+    // the electricity: a small grey panel on the front wall by the east corner, a conduit up from it to the insulator under the eave, a black cable down from it
+    // to the ground, which runs on over the ground to the barrier (the cable on the ground is another object: cable)
+    const px0 = HW - 4.6, px1 = HW - 1.2;
+    t3box(M, px0, -2.3, 7.4, px1, -.3, 14.6, [152, 156, 154], { tex: (x, n, z) => (n < -2.1 && z > 8.6 && z < 13.4 && x > px0 + .6 && x < px1 - .6) ? ((Math.abs(z - 11) < .35 || Math.abs(x - (px0 + px1) / 2) < .25) ? [128, 132, 130] : [166, 170, 168]) : [152, 156, 154] });
+    t3box(M, px0 + 1.2, -2.7, 12.4, px0 + 2.6, -2.3, 13.4, [64, 64, 68], { clean: true }); // the handle
+    t3line(M, [(px0 + px1) / 2, -1.2, 14.6], [(px0 + px1) / 2, -1.2, WALL - .8], [26, 26, 30]); t3line(M, [(px0 + px1) / 2 + .6, -1.2, 14.6], [(px0 + px1) / 2 + .6, -1.2, WALL - .8], [26, 26, 30]);
+    t3box(M, (px0 + px1) / 2 - .9, -1.7, WALL - 1.9, (px0 + px1) / 2 + 1.5, -.2, WALL - .3, [236, 232, 220], { clean: true }); // the insulator
+    t3line(M, [px1 - .8, -1.3, 7.4], [px1 - .8, -2.4, 3], [24, 24, 28]); t3line(M, [px1 - .8, -2.4, 3], [px1 + 1.4, -3.4, .4], [24, 24, 28]);
+    // a stack of tyres, a bucket by the wall
     for (let q = 0; q < 3; q++) t3cyl(M, -HW + 4.2, -3.6, 3, q * 2.2, q * 2.2 + 2, [38, 38, 40], { topCol: [58, 58, 60] });
     t3cyl(M, -HW + 11, -3.2, 1.8, 0, 3.6, [186, 56, 44], { topCol: [90, 30, 26] });
     return M };
   const sp = t3sprite(build, [0]), ax = sp[0].ax, ay = sp[0].ay, P = (x, n, z) => t3p([x, n, z]);
   t3text(sp, sign, [(-HW + 1.5 + HW - 5.5) / 2, -.45, WALL - 3.5], [44, 70, 54]);
-  const q = P(-2, 0, winZ0 + winH / 2), a = P(-2 - winW / 2, -.5, winZ0 + winH), b = P(-2 + winW / 2, -.5, winZ0), lq = P(HW + 4.4, 12.8, 19.9);
+  const q = P(-2, 0, winZ0 + winH / 2), a = P(-2 - winW / 2, -.5, winZ0 + winH), b = P(-2 + winW / 2, -.5, winZ0), lq = P(HW + 3.6, 5.4, 20.2);
   const WINS = [{ x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]), cx: Math.round(P(-2, -.5, 0)[0]), cz: Math.round(P(-2, -.5, winZ0 + winH * .62)[1]) }];
   const ch = P(HW - 5.5, d - 4, WALL + 15), e0 = P(-HW - 2.4, -3, WALL + 1.4), e1 = P(HW + 2.4, -3, WALL + 1.4);
-  return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW + .9, 15.7, WALL - .4), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
-    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 7, c: '255,226,170', a: .9, k: 'lamp', glare: true }, { x: HW + 6, y: 16, r: 40, sy: .6, c: '255,206,140', a: .6, k: 'lamp', fall: 'sq' }],
+  return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW - 2.9 + .3, -1, WALL - .5), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
+    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 6, c: '255,226,170', a: .9, k: 'lamp', glare: true, flick: true }, { x: lq[0], y: 10, r: 34, sy: .6, c: '255,214,150', a: .55, k: 'lamp', fall: 'sq', flick: true }],
     solids: [[-HW - 2, -d - 1, HW + 2, 1]].map(t3w) } };
 
 // ---- the barrier at the entrance of the dam: a housing on the north verge and a red and white arm that crosses the road. Shut, the arm lies down across the
@@ -176,3 +183,15 @@ PF.mtp = ({ seed = 3 } = {}) => { const PH = 60, CON = [138, 136, 128], steel = 
     return M }, [0]);
   const A = (x, n, z) => t3p([x, n, z]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8, -2.6, -3, 2.6], [3, -2.6, 8, 2.6]].map(t3w), tops: [A(-8, 0, PH + 2), A(0, 0, PH + 2), A(8, 0, PH + 2)], top: A(0, 0, PH + 2), outs: [A(9.5, 0, 21)] } };
+
+// ---- a cable lying on the ground (flat): rubber, black, with a sheen along it, held down with a clip here and there; the points are relative to the object ----
+PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = pts.map(([x, y]) => [x, -y]);
+    for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; t3line(M, [a[0], a[1], .1], [b[0], b[1], .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + 1, .1], [b[0], b[1] + 1, .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + .5, .1], [b[0], b[1] + .5, .1], [58, 58, 64], { over: true }) }
+    for (let i = 1; i < P.length - 1; i++) M.dots.push([[P[i][0], P[i][1] + .5, .3], [150, 150, 146]]);
+    return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, flat: true, noShadow: true } };
+
+// ---- the guard: stands by the door and smokes. A cycle of seventeen seconds: the cigarette hangs at his hip, then he lifts it, draws on it (the tip glows),
+// lowers it and breathes the smoke out; a thin wisp rises from the hanging cigarette all the time ----
+function guardStep(P, dt) { P.st += dt; P.moving = false; const T = P.st % 17, up = T > 8.2 && T < 10.4 ? 1 : 0;
+  if (up !== P.sf) { if (!up) for (let k = 0; k < 4; k++) SMOKE.push({ x: P.x + 2 + Math.random() * 2, y: P.y - 17 + Math.random(), vx: WINDX * 6 + Math.random() * 4 - 2, vy: -4 - Math.random() * 3, age: 0, life: 2.6 + Math.random() * 1.2, a0: .32, r0: 1.5, ph: Math.random() * 9 }); P.sf = up } }

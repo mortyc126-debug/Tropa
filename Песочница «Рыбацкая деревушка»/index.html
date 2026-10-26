@@ -2228,7 +2228,9 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
   if (L.topKind === 'vest') for (const s of [-1, 1]) t3face(M, [[s * .3, -.5 + 1 - dep, waistZ], [s * hipW * .8, -.5 + 1 - dep, waistZ], [s * shW * .7, -.3 + 1 - dep, lift(shZ) - .2], [s * .6, -.3 + 1 - dep, lift(shZ) - .2]], L.shirt || [180, 60, 50], null, { both: true, zb: .2 });
   if (L.carry === 'backpack') t3box(M, -shW * .7, 1 + dep * .8, waistZ, shW * .7, 1 + dep * .8 + 2.2, lift(shZ) - .4, L.carryCol || [70, 90, 60]);
   // arms: from the shoulder, swinging opposite the legs, the elbow bending forward a little; hands
-  for (const s of [-1, 1]) { const ph = -s * sw, carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0)];
+  for (const s of [-1, 1]) { if (pose.smoke !== undefined && s > 0) { const up = pose.smoke, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = up ? [s * (shW - .5), -dep - 1.2, lift(shZ) - H * .1] : [s * (shW + .1), -.6, lift(shZ) - H * .17], hd = up ? [s * .9, -dep - 2.4, lift(hz) - head * .5] : [s * (shW + .1), -1.8, lift(shZ) - H * .3];
+      t3limb(M, sh, el, .7 * bd, .6, top); t3limb(M, el, hd, .6, .5, top); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 }); t3line(M, [hd[0] - .2, hd[1] - .3, hd[2] + .2], [hd[0] - .3, hd[1] - 2.4, hd[2] + (up ? .1 : -.1)], [238, 234, 224]); M.dots.push([[hd[0] - .3, hd[1] - 2.6, hd[2] + (up ? .1 : -.1)], [236, 110, 40]]); continue }
+    const ph = -s * sw, carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0)];
     const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve); t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
     if (carrying && L.carry === 'bucket') { t3cyl(M, hd[0], hd[1] - .4, 1.5, hd[2] - 4, hd[2] - 1.2, L.carryCol || [150, 156, 160], { topCol: [70, 110, 140] }); t3line(M, [hd[0] - 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]); t3line(M, [hd[0] + 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]) }
     if (carrying && L.carry === 'mug') t3cyl(M, hd[0], hd[1] - .6, .6, hd[2] - .2, hd[2] + 1, L.carryCol || [200, 60, 50]) }
@@ -2261,7 +2263,7 @@ function headModel(M, L, c, head, skin, look) { const r = head * .5, hair = L.ha
 // the sprites of one person, made as they are first needed
 const NPC_SPR = new Map();
 function npcSprite(look, kind, dir, frame) { const key = (look.id || JSON.stringify(look)) + kind + dir + '/' + frame; let r = NPC_SPR.get(key); if (r) return r;
-  const pose = kind === 'walk' ? { walk: frame / 4 } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
+  const pose = kind === 'smoke' ? { smoke: frame } : kind === 'walk' ? { walk: frame / 4 } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
   const sp = t3sprite(() => { const M = personModel(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; NPC_SPR.set(key, r); return r }
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
@@ -2691,52 +2693,51 @@ function damWater(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'dam
     const h = underLayer(x, y); if (h.L && h.L.mat === 'lake') return true } return false }
 const K_sedge = (x, y) => K_q(h2(x, y, SEED + 67) < .45 ? PAL.straw : PAL.sedge, .4 + vn(x * .3, y * .3, SEED + 68) * .5, x, y);
 const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
-// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it from the sand ----
+// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it across its whole south end ----
 // It is drawn into the ground like the rest of the plan, but as the eye sees a raised deck: its top lies H px up from the plan footprint (the rider
-// riding on it is drawn lifted by as much), under the south edge a front face of boards, in the middle of it a ramp, the east side a little thick, a hard
-// dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
-const PIER = { x: 640, w: 24, y0: 100, y1: 248, ramp: 14, rw: 13, H: 6 };
-const PIERC = { gap: [36, 27, 20], line: [26, 19, 14], wood: [[146, 117, 82], [140, 112, 78], [134, 107, 75], [156, 126, 90]], grey: [128, 120, 106], dark: [84, 66, 46], fresh: [188, 154, 106], rot: [74, 68, 50] };
-// a board at distance n along the deck, x across: rows of planks, each of one or two pieces; some replaced (pale), some rotten (dark, soft), a knot here and there
-function pierBoard(lx, n, k) { const row = Math.floor(n / 3.4), f = n / 3.4 - row, sd = SEED + 810; if (f < .2) return cmul(PIERC.gap, k);
-  const jx = PIER.x - PIER.w + 9 + h2(row, 2, sd) * 30, left = lx < jx, pc = h2(row, left ? 3 : 4, sd), jn = Math.abs(lx - jx) < .55;
-  let c = PIERC.wood[Math.floor(h2(row, left ? 5 : 6, sd) * 4)]; if (pc < .06) c = PIERC.fresh; else if (pc > .965) c = PIERC.rot; else if (pc > .86) c = PIERC.grey;
-  c = cmix(c, PIERC.grey, .2 * vn(lx * .06, row * 1.7, sd + 7)); if (jn) return cmul(PIERC.gap, k);
-  const stain = vn(lx * .12 + row * .7, n * .1, sd + 11); if (stain > .74) c = cmul(c, .84); if (pc > .965 && stain > .45) c = cmix(c, [64, 86, 48], .3); // (rotten boards go green)
-  if (h2(Math.floor(lx / 2), row, sd + 13) < .02) c = cmul(c, .7); // knots
-  const b = f < .4 ? 1.08 : f > .9 ? .9 : 1; return cmul(c, k * b) }
-function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
+// riding on it is drawn lifted by as much), the ramp running up to it from the sand, the east side a little thick, a hard dark outline all round.
+// Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
+const PIER = { x: 640, w: 24, y0: 100, y1: 244, ramp: 26, H: 6 };
+const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [124, 100, 72], dark: [84, 66, 46] };
+// the decking: planks laid across the deck, each row in two lengths that meet over a joist (the joint slides along from row to row), one weathered tone
+// with only a faint difference from board to board, a very few replaced ones a shade lighter, grain along each; a nail at each end of every piece
+function pierBoard(lx, n, k) { const P = PIER, X0 = P.x - P.w, row = Math.floor(n / 3.6), f = n / 3.6 - row, sd = SEED + 810; if (f < .14) return cmul(PIERC.gap, k);
+  const jx = X0 + [14, 24, 33][row % 3] + (h2(Math.floor(row / 3), 2, sd) < .5 ? -1 : 1), left = lx < jx;
+  if (Math.abs(lx - jx) < .5) return cmul(PIERC.gap, k);
+  const pc = h2(row, left ? 3 : 4, sd); let m = .97 + .06 * pc; if (pc > .94) m *= 1.09; else if (pc < .04) m *= .9;
+  const grain = vn(lx * .22, row * 2.3 + (left ? 0 : 5), sd + 7); m *= .96 + .08 * grain; if (vn(lx * .04 + row * .05, n * .03, sd + 9) > .62) m *= .94; // (the damp patches of an old deck)
+  m *= f < .38 ? 1.05 : f > .92 ? .93 : 1; // the board's bevel
+  const nx = left ? [X0 + 3.5, jx - 3] : [jx + 3, X0 + 2 * P.w - 3.5]; if (f > .45 && f < .62 && (Math.abs(lx - nx[0]) < .5 || Math.abs(lx - nx[1]) < .5)) m *= .55;
+  return cmul(PIERC.plank, k * m) }
+function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
   const under = k => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return k === 1 ? c : cmul(c, k) };
   if (ly >= yt0 && ly < P.y1 && lx >= X1 && lx < X1 + 3.5) { // the east face of the deck, seen edge-on: the fascia board and the shadow under it
-    if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.wood[3], .82 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .82), k) }
+    if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.plank, .92 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .86), k) }
   if (ly >= yt0 && ly < yt1 && lx >= X0 && lx < X1) { // the top of the deck
     if (lx < X0 + 1 || ly < yt0 + 1) return LN; const n = yt1 - ly;
-    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side
-      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e < 2 || e >= 3.2 && e < 4) return e < 2 && lx < X0 + 4 ? cmul(PIERC.wood[3], .94) : cmul(PIERC.gap, 1.15); const seg = Math.floor((n + 17 * (lx < P.x ? 1 : 2)) / 46); if (((n + 17 * (lx < P.x ? 1 : 2)) % 46) < .6) return PIERC.gap;
-      return cmix(PIERC.wood[seg % 3], PIERC.grey, .22 + .3 * vn(n * .05, lx * .3, sd + 3)) }
-    const c = pierBoard(lx, n, 1); const nl = Math.floor(n / 3.4); // (the nails: a pair on each board over every joist)
-    if ((n / 3.4 - nl) > .5 && (n / 3.4 - nl) < .66) for (const jx of [X0 + 8, X0 + 20, P.x + 4, X1 - 20, X1 - 8]) if (Math.abs(lx - jx) < .5 && h2(nl, jx, sd + 17) < .8) return cmul(c, .55);
-    return c }
-  if (ly >= yt1 && ly < yb && lx >= R0 && lx < R1) { // the ramp: boards across, strips nailed over them
-    if (lx < R0 + 1 || lx >= R1 - 1 || ly >= yb - 1) return LN; const n = (yb - ly) / 1.4286, nl = Math.floor(n / 3.4);
-    let c = pierBoard(lx, n, 1.06); if (nl % 3 === 1 && n / 3.4 - nl > .3 && n / 3.4 - nl < .6) c = cmul(PIERC.dark, 1.05); return c }
-  if (ly >= yt1 && ly < yb && lx >= R1 && lx < R1 + 3.1 * (yb - ly) / (yb - yt1)) return lx >= R1 + 3.1 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
-  if (ly >= yt1 && ly < P.y1 && lx >= X0 && lx < X1 && !(lx >= R0 && lx < R1)) { // the front face of the deck, boards on end, shaded toward the sand
-    if (lx < X0 + 1 || ly >= P.y1 - 1) return LN; const k = .96 - .38 * (ly - yt1) / H, col = Math.floor((lx - X0) / 3.4), fr = (lx - X0) / 3.4 - col; if (fr < .2) return cmul(PIERC.gap, k);
-    if (ly < yt1 + 1) return cmul(PIERC.wood[3], .96); return cmul(cmix(PIERC.wood[Math.floor(h2(col, 7, sd) * 3)], PIERC.grey, .3 * vn(col, 3, sd + 5)), k) }
+    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side: one timber, darker than the boards, a joint every so often
+      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2 && e < 4) return cmul(PIERC.gap, 1.15); const off = lx < P.x ? 17 : 41; if (((n + off) % 62) < .6) return PIERC.gap;
+      return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
+    return pierBoard(lx, n, 1) }
+  if (ly >= yt1 && ly < yb && lx >= X0 && lx < X1) { // the ramp across the whole end: the same boards, the long timbers each side running down, a threshold beam at the foot, sand blown on the boards
+    const n = (yb - ly) / (1 + H / P.ramp);
+    if (lx < X0 + 1 || ly >= yb - 1) return LN; if (ly >= yb - 3) return cmul(PIERC.dark, ly >= yb - 2 ? .9 : 1.12); // the threshold
+    if (lx < X0 + 4 || lx >= X1 - 4) { const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2) return cmul(PIERC.gap, 1.15); return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
+    if (ly < yt1 + 1.4) return ly < yt1 + .5 ? cmul(PIERC.beam, 1.1) : cmul(PIERC.gap, 1.2); // (the joint where the ramp meets the deck: a cross-beam)
+    let c = pierBoard(lx, n + 3, 1.03); if (n < 9 && h2(x, y, sd + 21) < .5 * (1 - n / 9) * (.5 + vn(x * .3, y * .5, sd + 22))) c = cmix(c, [178, 160, 118], .75); return c }
+  if (ly >= yt1 && ly < yb && lx >= X1 && lx < X1 + 3.4 * (yb - ly) / (yb - yt1)) return lx >= X1 + 3.4 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
   if (ly >= yt0 + 5 && ly < P.y1 + 1 && lx >= X1 + 3.5 && lx < X1 + 6) return under(1 - .24 * (1 - (lx - X1 - 3.5) / 2.5)); // the shadow of the deck on the water
   if (ly >= yt0 - 3 && ly < yt0 && lx >= X0 && lx < X1 + 5) return under(.8);
   return under(1) }
 // how high above the ground a figure stands at (x, y) (world coordinates): on the deck, H; up the ramp, from 0 to H
 function deckLift(x, y) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
-  if (ly <= P.y1) return P.H; return Math.abs(lx - P.x) < P.rw ? P.H * (1 - (ly - P.y1) / P.ramp) : 0 }
+  return ly <= P.y1 ? P.H : P.H * (1 - (ly - P.y1) / P.ramp) }
 const objLift = o => o._lf === undefined ? (o._lf = deckLift(o.x, o.y)) : o._lf;
 // the kerbs: along the sides of the deck and of the ramp, across its end and under its front face, nothing for a bike to cross
 const DECKO = { id: 'jetty', type: 'jetty' };
 function deckBlocked(x, y, rad) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
-  const X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
-  return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 - 2) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 - 2) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)
-    || hit(X0 - 2, P.y1 - 3, R0 + .5, P.y1 + 1.4) || hit(R1 - .5, P.y1 - 3, X1 + 3, P.y1 + 1.4) || hit(R0 - 3, P.y1 - 3, R0 + .5, P.y1 + P.ramp) || hit(R1 - .5, P.y1 - 3, R1 + 3, P.y1 + P.ramp)) ? DECKO : false }
+  const X0 = P.x - P.w, X1 = P.x + P.w, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
+  return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 + P.ramp - 1) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 + P.ramp - 1) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)) ? DECKO : false }
 let RLIFT = 0; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
 
 // ---- the village's own colours and textures ----
@@ -3119,11 +3120,14 @@ function wStep(J, limit) { const { x0, y0, Ls, Ds, Bs, F, PN, ZN, blk } = J;
     J.r++ }
   if (J.r >= CK) { J.done = true; J.f = J.any ? { x0, y0, F, PN, ZN } : null } }
 // (the fields in view and round it are built a little each frame, the nearest first; a little more while the place is just opening)
-function wFields(cx0, cy0) { const ci0 = Math.floor(cx0 / CK) - 1, ci1 = Math.floor((cx0 + W) / CK) + 1, cj0 = Math.floor(cy0 / CK) - 1, cj1 = Math.floor((cy0 + H) / CK) + 1, FS = [], todo = [], mx = cx0 + W / 2, my = cy0 + H / 2;
-  for (let cj = cj0; cj <= cj1; cj++) for (let ci = ci0; ci <= ci1; ci++) { const key = ci + ',' + cj; let J = WJOBS.get(key); if (!J) { J = wJob(ci, cj); WJOBS.set(key, J) }
-    if (J.done) { if (J.f && ci >= ci0 + 1 && ci <= ci1 - 1 && cj >= cj0 + 1 && cj <= cj1 - 1) FS.push(J.f) } else todo.push([Math.hypot(ci * CK + CK / 2 - mx, cj * CK + CK / 2 - my), J]) }
-  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + (t < 4 ? 14 : 3); for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } }
+function wFields(cx0, cy0) { const M = 2, ci0 = Math.floor(cx0 / CK), ci1 = Math.floor((cx0 + W) / CK), cj0 = Math.floor(cy0 / CK), cj1 = Math.floor((cy0 + H) / CK), FS = [], todo = [], mx = cx0 + W / 2, my = cy0 + H / 2; let missing = 0;
+  for (let cj = cj0 - M; cj <= cj1 + M; cj++) for (let ci = ci0 - M; ci <= ci1 + M; ci++) { const key = ci + ',' + cj; let J = WJOBS.get(key); if (!J) { J = wJob(ci, cj); WJOBS.set(key, J) }
+    const inView = ci >= ci0 && ci <= ci1 && cj >= cj0 && cj <= cj1;
+    if (J.done) { if (J.f && inView) FS.push(J.f) } else { todo.push([Math.hypot(ci * CK + CK / 2 - mx, cj * CK + CK / 2 - my), J]); if (inView) missing++ } }
+  if (todo.length) { todo.sort((a, b) => a[0] - b[0]); const limit = performance.now() + (missing || t < 4 ? 12 : 3); for (const [, J] of todo) { wStep(J, limit); if (performance.now() >= limit) break } } // (more while the view itself is not ready: the place is just opening)
   return FS }
+// the depth of the water (px, + into the water, - up the beach) at a point, if its field is ready: null where it is not water (the pier, the dam), undefined where it is not known yet
+function wDw(x, y) { const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)); if (!J || !J.done) return undefined; if (!J.f) return null; const v = J.f.F[(Math.floor(y) - J.f.y0) * CK + Math.floor(x) - J.f.x0]; return v === WNONE ? null : v * .125 }
 const wFrac = u => u - Math.floor(u);
 const wHash = (x, y, k) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(k, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 24 }; // (a cheap hash, 0..255)
 let WRING = []; // (rings spreading on the water: a fish rising, a fly landing)
@@ -3131,11 +3135,14 @@ function drawWater(cx0, cy0) {
   if (!WS.tile) wInit();
   const FS = wFields(cx0, cy0);
   if (!FS.length) return;
+  WS.acc = (WS.acc || 0) + LASTDT;
+  if (WS.hold > 0 && WS.ov && WS.ov.w === W && WS.ov.h === H) { WS.hold--; ctx.drawImage(WS.ov.cv, WS.ox, WS.oy); return }
+  const tw0 = performance.now();
   if (!WS.ov || WS.ov.w !== W || WS.ov.h !== H) { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'), img = g.createImageData(W, H); WS.ov = { cv, g, img, buf: new Uint32Array(img.data.buffer), w: W, h: H } }
   const O = WS.ov, buf = O.buf; buf.fill(0);
   // the state of the sea: the wind, and what it makes of the waves
-  const dt = LASTDT, wnd = WIND.s, rain = WX.rain, gn = gustNow(), A = clamp(.16 + wnd * 1.2 + rain * .12, .16, 1), lowGfx = typeof GFXLOW !== 'undefined' && GFXLOW;
-  const Tw = 8.2 - 4.2 * A, SW = 7.5 + 6 * A, Lw = SW * 3, RU = .9 + 6.2 * Math.pow(A, 1.4) * (.8 + .4 * gn), foamK = clamp((A - .12) * 2.3, 0, 1);
+  const dt = WS.acc; WS.acc = 0; const wnd = WIND.s, rain = WX.rain, gn = gustNow(), A = clamp(.16 + wnd * 1.2 + rain * .12, .16, 1);
+  const Tw = 8.2 - 4.2 * A, SW = 7.5 + 6 * A, Lw = SW * 3, RU = .9 + 6.2 * Math.pow(A, 1.4) * (.8 + .4 * gn), foamK = clamp((A - .12) * 2.3, 0, 1); WS.RU = RU; WS.A = A; WS.LF = .7 + A * .5;
   WS.ph += dt / Tw; const v1 = 4 + 16 * wnd, v2 = 2.5 + 9 * wnd, vg = 6 + 40 * wnd;
   WS.x1 += WINDX * v1 * dt; WS.y1 += WINDY * v1 * .5 * dt; WS.x2 += (WINDX * .5 - WINDY * .8) * v2 * dt; WS.y2 += (WINDY * .5 + WINDX * .8) * v2 * .5 * dt; WS.gx += WINDX * vg * dt; WS.gy += WINDY * vg * .7 * dt;
   const ox1 = Math.floor(WS.x1), oy1 = Math.floor(WS.y1), ox2 = Math.floor(WS.x2), oy2 = Math.floor(WS.y2), gox = Math.floor(WS.gx), goy = Math.floor(WS.gy);
@@ -3160,13 +3167,14 @@ function drawWater(cx0, cy0) {
             const pc = SW - Lw * u, dc = dw - pc;
             if (foamK > 0 && pc > -1 && dc < 1.5 && dc > -(2.2 + 3.2 * A)) { const tr = 2.2 + 3.2 * A, ka = dc > 0 ? 1 - dc / 1.5 : (1 - -dc / tr) * .75; if (z < ka * 1.05 + .06) col = pk(FM, ka * .9 * foamK + .1) }
             else if (foamK > 0 && u > .333) { const fr = 1 - (u - .333) / .667, lim = 3.5 + 2 * A; if (dw < lim) { const a = .5 * fr * fr * (1 - dw / lim); if (z < a * 1.4) col = pk(FM, a * foamK + .08) } } }
-          if (!col && !lowGfx && dw > SW - 1 && dw < 150) { // the swell: a bright thread on each crest, the trough behind it a little darker
+          if (!col && dw > SW - 1 && dw < 150) { // the swell: a bright thread on each crest, the trough behind it a little darker
             const cp = (dw - SW) / Lw + u, ff = (cp - Math.floor(cp + .5)) * Lw, af = Math.abs(ff), att = (1 - dw / 150) * (1 - dw / 150) * (.35 + .65 * A);
             const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, br = clamp((gg - .25) * 2.2, 0, 1);
             if (af < 1.5) { const a = (1 - af / 1.5) * .55 * att * (.2 + .8 * br); if (a > .02) col = pk(HLc, a * sunK + .03); if (A > .5 && br > .45 && z < (A - .45) * .9 * br && dw < 110) col = pk(FM, .55 + .3 * z) }
             else if (ff > 1.6 && ff < 7.5) { const a = .34 * att * (.2 + .8 * br) * (1 - (ff - 1.6) / 6); if (a > .03) col = pk(DKc, a) } }
-          if (!col && !lowGfx && dw > 2.5) { // the ripples
-            const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, rg = clamp(rough0 * (.2 + 1.3 * gg * gg) + rain * .25, 0, 1.4),
+          if (!col && dw > 2.5) { // the ripples
+            const gi = (((y - goy) & 255) << 8) | ((x - gox) & 255), gg = TG[gi] * .003922, rg = clamp(Math.max(.2, rough0 * (.2 + 1.3 * gg * gg)) + rain * .25, 0, 1.4), // (even in a calm the water has its small ripples)
+             
               s = (TA[(((y - oy1) & 63) << 7) | ((x - ox1) & 127)] * .55 + TB[(((y - oy2) & 63) << 7) | ((x - ox2) & 127)] * .45 - 128) * .0078 * (.1 + 2 * rg);
             if (s > .34) { col = pk(HLc, (.27 + .25 * (s - .34)) * (.78 + .22 * WSN[((tick + (gg * 40 | 0)) & 7) << 6]) * sunK + .04); if (rg > .2 && sunK > .25 && wHash(x, y, tick) < 22 * rg) col = pk([255, 255, 250], .9 * sunK) }
             else if (s > .2) col = pk(HLc, .1 * sunK + .02); else if (s < -.42) col = pk(DKc, .28); else if (s < -.24) col = pk(DKc, .15) } }
@@ -3182,11 +3190,44 @@ function drawWater(cx0, cy0) {
       for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .5 + k * .5 + sd * .13); ring(o.x, o.y + 1, rx0 + ph * 9, ry0 + ph * 5, FM, (1 - ph) * (.55 + .25 * A) * (.55 + .45 * sunK), sd + k, .3) }
       const bw = .5 + .5 * Math.sin(t * 2.2 + sd); for (let i = -1; i <= 1; i += 2) put(o.x + i * (rx0 - 1) + (i > 0 ? 1 : -1) * bw, o.y + 1, FM, .4 + .3 * bw) }
     else for (let k = 0; k < 2; k++) { const ph = wFrac(WS.ph * .45 + k * .5 + sd * .21); ring(o.x, o.y + 1, 2.5 + ph * 6, 1.3 + ph * 3, FM, (1 - ph) * (.5 + .25 * A), sd + k, .2) } }
-  if (!lowGfx) { const slot = Math.floor(t / 1.3);
+  { const slot = Math.floor(t / 1.3);
     for (let j = slot - 2; j <= slot; j++) { for (let m = 0; m < 2; m++) { if (h2(j, m, 95) > .7 * (1 - clamp(wnd / .2, 0, 1)) + .05 * rain) continue; const age = t - j * 1.3 - m * .4; if (age < 0 || age > 2.6) continue;
       const fx = cx0 + 20 + h2(j, m, 96) * (W - 40), fy = cy0 + 20 + h2(j, m, 97) * (H - 40), c = Math.floor(fx / CK), r = Math.floor(fy / CK), J = WJOBS.get(c + ',' + r), f = J && J.f; if (!f) continue; const dwv = f.F[(Math.floor(fy) - f.y0) * CK + Math.floor(fx) - f.x0]; if (dwv === WNONE || dwv < 120) continue;
       for (let k = 0; k < 3; k++) { const ph = age * .55 - k * .16; if (ph < 0 || ph > 1) continue; ring(fx, fy, 1 + ph * 9, .5 + ph * 4.5, HL, (1 - ph) * .42 * (.4 + .6 * sunK), j * 7 + m, .2) } } } }
-  O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0) }
+  O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0); WS.ox = cx0; WS.oy = cy0;
+  const cost = performance.now() - tw0; WS.cost = (WS.cost ?? cost) * .9 + cost * .1; WS.hold = WS.cost > 11 ? 2 : WS.cost > 5.5 ? 1 : 0 }
+
+// =====================================================================================================================
+// LEAVES ON THE WATER. A leaf that comes down on the bay floats: the wind pushes it along the surface, the swell works it shoreward in a series of
+// surges (quickly in, slowly back, a little further in each time), the surge runs it up the sand and leaves it there when it draws back; a leaf on the
+// sand the next big surge reaches is floated off again. Far out the leaves are drowned slowly, so they keep to the shallows, and at the high-water mark
+// they lie in a line (the wrack, baked into the beach). A few more drift in all the time from the open water.
+// =====================================================================================================================
+const LEAFCOL = [[200, 96, 40], [214, 160, 52], [172, 64, 38], [150, 108, 56], [186, 128, 44]], LEAFSP = ['birch', 'aspen', 'maple', 'oak', 'linden', 'curl'];
+function wLocal(x, y) { const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y / CK)); if (!J || !J.f) return null; const k = (Math.floor(y) - J.f.y0) * CK + Math.floor(x) - J.f.x0, v = J.f.F[k]; return v === WNONE ? null : { dw: v * .125, pn: J.f.PN[k] * .003922 } }
+// the wave's state at a point: the water line there now (r: how far into the water the point is from the water's edge at this moment)
+function wReach(L) { const u = wFrac(WS.ph + L.pn * .55), q = WS.QL[(u * 255) | 0]; return { u, r: L.dw + WS.RU * q } }
+function leafToWater(l) { const L = wLocal(l.x, l.y); if (!L) return false; l.age = 2; l.fi = 1; l.nx = 0; l.ny = -1; l.life = Math.max(l.life, 60); l.hop = 0; return L.dw > 0 }
+function leafAfloat(l, dt) { const L = wLocal(l.x, l.y);
+  if (!L) { l.life = 0; return } // (gone under the pier or the dam)
+  const { u, r } = wReach(L), dw = L.dw, A = WS.A;
+  l.ph += dt * 1.6; l.hop = .5 + .5 * Math.sin(l.ph); if (l.fi < 1) l.fi = Math.min(1, l.fi + dt * .8);
+  // which way is the shore: where the depth falls most steeply (kept from the last look where the field is flat)
+  const a = wLocal(l.x + 3, l.y), b = wLocal(l.x - 3, l.y), c = wLocal(l.x, l.y + 3), d = wLocal(l.x, l.y - 3);
+  if (a && b && c && d) { const gx = a.dw - b.dw, gy = c.dw - d.dw, m = Math.hypot(gx, gy); if (m > .05) { l.nx += (gx / m - l.nx) * Math.min(1, dt * 3); l.ny += (gy / m - l.ny) * Math.min(1, dt * 3) } }
+  // the surface: the wind's drift, the swell's surges toward the shore (a stronger push on the way in than the pull back)
+  const drift = 1.2 + 9 * WIND.s, push = (u < .333 ? .6 : u < .5 ? 2.2 : -.3) * (2.6 + 8 * A);
+  l.x += (WINDX * drift - l.nx * push) * dt + Math.sin(l.ph * .7) * .25 * dt * 6; l.y += (WINDY * drift * .6 - l.ny * push) * dt + Math.cos(l.ph * .6) * .2 * dt * 6;
+  l.life -= dt * (dw > 40 ? 3 : .1); // far from the shore they are drowned
+  if (dw < 1.2 && r <= .3) { l.state = 1; l.life = 90 + Math.random() * 90; l.age = 0; l.hop = 0; l.sh = true } } // the water has drawn back: it is left on the sand
+function leafShore(l, dt) { const L = wLocal(l.x, l.y); if (!L || L.dw > 1.5) return; const { r } = wReach(L); if (r > WS.LF + 1.2 && Math.random() < dt * (.5 + 1.5 * WS.A)) { l.state = 3; l.age = 2; l.fi = 1; l.nx = 0; l.ny = -1; l.ph = Math.random() * 6; l.sh = false; l.life = Math.max(l.life, 40) } } // (a surge reaches it: it is floated off again)
+let DRIFTACC = 0, DRIFTINIT = false;
+function driftLeaves(dt) { if (!WS.tile || !WS.A) return; let n = 0; for (const l of leaves) if (l.state === 3) n++;
+  DRIFTACC += dt * (.18 + .5 * WIND.s) * (n < 14 ? 2 : 1); if (!DRIFTINIT) { DRIFTINIT = true; DRIFTACC += 8 }
+  while (DRIFTACC >= 1 && n < 46) { DRIFTACC--; for (let tries = 0; tries < 8; tries++) { const x = CAM.x + 6 + Math.random() * (W - 12), y = CAM.y + 6 + Math.random() * (H - 12), L = wLocal(x, y); if (!L || L.dw < 2 || L.dw > 42) continue;
+      const c = LEAFCOL[Math.floor(Math.random() * LEAFCOL.length)], K = lkPick(LEAFSP[Math.floor(Math.random() * LEAFSP.length)], Math.random, c);
+      leaves.push({ x, y, gy: y, ph: Math.random() * 6.28, ph2: 0, vy: 0, fl: 1, state: 3, life: 60 + Math.random() * 40, k: K.id, rot: Math.floor(Math.random() * 8), age: 2, fi: 0, nx: 0, ny: -1, hop: 0 }); n++; break } }
+  if (DRIFTACC > 4) DRIFTACC = 0 }
 
 // =====================================================================================================================
 // THE VILLAGE'S EXTRAS: what stands on the jetty, the guard's booth and the barrier at the end of the dam, the haystack and the cows,
@@ -3236,25 +3277,32 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
       tex: (x, n, z) => (Math.abs(x - cx) < .5 || Math.abs(z - winZ0 - winH * .5) < .35 && false) ? TRIM : ((x - z * .6) % 7 < 1.1 ? [132, 156, 168] : null) });
     t3box(M, fx0 - .6, -2.6, winZ0 - 2.4, fx1 + .6, -.3, winZ0 - 1.2, [186, 156, 112]); // the sill, a board
     t3face(M, [[-HW + 1.5, -.35, WALL - 4.2], [HW - 5.5, -.35, WALL - 4.2], [HW - 5.5, -.35, WALL - 1.2], [-HW + 1.5, -.35, WALL - 1.2]], [214, 214, 206], null, { both: true, zb: .3 }); // the sign board
-    // the door in the east wall: boards, a small window, a handle, a concrete step
-    t3face(M, [[HW + .3, 3.4, 2.5], [HW + .3, 10.6, 2.5], [HW + .3, 10.6, 17.4], [HW + .3, 3.4, 17.4]], [112, 78, 52], null, { both: true, zb: .3, tex: (x, n, z) => (z > 11 && z < 15.6 && n > 5 && n < 9) ? [52, 66, 76] : ((Math.floor(n * 1.5) % 3) === 0 ? [88, 60, 40] : [112, 78, 52]) });
-    t3face(M, [[HW + .2, 2.8, 2.5], [HW + .2, 11.2, 2.5], [HW + .2, 11.2, 18], [HW + .2, 2.8, 18]], TRIM, null, { both: true, zb: .1 });
-    t3box(M, HW + .5, 9.4, 8.6, HW + 1.1, 10.2, 10.2, [200, 190, 150], { clean: true });
-    t3box(M, HW, 1.8, 0, HW + 5, 12, 1.8, CON);
-    t3line(M, [HW + 1.4, 12.8, 19.6], [HW + 4.4, 12.8, 19.6], [64, 64, 68]); t3box(M, HW + 3.6, 12.2, 19, HW + 5.2, 13.8, 20.8, [255, 232, 180], { clean: true }); // the lamp over the door
-    // the meter box on the east wall by the door's frame, the cable up to the insulator on the roof edge
-    t3box(M, HW, 13.6, 10, HW + 1.8, 17.8, 16, [160, 162, 158], { tex: (x, n, z) => (x > HW + 1.4 && Math.abs(n - 15.7) < 1.4 && z > 11.4 && z < 14.6) ? [40, 50, 56] : [160, 162, 158] }); t3line(M, [HW + .8, 15.7, 16], [HW + .8, 15.7, WALL - .6], [30, 30, 32]); t3box(M, HW + .4, 15, WALL - 1.6, HW + 1.4, 16.4, WALL - .2, [236, 232, 220], { clean: true });
-    // a stack of tyres, a bucket and a stool by the wall
+    // the door in the east wall: boards, a small window, a handle, a concrete step; over it a small caged lamp on a bracket
+    t3face(M, [[HW + .3, 2.2, 2.5], [HW + .3, 8.6, 2.5], [HW + .3, 8.6, 17.4], [HW + .3, 2.2, 17.4]], [112, 78, 52], null, { both: true, zb: .3, tex: (x, n, z) => (z > 11 && z < 15.6 && n > 3.6 && n < 7.2) ? [52, 66, 76] : ((Math.floor(n * 1.5) % 3) === 0 ? [88, 60, 40] : [112, 78, 52]) });
+    t3face(M, [[HW + .2, 1.6, 2.5], [HW + .2, 9.2, 2.5], [HW + .2, 9.2, 18], [HW + .2, 1.6, 18]], TRIM, null, { both: true, zb: .1 });
+    t3box(M, HW + .5, 7.6, 8.6, HW + 1.1, 8.3, 10.2, [200, 190, 150], { clean: true });
+    t3box(M, HW, .8, 0, HW + 5, 10.4, 1.8, CON);
+    t3line(M, [HW + .4, 5.4, 20.6], [HW + 3.4, 5.4, 20.6], [64, 64, 68]); t3line(M, [HW + 1.6, 5.4, 18.2], [HW + 3.4, 5.4, 20.4], [64, 64, 68]); // the bracket
+    t3box(M, HW + 2.6, 4.6, 19.2, HW + 4.6, 6.2, 21.4, [255, 232, 180], { clean: true }); for (const q of [4.6, 6.2]) t3line(M, [HW + 2.4, q, 19.2], [HW + 4.8, q, 21.6], [60, 60, 64]); t3box(M, HW + 2.4, 4.4, 21.4, HW + 4.8, 6.4, 22, [60, 60, 64], { clean: true }); // (a lamp in a wire cage)
+    // the electricity: a small grey panel on the front wall by the east corner, a conduit up from it to the insulator under the eave, a black cable down from it
+    // to the ground, which runs on over the ground to the barrier (the cable on the ground is another object: cable)
+    const px0 = HW - 4.6, px1 = HW - 1.2;
+    t3box(M, px0, -2.3, 7.4, px1, -.3, 14.6, [152, 156, 154], { tex: (x, n, z) => (n < -2.1 && z > 8.6 && z < 13.4 && x > px0 + .6 && x < px1 - .6) ? ((Math.abs(z - 11) < .35 || Math.abs(x - (px0 + px1) / 2) < .25) ? [128, 132, 130] : [166, 170, 168]) : [152, 156, 154] });
+    t3box(M, px0 + 1.2, -2.7, 12.4, px0 + 2.6, -2.3, 13.4, [64, 64, 68], { clean: true }); // the handle
+    t3line(M, [(px0 + px1) / 2, -1.2, 14.6], [(px0 + px1) / 2, -1.2, WALL - .8], [26, 26, 30]); t3line(M, [(px0 + px1) / 2 + .6, -1.2, 14.6], [(px0 + px1) / 2 + .6, -1.2, WALL - .8], [26, 26, 30]);
+    t3box(M, (px0 + px1) / 2 - .9, -1.7, WALL - 1.9, (px0 + px1) / 2 + 1.5, -.2, WALL - .3, [236, 232, 220], { clean: true }); // the insulator
+    t3line(M, [px1 - .8, -1.3, 7.4], [px1 - .8, -2.4, 3], [24, 24, 28]); t3line(M, [px1 - .8, -2.4, 3], [px1 + 1.4, -3.4, .4], [24, 24, 28]);
+    // a stack of tyres, a bucket by the wall
     for (let q = 0; q < 3; q++) t3cyl(M, -HW + 4.2, -3.6, 3, q * 2.2, q * 2.2 + 2, [38, 38, 40], { topCol: [58, 58, 60] });
     t3cyl(M, -HW + 11, -3.2, 1.8, 0, 3.6, [186, 56, 44], { topCol: [90, 30, 26] });
     return M };
   const sp = t3sprite(build, [0]), ax = sp[0].ax, ay = sp[0].ay, P = (x, n, z) => t3p([x, n, z]);
   t3text(sp, sign, [(-HW + 1.5 + HW - 5.5) / 2, -.45, WALL - 3.5], [44, 70, 54]);
-  const q = P(-2, 0, winZ0 + winH / 2), a = P(-2 - winW / 2, -.5, winZ0 + winH), b = P(-2 + winW / 2, -.5, winZ0), lq = P(HW + 4.4, 12.8, 19.9);
+  const q = P(-2, 0, winZ0 + winH / 2), a = P(-2 - winW / 2, -.5, winZ0 + winH), b = P(-2 + winW / 2, -.5, winZ0), lq = P(HW + 3.6, 5.4, 20.2);
   const WINS = [{ x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]), cx: Math.round(P(-2, -.5, 0)[0]), cz: Math.round(P(-2, -.5, winZ0 + winH * .62)[1]) }];
   const ch = P(HW - 5.5, d - 4, WALL + 15), e0 = P(-HW - 2.4, -3, WALL + 1.4), e1 = P(HW + 2.4, -3, WALL + 1.4);
-  return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW + .9, 15.7, WALL - .4), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
-    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 7, c: '255,226,170', a: .9, k: 'lamp', glare: true }, { x: HW + 6, y: 16, r: 40, sy: .6, c: '255,206,140', a: .6, k: 'lamp', fall: 'sq' }],
+  return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW - 2.9 + .3, -1, WALL - .5), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
+    lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 6, c: '255,226,170', a: .9, k: 'lamp', glare: true, flick: true }, { x: lq[0], y: 10, r: 34, sy: .6, c: '255,214,150', a: .55, k: 'lamp', fall: 'sq', flick: true }],
     solids: [[-HW - 2, -d - 1, HW + 2, 1]].map(t3w) } };
 
 // ---- the barrier at the entrance of the dam: a housing on the north verge and a red and white arm that crosses the road. Shut, the arm lies down across the
@@ -3366,6 +3414,18 @@ PF.mtp = ({ seed = 3 } = {}) => { const PH = 60, CON = [138, 136, 128], steel = 
     return M }, [0]);
   const A = (x, n, z) => t3p([x, n, z]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8, -2.6, -3, 2.6], [3, -2.6, 8, 2.6]].map(t3w), tops: [A(-8, 0, PH + 2), A(0, 0, PH + 2), A(8, 0, PH + 2)], top: A(0, 0, PH + 2), outs: [A(9.5, 0, 21)] } };
+
+// ---- a cable lying on the ground (flat): rubber, black, with a sheen along it, held down with a clip here and there; the points are relative to the object ----
+PF.cable = ({ pts = [[0, 0], [12, -5]], seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const P = pts.map(([x, y]) => [x, -y]);
+    for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; t3line(M, [a[0], a[1], .1], [b[0], b[1], .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + 1, .1], [b[0], b[1] + 1, .1], [20, 20, 24], { over: true }); t3line(M, [a[0], a[1] + .5, .1], [b[0], b[1] + .5, .1], [58, 58, 64], { over: true }) }
+    for (let i = 1; i < P.length - 1; i++) M.dots.push([[P[i][0], P[i][1] + .5, .3], [150, 150, 146]]);
+    return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, flat: true, noShadow: true } };
+
+// ---- the guard: stands by the door and smokes. A cycle of seventeen seconds: the cigarette hangs at his hip, then he lifts it, draws on it (the tip glows),
+// lowers it and breathes the smoke out; a thin wisp rises from the hanging cigarette all the time ----
+function guardStep(P, dt) { P.st += dt; P.moving = false; const T = P.st % 17, up = T > 8.2 && T < 10.4 ? 1 : 0;
+  if (up !== P.sf) { if (!up) for (let k = 0; k < 4; k++) SMOKE.push({ x: P.x + 2 + Math.random() * 2, y: P.y - 17 + Math.random(), vx: WINDX * 6 + Math.random() * 4 - 2, vy: -4 - Math.random() * 3, age: 0, life: 2.6 + Math.random() * 1.2, a0: .32, r0: 1.5, ph: Math.random() * 9 }); P.sf = up } }
 
 
 // =====================================================================================================================
@@ -3551,7 +3611,7 @@ const PLACES = {};
 {
   // the power: a line of wooden poles along the street, a street lamp on some of them
   const POLES = [{ n: 2, x: 330, y: 404, lamp: true, dir: 1 }, { n: 7, x: 470, y: 400 }, { n: 3, x: 620, y: 384, lamp: true, dir: -1, bird: true }, { n: 8, x: 812, y: 380, flick: true, lamp: true, dir: 1 },
-    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 10, x: 1188, y: 253 }, { n: 6, x: 1288, y: 202, lean: -1 }];
+    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 10, x: 1146, y: 238 }, { n: 6, x: 1288, y: 202, lean: -1 }];
   // the old wheel tracks to the two cars: where the ruts lie, the way a car came in off the road and stopped (the ruts run under it to the front wheels)
   const side = (L, o) => L.map((p, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [p[0] - dy / l * o, p[1] + dx / l * o] });
   const CARWAYS = [{ id: 'kop', grow: .34, L: [[641, 448.5], [684, 448.5], [708, 449], [728, 442], [742, 426], [748, 411]] }, { id: 'bee', grow: .42, L: [[98, 463], [114, 470], [130, 474.5], [165, 474.5]] }];
@@ -3560,14 +3620,14 @@ const PLACES = {};
     { id: 'house-1', p: 'house', x: 250, y: 372, w: 60, d: 46, wall: 'board', col: [112, 146, 166], roof: 'tin', roofCol: [112, 74, 58], shut: [66, 108, 94], wins: [-19, 19], deco: ['logs', 'bench', 'barrel', 'oars', 'aerial', 'lamp', 'planter', 'laundry', 'bucket'], seed: 3, decay: .6, shutBad: [0, 1, 2, 0], fallen: 1, lampC: '255,206,140', meter: 22 },
     { id: 'house-2', p: 'house', x: 480, y: 352, w: 52, d: 40, wall: 'log', col: [150, 112, 74], roof: 'shingle', roofCol: [96, 98, 100], chim: 'pipe', chimX: 14, wins: [-17, 17], deco: ['buoys', 'net', 'barrel', 'lamp', 'dish', 'ladder', 'tarp'], tarp: [-14, 6, 1, 13], seed: 5, decay: .75, lampC: '214,236,255', lampFlick: true, meter: 17 },
     { id: 'house-3', p: 'house', x: 760, y: 338, w: 50, d: 40, wall: 'board', col: [204, 172, 98], roof: 'tin', roofCol: [138, 62, 48], shut: [176, 70, 52], wins: [-16, 16], deco: ['buoys', 'barrel', 'aerial', 'logs', 'lamp', 'kennel', 'bucket'], seed: 8, decay: .45, shutBad: [1, 0, 0, 0], fallen: -1, lampC: '255,176,96', meter: -19 },
-    { id: 'smokehouse', p: 'smokehouse', x: 600, y: 282, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
+    { id: 'smokehouse', p: 'smokehouse', x: 588, y: 284, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
     { id: 'boatshed', p: 'boatshed', x: 968, y: 306, meter: 38, deco: ['oars', 'net', 'buoys', 'lamp'], lampC: '255,252,236', lampX: 24 },
     { id: 'well', p: 'well', x: 386, y: 360 },
     { id: 'logpile', p: 'logpile', x: 168, y: 340, seed: 11 },
     // nets and fish drying on the shore side
     { id: 'netrack-1', p: 'netrack', x: 142, y: 300, len: 58, nets: 2, seed: 7 }, { id: 'netrack-2', p: 'netrack', x: 706, y: 254, len: 50, nets: 2, seed: 17, col: [70, 92, 84] },
     { id: 'fishrack-1', p: 'fishrack', x: 372, y: 272, len: 46, rows: 3, seed: 11 }, { id: 'fishrack-2', p: 'fishrack', x: 864, y: 262, len: 40, rows: 3, seed: 23, gold: .3 },
-    { id: 'crates-1', p: 'crates', x: 540, y: 298, seed: 4 }, { id: 'barrels-1', p: 'barrels', x: 640, y: 292, seed: 3, n: 3 }, { id: 'barrels-2', p: 'barrels', x: 1004, y: 324, seed: 9, n: 2 },
+    { id: 'crates-1', p: 'crates', x: 540, y: 298, seed: 4 }, { id: 'barrels-1', p: 'barrels', x: 690, y: 290, seed: 3, n: 3 }, { id: 'barrels-2', p: 'barrels', x: 1004, y: 324, seed: 9, n: 2 },
     // boats: two turned over on the sand, one on its keel, two afloat by the jetty
     { id: 'mtp', p: 'mtp', x: 84, y: 438 },
     { id: 'boat-1', p: 'boat', x: 318, y: 224, col: [66, 112, 150], seed: 2 }, { id: 'boat-2', p: 'boat', x: 410, y: 232, col: [168, 60, 48], up: true, seed: 3 },
@@ -3580,6 +3640,8 @@ const PLACES = {};
     { id: 'fence-nw', p: 'fence', axis: 'x', len: 33, x: 860, y: 460, seed: 41 }, { id: 'fence-ne', p: 'fence', axis: 'x', len: 43, x: 957, y: 460, seed: 42 },
     { id: 'fence-w', p: 'fence', axis: 'n', len: 76, x: 860, y: 536, seed: 43 }, { id: 'fence-e', p: 'fence', axis: 'n', len: 76, x: 1000, y: 536, seed: 44 }, { id: 'fence-s', p: 'fence', axis: 'x', len: 140, x: 860, y: 536, seed: 45 },
     { id: 'trough', p: 'trough', len: 26, x: 972, y: 482 }, { id: 'bales-in', p: 'bales', n: 2, x: 890, y: 478, seed: 6 }, { id: 'haystack', p: 'haystack', x: 1034, y: 476, R: 10, H: 21, seed: 2 }, { id: 'bales-out', p: 'bales', n: 3, x: 842, y: 500, seed: 9 },
+    // at the foot of the ramp: a post each side
+    { id: 'bollard-r0', p: 'bollard', x: PIER.x - PIER.w - 3, y: PIER.y1 + PIER.ramp - 3, seed: 20 }, { id: 'bollard-r1', p: 'bollard', x: PIER.x + PIER.w + 3, y: PIER.y1 + PIER.ramp - 3, seed: 21 },
     // on the jetty: cleats, coils of rope, a stack of crates and barrels at the edge, lanterns at the far end
     ...[[PIER.x - 20, 132], [PIER.x + 20, 132], [PIER.x - 20, 198], [PIER.x + 20, 198], [PIER.x - 20, 160], [PIER.x + 20, 160]].map(([x, y], i) => ({ id: 'bollard-' + i, p: 'bollard', x, y, seed: i })),
     { id: 'coil-1', p: 'coil', x: PIER.x + 15, y: 164, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 14, y: 202, seed: 2, col: [150, 140, 120] },
@@ -3595,7 +3657,9 @@ const PLACES = {};
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
     // the checkpoint at the foot of the dam, on the last of the land: the booth north of the road, the barrier across it
-    { id: 'booth', p: 'booth', x: 1172, y: 218, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .583, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .583, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    // the cable from the booth's panel to the barrier, over the ground
+    { id: 'cable-gate', p: 'cable', x: 1172, y: 227.5, pts: [[0, 0], [5, 1.2], [11, -1.5], [16, -6], [19.5, -10], [21.4, -13.5]], seed: 3 },
   ];
   PLACES.buhta = {
     id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
@@ -3612,10 +3676,12 @@ const PLACES = {};
       { id: 'yard-1', mat: 'trodden', ellipse: [252, 392, 70, 34], rough: .2 }, { id: 'yard-2', mat: 'trodden', ellipse: [482, 372, 66, 32], rough: .2 }, { id: 'yard-3', mat: 'trodden', ellipse: [762, 358, 62, 30], rough: .2 },
       { id: 'yard-shed', mat: 'trodden', ellipse: [968, 332, 74, 30], rough: .2 }, { id: 'yard-fish', mat: 'trodden', ellipse: [620, 268, 120, 30], rough: .3 },
       { id: 'path-1', mat: 'path', line: [[252, 392], [254, 428]], w: 6 }, { id: 'path-2', mat: 'path', line: [[482, 374], [482, 414]], w: 6 }, { id: 'path-3', mat: 'path', line: [[762, 358], [764, 396]], w: 6 },
-      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [630, 286], [640, 246]], w: 7 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
+      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 278, 34, 9], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
       { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
       { id: 'dirt-well', mat: 'dirt', ellipse: [386, 372, 16, 6], rough: .4 },
+      // a patch of firm ground at the foot of the dam for the checkpoint: grass and soil, not sand, which the waves would wash from under it
+      { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1182, 222, 17, 8], rough: .35 },
       // the way into the village from the forest, the street and the embankment out over the bay
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 392], [1010, 345], [1130, 275], [1215, 214]], w: 13 },
@@ -3647,9 +3713,10 @@ const PLACES = {};
     // the people: an old fisherman between the boats and the jetty, a man mending a net by the first house, a woman with a bucket to the well
     npcs: [
       { id: 'fisher-1', look: { id: 'fisher-1', sex: 'm', age: 'old', h: 17.2, build: 1.1, skin: 1, hair: [150, 148, 142], cut: 'short', beard: [150, 148, 142], hat: 'cap', hatCol: [70, 70, 64], top: [58, 84, 74], topKind: 'jacket', legs: [78, 84, 70], boots: [40, 52, 40], carry: 'bucket' },
-        route: [[560, 252, 20], [632, 268, 0], [640, 256, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 256, 0], [632, 268, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
+        route: [[560, 252, 20], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
         route: [[250, 400, 30], [196, 396, 0], [170, 326, 55], [196, 396, 0]] },
+      { id: 'guard', smoker: true, dir: 2, x: 1187, y: 221, look: { id: 'guard', sex: 'm', h: 18.4, build: 1.12, skin: 1, hair: [70, 62, 54], cut: 'short', hat: 'cap', hatCol: [40, 48, 58], top: [52, 64, 80], topKind: 'jacket', legs: [46, 50, 58], boots: [30, 30, 32] }, route: [[1187, 221, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
         route: [[386, 378, 22], [440, 398, 0], [482, 392, 40], [440, 398, 0]] },
     ],
@@ -3976,7 +4043,9 @@ function groundColor(x, y) {
     if (dw < 2.5) c = GW.wetsand[quant(vn(x * .3, y * .3, SEED + 581), x, y, 2)];
     else { c = BEACHP[quant(clamp(.3 + fbm(x * .06, y * .06, SEED + 580) * .75 + (vn(x * .25, y * .25, SEED + 582) - .5) * .25, 0, 1), x, y, 5, .7)];
       if (dw < 8) c = cmix(c, GW.wetsand[1], clamp(1 - (dw - 2.5) / 5.5, 0, 1) * .75);
-      else { const st = h2(x, y, SEED + 583); if (st < .01) c = GW.pebble[3]; else if (st < .02) c = GW.pebble[1]; else if (vn(x * .1 + y * .03, y * .55, SEED + 585) > .8) c = cmix(c, BEACHP[0], .3) } } }
+      else { const st = h2(x, y, SEED + 583); if (st < .01) c = GW.pebble[3]; else if (st < .02) c = GW.pebble[1]; else if (vn(x * .1 + y * .03, y * .55, SEED + 585) > .8) c = cmix(c, BEACHP[0], .3) }
+      { const clump = clamp((vn(x * .09, y * .12, SEED + 586) - .42) * 3, 0, 1), wr = ssm(5.5, 7.5, dw) * (1 - ssm(9.5, 12, dw)) * clump; if (wr > .05 && h2(x, y, SEED + 587) < wr * .5) { const q = h2(x * 3, y * 5, SEED + 588); c = q < .2 ? [176, 92, 44] : q < .34 ? [196, 148, 58] : q < .5 ? [138, 70, 40] : q < .75 ? [112, 88, 56] : [74, 64, 46] } } // (the wrack: a line of leaves and twigs at the high-water mark)
+ } }
   else if (mat === 'lake' && L.pal === 'bay') c = bayColor(x, y, d); // the bay of a big lake
   else if (mat === 'rut' || mat === 'hump') c = rutColor(L, x, y, d); // old wheel tracks, overgrown
   else if (mat === 'dam') c = damColor(L, x, y, d); // an embankment across the water
@@ -4176,7 +4245,7 @@ function bakeChunk0(ci, cj, pre) { const key = ckey(ci, cj);
   // leaves lying about (fewer on the trodden ways), then each tree's own litter round its foot
   for (let cy = Math.floor(y0 / 6) - 1; cy <= Math.ceil((y0 + CK) / 6); cy++) for (let cx = Math.floor(x0 / 6) - 1; cx <= Math.ceil((x0 + CK) / 6); cx++) {
     const hh = h2(cx, cy, SEED + 70), x = cx * 6 + Math.floor(h2(cx, cy, SEED + 71) * 6), y = cy * 6 + Math.floor(h2(cx, cy, SEED + 72) * 6), mat = matAt(x, y);
-    const p = (mat === 'road' || mat === 'gravel' ? .07 : mat === 'path' ? .12 : mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' ? .02 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34) * (.55 + .9 * vn(x * .025, y * .025, SEED + 2020)) * LITTERK;
+    const p = (mat === 'road' || mat === 'gravel' ? .07 : mat === 'path' ? .12 : mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' ? 0 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34) * (.55 + .9 * vn(x * .025, y * .025, SEED + 2020)) * LITTERK;
     if (hh < p) { const lr = mulberry((Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ SEED) >>> 0), K = lkPick(leafSpAt(x, y, lr), lr); lkStamp(set, x, y, K, Math.floor(lr() * 8), mat === 'road' || mat === 'path' ? .35 + lr() * .3 : lr() * .4) } }
   // sticks and twigs fallen from the trees: thin dry ones, some forked, birch twigs pale; thick on the forest floor and
   // under the crowns, sparse on the glade, kicked aside from the paths and the gravel
@@ -4406,9 +4475,9 @@ function stepRider(dt) {
 // ================= people =================
 // Walkers go round their routes at a stroll (1.2 m/s), stop where the route says, give way to the bike, and stand
 // shifting their weight while they wait; sitters appear at a fire while it burns.
-const NPCS = (PL.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: 4, dist: 0, idleT: Math.random() * 3 } });
+const NPCS = (PL.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: n.dir ?? 4, dist: 0, idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } });
 const SITS = []; cowsInit(); const dirOf = (dx, dy) => ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8;
-function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt;
+function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }
     if (P.wait > 0) { P.wait -= dt; P.moving = false; continue }
     const nx = (P.i + 1) % P.route.length, [tx, ty, tw] = P.route[nx], dx = tx - P.x, dy = ty - P.y, d = Math.hypot(dx, dy), sp = 12 * dt;
     // giving way: the bike just ahead of them on their way
@@ -4417,7 +4486,7 @@ function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt;
     P.x += dx / d * sp; P.y += dy / d * sp; P.dist += sp; P.dir = dirOf(dx, dy); P.moving = true }
   SITS.length = 0; const S = PL.sitters || {}; for (const F of FIRES) { if (F.I < .35) continue; const list = S[F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
-function npcSpr(P) { if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
+function npcSpr(P) { if (P.smoker) return npcSprite(P.look, 'smoke', P.dir, P.sf); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
   const k = Math.floor(P.idleT / 1.8 + P.x * .1) % 7; return k === 5 ? npcSprite(P.look, 'look', P.dir, 0) : k === 6 ? npcSprite(P.look, 'look', P.dir, 1) : npcSprite(P.look, 'idle', P.dir, k % 2) }
 const npcBlocks = (x, y, rad) => { for (const P of NPCS) if (Math.hypot(P.x - x, P.y - y) < 3.6 + rad) return P; for (const P of SITS) if (Math.hypot(P.x - x, P.y - y) < 4 + rad) return P; return null };
 
@@ -4471,14 +4540,15 @@ function stepLeaves(dt, vis) {
     if (!o.pix || !o.pix[i + 3]) continue; const c = [o.pix[i], o.pix[i + 1], o.pix[i + 2]]; if (c[0] + c[1] + c[2] < 120) continue; const K = lkPick(Math.random() < .06 ? 'curl' : o.lsp, Math.random, c), F = LFALL[K.sp];
     const x = o.x - o.ax + p[0], y = o.y - o.ay + p[1], gy = Math.max(y + 4, o.y + (Math.random() - .45) * o.canopy * .75);
     leaves.push({ x, y, gy, ph: Math.random() * 6.28, ph2: Math.random() * 8, vy: (5 + Math.random() * 6) * F[0], fl: F[1], state: 0, life: 40 + Math.random() * 40, k: K.id, rot: Math.floor(Math.random() * 8), age: 0 }) }
-  if (leafAcc > 3) leafAcc = 0;
-  for (const l of leaves) { if (l.state === 0) { l.ph += dt * 2.4 * l.fl; l.ph2 += dt * .7 * l.fl; const dx = (Math.sin(l.ph) * 9 * (1 - .35 * WIND.s) + WINDX * wind * 36) * dt, dy = WINDY * wind * 24 * dt; l.x += dx; l.y += l.vy * dt + dy; l.gy += dy; if (l.y >= l.gy) { l.state = 1; l.y = l.gy; const mm = matAt(l.x, l.y); if (mm === 'lake' || mm === 'pond') l.life = Math.min(l.life, 3 + Math.random() * 9) } } // (a leaf that lands on the water soon sinks)
-    else { l.life -= dt; // lying: a gust or the wheels lift it again
+  driftLeaves(dt); if (leafAcc > 3) leafAcc = 0;
+  for (const l of leaves) { if (l.state === 0) { l.ph += dt * 2.4 * l.fl; l.ph2 += dt * .7 * l.fl; const dx = (Math.sin(l.ph) * 9 * (1 - .35 * WIND.s) + WINDX * wind * 36) * dt, dy = WINDY * wind * 24 * dt; l.x += dx; l.y += l.vy * dt + dy; l.gy += dy; if (l.y >= l.gy) { l.state = 1; l.y = l.gy; const mm = matAt(l.x, l.y); if (mm === 'pond') l.life = Math.min(l.life, 3 + Math.random() * 9); else if (mm === 'lake' && leafToWater(l)) l.state = 3; else if (mm === 'beach') l.sh = true } } // (a leaf that lands on the pond soon sinks; on the bay it floats; on the beach a surge may reach it)
+    else if (l.state === 3) leafAfloat(l, dt);
+    else { l.life -= dt; if (l.sh) leafShore(l, dt); // lying: a gust or the wheels lift it again
       if (l.state === 1 && R.v > 6 && Math.abs(l.x - R.x) < 4 && Math.abs(l.y - R.y) < 4) { l.state = 2; l.tt = 0; l.vx = (l.x < R.x ? -1 : 1) * (6 + Math.random() * 14) + Math.sin(R.psi) * 10; l.vy2 = -Math.cos(R.psi) * 10; l.hop = 0; leafKick() }
       if (l.state === 1 && gust > .6 && Math.random() < (gust - .6) * WX.wind * dt * 1.4) { l.state = 2; l.tt = 0; const m = (14 + Math.random() * 30) * WX.wind; l.vx = WINDX * m; l.vy2 = WINDY * .7 * m; l.hop = 0 }
       if (l.state === 2) { l.tt += dt; l.x += l.vx * dt; l.y += l.vy2 * dt; l.vx *= 1 - dt * 1.6; l.vy2 *= 1 - dt * 1.6; l.hop = Math.sin(Math.min(1, l.tt / .8) * Math.PI) * 3; if (Math.random() < dt * 6) l.rot = (l.rot + 1) & 7; if (l.tt > .8) { l.state = 1; l.hop = 0 } } } }
   leaves = leaves.filter(l => l.life > 0 && l.x > CAM.x - 60 && l.x < CAM.x + W + 60 && l.y > CAM.y - 80 && l.y < CAM.y + H + 60) }
-function drawLeaves(onGround) { for (const l of leaves) { if ((l.state === 0) === onGround) continue; ctx.globalAlpha = l.state ? clamp(l.life / 3, 0, 1) : 1; drawLeafK(l.state === 2 ? Object.assign({}, l, { state: 1 }) : l, Math.round(l.x), Math.round(l.y - (l.hop || 0))) } ctx.globalAlpha = 1 }
+function drawLeaves(onGround) { for (const l of leaves) { if ((l.state === 0) === onGround) continue; ctx.globalAlpha = l.state ? clamp(l.life / 3, 0, 1) * (l.fi === undefined ? 1 : l.fi) : 1; drawLeafK(l.state === 2 ? Object.assign({}, l, { state: 1 }) : l, Math.round(l.x), Math.round(l.y - (l.hop || 0))) } ctx.globalAlpha = 1 }
 let RAINSL = 0;
 function stepRain(dt) { const nd = Math.round(WX.rain * W * H / 360); while (drops.length < nd) drops.push({ x: Math.random() * (W + 40) - 20, y: Math.random() * H - H, gy: Math.random() * H, v: 150 + Math.random() * 80 }); if (drops.length > nd) drops.length = nd;
   const rv = WIND.s * (.65 + .5 * gustNow()) * 75, wx = WINDX * rv, wyv = WINDY * rv * .45; RAINSL = wx / (185 + wyv);
@@ -4640,6 +4710,7 @@ function puff(x, y, rad, a, c = '200,200,204') { const g = ctx.createRadialGradi
 let SMOKE = [], SMOKEACC = new Map();
 function stepSmoke(dt) { const g = gustNow(), wv = 4 + 34 * WIND.s * (.55 + .7 * g), rise = 8 * (1 - .65 * clamp(WIND.s * (.6 + .6 * g), 0, 1)), em = [];
   for (const [x, y] of SMOKERS) em.push([x, y, 7, .36, 2.6, 'c' + x]);
+  for (const P of NPCS) if (P.smoker) em.push([P.x + 2, P.y - (P.sf ? 17 : 9), 1.3, .13, .9, 'g' + P.id]);
   for (const F of FIRES) { if (F.I > .02) { const young = 1 - F.grow; em.push([F.x, F.y - 4 - 8 * F.size * F.flame, 4 + 7 * young, (.12 + .28 * young + .1 * F.dying) * F.I, 2 + young, 'f' + F.k]) } else if (F.sm > .02) em.push([F.x, F.y - 2, 3, .2 * F.sm, 1.6, 'f' + F.k]);
     if (F.pot && F.flame > .3) em.push([F.pot[0], F.pot[1] - 1, 3, .22 * F.flame, 1.2, 'p' + F.k]) }
   for (const [x, y, rate, a0, r0, key] of em) { if (x < CAM.x - 120 || x > CAM.x + W + 120 || y < CAM.y - 120 || y > CAM.y + H + 160) continue; let acc = (SMOKEACC.get(key) || 0) + dt * rate;
@@ -4991,7 +5062,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, get leaves() { return leaves }, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };

@@ -50,52 +50,51 @@ function damWater(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'dam
     const h = underLayer(x, y); if (h.L && h.L.mat === 'lake') return true } return false }
 const K_sedge = (x, y) => K_q(h2(x, y, SEED + 67) < .45 ? PAL.straw : PAL.sedge, .4 + vn(x * .3, y * .3, SEED + 68) * .5, x, y);
 const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
-// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it from the sand ----
+// ---- the jetty: a broad plank pier standing 60 cm above the water, with a ramp up to it across its whole south end ----
 // It is drawn into the ground like the rest of the plan, but as the eye sees a raised deck: its top lies H px up from the plan footprint (the rider
-// riding on it is drawn lifted by as much), under the south edge a front face of boards, in the middle of it a ramp, the east side a little thick, a hard
-// dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
-const PIER = { x: 640, w: 24, y0: 100, y1: 248, ramp: 14, rw: 13, H: 6 };
-const PIERC = { gap: [36, 27, 20], line: [26, 19, 14], wood: [[146, 117, 82], [140, 112, 78], [134, 107, 75], [156, 126, 90]], grey: [128, 120, 106], dark: [84, 66, 46], fresh: [188, 154, 106], rot: [74, 68, 50] };
-// a board at distance n along the deck, x across: rows of planks, each of one or two pieces; some replaced (pale), some rotten (dark, soft), a knot here and there
-function pierBoard(lx, n, k) { const row = Math.floor(n / 3.4), f = n / 3.4 - row, sd = SEED + 810; if (f < .2) return cmul(PIERC.gap, k);
-  const jx = PIER.x - PIER.w + 9 + h2(row, 2, sd) * 30, left = lx < jx, pc = h2(row, left ? 3 : 4, sd), jn = Math.abs(lx - jx) < .55;
-  let c = PIERC.wood[Math.floor(h2(row, left ? 5 : 6, sd) * 4)]; if (pc < .06) c = PIERC.fresh; else if (pc > .965) c = PIERC.rot; else if (pc > .86) c = PIERC.grey;
-  c = cmix(c, PIERC.grey, .2 * vn(lx * .06, row * 1.7, sd + 7)); if (jn) return cmul(PIERC.gap, k);
-  const stain = vn(lx * .12 + row * .7, n * .1, sd + 11); if (stain > .74) c = cmul(c, .84); if (pc > .965 && stain > .45) c = cmix(c, [64, 86, 48], .3); // (rotten boards go green)
-  if (h2(Math.floor(lx / 2), row, sd + 13) < .02) c = cmul(c, .7); // knots
-  const b = f < .4 ? 1.08 : f > .9 ? .9 : 1; return cmul(c, k * b) }
-function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
+// riding on it is drawn lifted by as much), the ramp running up to it from the sand, the east side a little thick, a hard dark outline all round.
+// Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left by it. (Coordinates: the place's own.)
+const PIER = { x: 640, w: 24, y0: 100, y1: 244, ramp: 26, H: 6 };
+const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [124, 100, 72], dark: [84, 66, 46] };
+// the decking: planks laid across the deck, each row in two lengths that meet over a joist (the joint slides along from row to row), one weathered tone
+// with only a faint difference from board to board, a very few replaced ones a shade lighter, grain along each; a nail at each end of every piece
+function pierBoard(lx, n, k) { const P = PIER, X0 = P.x - P.w, row = Math.floor(n / 3.6), f = n / 3.6 - row, sd = SEED + 810; if (f < .14) return cmul(PIERC.gap, k);
+  const jx = X0 + [14, 24, 33][row % 3] + (h2(Math.floor(row / 3), 2, sd) < .5 ? -1 : 1), left = lx < jx;
+  if (Math.abs(lx - jx) < .5) return cmul(PIERC.gap, k);
+  const pc = h2(row, left ? 3 : 4, sd); let m = .97 + .06 * pc; if (pc > .94) m *= 1.09; else if (pc < .04) m *= .9;
+  const grain = vn(lx * .22, row * 2.3 + (left ? 0 : 5), sd + 7); m *= .96 + .08 * grain; if (vn(lx * .04 + row * .05, n * .03, sd + 9) > .62) m *= .94; // (the damp patches of an old deck)
+  m *= f < .38 ? 1.05 : f > .92 ? .93 : 1; // the board's bevel
+  const nx = left ? [X0 + 3.5, jx - 3] : [jx + 3, X0 + 2 * P.w - 3.5]; if (f > .45 && f < .62 && (Math.abs(lx - nx[0]) < .5 || Math.abs(lx - nx[1]) < .5)) m *= .55;
+  return cmul(PIERC.plank, k * m) }
+function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810;
   const under = k => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return k === 1 ? c : cmul(c, k) };
   if (ly >= yt0 && ly < P.y1 && lx >= X1 && lx < X1 + 3.5) { // the east face of the deck, seen edge-on: the fascia board and the shadow under it
-    if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.wood[3], .82 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .82), k) }
+    if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.plank, .92 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .86), k) }
   if (ly >= yt0 && ly < yt1 && lx >= X0 && lx < X1) { // the top of the deck
     if (lx < X0 + 1 || ly < yt0 + 1) return LN; const n = yt1 - ly;
-    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side
-      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e < 2 || e >= 3.2 && e < 4) return e < 2 && lx < X0 + 4 ? cmul(PIERC.wood[3], .94) : cmul(PIERC.gap, 1.15); const seg = Math.floor((n + 17 * (lx < P.x ? 1 : 2)) / 46); if (((n + 17 * (lx < P.x ? 1 : 2)) % 46) < .6) return PIERC.gap;
-      return cmix(PIERC.wood[seg % 3], PIERC.grey, .22 + .3 * vn(n * .05, lx * .3, sd + 3)) }
-    const c = pierBoard(lx, n, 1); const nl = Math.floor(n / 3.4); // (the nails: a pair on each board over every joist)
-    if ((n / 3.4 - nl) > .5 && (n / 3.4 - nl) < .66) for (const jx of [X0 + 8, X0 + 20, P.x + 4, X1 - 20, X1 - 8]) if (Math.abs(lx - jx) < .5 && h2(nl, jx, sd + 17) < .8) return cmul(c, .55);
-    return c }
-  if (ly >= yt1 && ly < yb && lx >= R0 && lx < R1) { // the ramp: boards across, strips nailed over them
-    if (lx < R0 + 1 || lx >= R1 - 1 || ly >= yb - 1) return LN; const n = (yb - ly) / 1.4286, nl = Math.floor(n / 3.4);
-    let c = pierBoard(lx, n, 1.06); if (nl % 3 === 1 && n / 3.4 - nl > .3 && n / 3.4 - nl < .6) c = cmul(PIERC.dark, 1.05); return c }
-  if (ly >= yt1 && ly < yb && lx >= R1 && lx < R1 + 3.1 * (yb - ly) / (yb - yt1)) return lx >= R1 + 3.1 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
-  if (ly >= yt1 && ly < P.y1 && lx >= X0 && lx < X1 && !(lx >= R0 && lx < R1)) { // the front face of the deck, boards on end, shaded toward the sand
-    if (lx < X0 + 1 || ly >= P.y1 - 1) return LN; const k = .96 - .38 * (ly - yt1) / H, col = Math.floor((lx - X0) / 3.4), fr = (lx - X0) / 3.4 - col; if (fr < .2) return cmul(PIERC.gap, k);
-    if (ly < yt1 + 1) return cmul(PIERC.wood[3], .96); return cmul(cmix(PIERC.wood[Math.floor(h2(col, 7, sd) * 3)], PIERC.grey, .3 * vn(col, 3, sd + 5)), k) }
+    if (lx < X0 + 4 || lx >= X1 - 4) { // the long beams along each side: one timber, darker than the boards, a joint every so often
+      const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2 && e < 4) return cmul(PIERC.gap, 1.15); const off = lx < P.x ? 17 : 41; if (((n + off) % 62) < .6) return PIERC.gap;
+      return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
+    return pierBoard(lx, n, 1) }
+  if (ly >= yt1 && ly < yb && lx >= X0 && lx < X1) { // the ramp across the whole end: the same boards, the long timbers each side running down, a threshold beam at the foot, sand blown on the boards
+    const n = (yb - ly) / (1 + H / P.ramp);
+    if (lx < X0 + 1 || ly >= yb - 1) return LN; if (ly >= yb - 3) return cmul(PIERC.dark, ly >= yb - 2 ? .9 : 1.12); // the threshold
+    if (lx < X0 + 4 || lx >= X1 - 4) { const e = lx < X0 + 4 ? lx - X0 : X1 - lx; if (e >= 3.2) return cmul(PIERC.gap, 1.15); return cmul(PIERC.beam, (e < 2 ? 1.08 : 1) * (.94 + .1 * vn(n * .06, lx * .4, sd + 3))) }
+    if (ly < yt1 + 1.4) return ly < yt1 + .5 ? cmul(PIERC.beam, 1.1) : cmul(PIERC.gap, 1.2); // (the joint where the ramp meets the deck: a cross-beam)
+    let c = pierBoard(lx, n + 3, 1.03); if (n < 9 && h2(x, y, sd + 21) < .5 * (1 - n / 9) * (.5 + vn(x * .3, y * .5, sd + 22))) c = cmix(c, [178, 160, 118], .75); return c }
+  if (ly >= yt1 && ly < yb && lx >= X1 && lx < X1 + 3.4 * (yb - ly) / (yb - yt1)) return lx >= X1 + 3.4 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
   if (ly >= yt0 + 5 && ly < P.y1 + 1 && lx >= X1 + 3.5 && lx < X1 + 6) return under(1 - .24 * (1 - (lx - X1 - 3.5) / 2.5)); // the shadow of the deck on the water
   if (ly >= yt0 - 3 && ly < yt0 && lx >= X0 && lx < X1 + 5) return under(.8);
   return under(1) }
 // how high above the ground a figure stands at (x, y) (world coordinates): on the deck, H; up the ramp, from 0 to H
 function deckLift(x, y) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
-  if (ly <= P.y1) return P.H; return Math.abs(lx - P.x) < P.rw ? P.H * (1 - (ly - P.y1) / P.ramp) : 0 }
+  return ly <= P.y1 ? P.H : P.H * (1 - (ly - P.y1) / P.ramp) }
 const objLift = o => o._lf === undefined ? (o._lf = deckLift(o.x, o.y)) : o._lf;
 // the kerbs: along the sides of the deck and of the ramp, across its end and under its front face, nothing for a bike to cross
 const DECKO = { id: 'jetty', type: 'jetty' };
 function deckBlocked(x, y, rad) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
-  const X0 = P.x - P.w, X1 = P.x + P.w, R0 = P.x - P.rw, R1 = P.x + P.rw, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
-  return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 - 2) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 - 2) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)
-    || hit(X0 - 2, P.y1 - 3, R0 + .5, P.y1 + 1.4) || hit(R1 - .5, P.y1 - 3, X1 + 3, P.y1 + 1.4) || hit(R0 - 3, P.y1 - 3, R0 + .5, P.y1 + P.ramp) || hit(R1 - .5, P.y1 - 3, R1 + 3, P.y1 + P.ramp)) ? DECKO : false }
+  const X0 = P.x - P.w, X1 = P.x + P.w, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
+  return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 + P.ramp - 1) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 + P.ramp - 1) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)) ? DECKO : false }
 let RLIFT = 0; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
 
 // ---- the village's own colours and textures ----

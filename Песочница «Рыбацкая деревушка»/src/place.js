@@ -7,7 +7,7 @@
 {
   // the power: a line of wooden poles along the street, a street lamp on some of them
   const POLES = [{ n: 2, x: 330, y: 404, lamp: true, dir: 1 }, { n: 7, x: 470, y: 400 }, { n: 3, x: 620, y: 384, lamp: true, dir: -1, bird: true }, { n: 8, x: 812, y: 380, flick: true, lamp: true, dir: 1 },
-    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 10, x: 1188, y: 253 }, { n: 6, x: 1288, y: 202, lean: -1 }];
+    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 10, x: 1146, y: 238 }, { n: 6, x: 1288, y: 202, lean: -1 }];
   // the old wheel tracks to the two cars: where the ruts lie, the way a car came in off the road and stopped (the ruts run under it to the front wheels)
   const side = (L, o) => L.map((p, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [p[0] - dy / l * o, p[1] + dx / l * o] });
   const CARWAYS = [{ id: 'kop', grow: .34, L: [[641, 448.5], [684, 448.5], [708, 449], [728, 442], [742, 426], [748, 411]] }, { id: 'bee', grow: .42, L: [[98, 463], [114, 470], [130, 474.5], [165, 474.5]] }];
@@ -16,14 +16,14 @@
     { id: 'house-1', p: 'house', x: 250, y: 372, w: 60, d: 46, wall: 'board', col: [112, 146, 166], roof: 'tin', roofCol: [112, 74, 58], shut: [66, 108, 94], wins: [-19, 19], deco: ['logs', 'bench', 'barrel', 'oars', 'aerial', 'lamp', 'planter', 'laundry', 'bucket'], seed: 3, decay: .6, shutBad: [0, 1, 2, 0], fallen: 1, lampC: '255,206,140', meter: 22 },
     { id: 'house-2', p: 'house', x: 480, y: 352, w: 52, d: 40, wall: 'log', col: [150, 112, 74], roof: 'shingle', roofCol: [96, 98, 100], chim: 'pipe', chimX: 14, wins: [-17, 17], deco: ['buoys', 'net', 'barrel', 'lamp', 'dish', 'ladder', 'tarp'], tarp: [-14, 6, 1, 13], seed: 5, decay: .75, lampC: '214,236,255', lampFlick: true, meter: 17 },
     { id: 'house-3', p: 'house', x: 760, y: 338, w: 50, d: 40, wall: 'board', col: [204, 172, 98], roof: 'tin', roofCol: [138, 62, 48], shut: [176, 70, 52], wins: [-16, 16], deco: ['buoys', 'barrel', 'aerial', 'logs', 'lamp', 'kennel', 'bucket'], seed: 8, decay: .45, shutBad: [1, 0, 0, 0], fallen: -1, lampC: '255,176,96', meter: -19 },
-    { id: 'smokehouse', p: 'smokehouse', x: 600, y: 282, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
+    { id: 'smokehouse', p: 'smokehouse', x: 588, y: 284, meter: 9, deco: ['logs', 'barrel', 'lamp'], lampC: '196,255,206', lampX: 5 },
     { id: 'boatshed', p: 'boatshed', x: 968, y: 306, meter: 38, deco: ['oars', 'net', 'buoys', 'lamp'], lampC: '255,252,236', lampX: 24 },
     { id: 'well', p: 'well', x: 386, y: 360 },
     { id: 'logpile', p: 'logpile', x: 168, y: 340, seed: 11 },
     // nets and fish drying on the shore side
     { id: 'netrack-1', p: 'netrack', x: 142, y: 300, len: 58, nets: 2, seed: 7 }, { id: 'netrack-2', p: 'netrack', x: 706, y: 254, len: 50, nets: 2, seed: 17, col: [70, 92, 84] },
     { id: 'fishrack-1', p: 'fishrack', x: 372, y: 272, len: 46, rows: 3, seed: 11 }, { id: 'fishrack-2', p: 'fishrack', x: 864, y: 262, len: 40, rows: 3, seed: 23, gold: .3 },
-    { id: 'crates-1', p: 'crates', x: 540, y: 298, seed: 4 }, { id: 'barrels-1', p: 'barrels', x: 640, y: 292, seed: 3, n: 3 }, { id: 'barrels-2', p: 'barrels', x: 1004, y: 324, seed: 9, n: 2 },
+    { id: 'crates-1', p: 'crates', x: 540, y: 298, seed: 4 }, { id: 'barrels-1', p: 'barrels', x: 690, y: 290, seed: 3, n: 3 }, { id: 'barrels-2', p: 'barrels', x: 1004, y: 324, seed: 9, n: 2 },
     // boats: two turned over on the sand, one on its keel, two afloat by the jetty
     { id: 'mtp', p: 'mtp', x: 84, y: 438 },
     { id: 'boat-1', p: 'boat', x: 318, y: 224, col: [66, 112, 150], seed: 2 }, { id: 'boat-2', p: 'boat', x: 410, y: 232, col: [168, 60, 48], up: true, seed: 3 },
@@ -36,6 +36,8 @@
     { id: 'fence-nw', p: 'fence', axis: 'x', len: 33, x: 860, y: 460, seed: 41 }, { id: 'fence-ne', p: 'fence', axis: 'x', len: 43, x: 957, y: 460, seed: 42 },
     { id: 'fence-w', p: 'fence', axis: 'n', len: 76, x: 860, y: 536, seed: 43 }, { id: 'fence-e', p: 'fence', axis: 'n', len: 76, x: 1000, y: 536, seed: 44 }, { id: 'fence-s', p: 'fence', axis: 'x', len: 140, x: 860, y: 536, seed: 45 },
     { id: 'trough', p: 'trough', len: 26, x: 972, y: 482 }, { id: 'bales-in', p: 'bales', n: 2, x: 890, y: 478, seed: 6 }, { id: 'haystack', p: 'haystack', x: 1034, y: 476, R: 10, H: 21, seed: 2 }, { id: 'bales-out', p: 'bales', n: 3, x: 842, y: 500, seed: 9 },
+    // at the foot of the ramp: a post each side
+    { id: 'bollard-r0', p: 'bollard', x: PIER.x - PIER.w - 3, y: PIER.y1 + PIER.ramp - 3, seed: 20 }, { id: 'bollard-r1', p: 'bollard', x: PIER.x + PIER.w + 3, y: PIER.y1 + PIER.ramp - 3, seed: 21 },
     // on the jetty: cleats, coils of rope, a stack of crates and barrels at the edge, lanterns at the far end
     ...[[PIER.x - 20, 132], [PIER.x + 20, 132], [PIER.x - 20, 198], [PIER.x + 20, 198], [PIER.x - 20, 160], [PIER.x + 20, 160]].map(([x, y], i) => ({ id: 'bollard-' + i, p: 'bollard', x, y, seed: i })),
     { id: 'coil-1', p: 'coil', x: PIER.x + 15, y: 164, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 14, y: 202, seed: 2, col: [150, 140, 120] },
@@ -51,7 +53,9 @@
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
     // the checkpoint at the foot of the dam, on the last of the land: the booth north of the road, the barrier across it
-    { id: 'booth', p: 'booth', x: 1172, y: 218, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .583, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .583, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    // the cable from the booth's panel to the barrier, over the ground
+    { id: 'cable-gate', p: 'cable', x: 1172, y: 227.5, pts: [[0, 0], [5, 1.2], [11, -1.5], [16, -6], [19.5, -10], [21.4, -13.5]], seed: 3 },
   ];
   PLACES.buhta = {
     id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
@@ -68,10 +72,12 @@
       { id: 'yard-1', mat: 'trodden', ellipse: [252, 392, 70, 34], rough: .2 }, { id: 'yard-2', mat: 'trodden', ellipse: [482, 372, 66, 32], rough: .2 }, { id: 'yard-3', mat: 'trodden', ellipse: [762, 358, 62, 30], rough: .2 },
       { id: 'yard-shed', mat: 'trodden', ellipse: [968, 332, 74, 30], rough: .2 }, { id: 'yard-fish', mat: 'trodden', ellipse: [620, 268, 120, 30], rough: .3 },
       { id: 'path-1', mat: 'path', line: [[252, 392], [254, 428]], w: 6 }, { id: 'path-2', mat: 'path', line: [[482, 374], [482, 414]], w: 6 }, { id: 'path-3', mat: 'path', line: [[762, 358], [764, 396]], w: 6 },
-      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [630, 286], [640, 246]], w: 7 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
+      { id: 'path-jetty', mat: 'path', line: [[596, 408], [612, 340], [632, 296], [640, 268]], w: 7 }, { id: 'jetty-apron', mat: 'dirt', ellipse: [640, 278, 34, 9], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[968, 336], [964, 366]], w: 7 },
       { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
       { id: 'dirt-well', mat: 'dirt', ellipse: [386, 372, 16, 6], rough: .4 },
+      // a patch of firm ground at the foot of the dam for the checkpoint: grass and soil, not sand, which the waves would wash from under it
+      { id: 'post-ground', mat: 'trodden', ellipse: [1166, 213, 40, 27], rough: .22 }, { id: 'post-yard', mat: 'dirt', ellipse: [1182, 222, 17, 8], rough: .35 },
       // the way into the village from the forest, the street and the embankment out over the bay
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 392], [1010, 345], [1130, 275], [1215, 214]], w: 13 },
@@ -103,9 +109,10 @@
     // the people: an old fisherman between the boats and the jetty, a man mending a net by the first house, a woman with a bucket to the well
     npcs: [
       { id: 'fisher-1', look: { id: 'fisher-1', sex: 'm', age: 'old', h: 17.2, build: 1.1, skin: 1, hair: [150, 148, 142], cut: 'short', beard: [150, 148, 142], hat: 'cap', hatCol: [70, 70, 64], top: [58, 84, 74], topKind: 'jacket', legs: [78, 84, 70], boots: [40, 52, 40], carry: 'bucket' },
-        route: [[560, 252, 20], [632, 268, 0], [640, 256, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 256, 0], [632, 268, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
+        route: [[560, 252, 20], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
         route: [[250, 400, 30], [196, 396, 0], [170, 326, 55], [196, 396, 0]] },
+      { id: 'guard', smoker: true, dir: 2, x: 1187, y: 221, look: { id: 'guard', sex: 'm', h: 18.4, build: 1.12, skin: 1, hair: [70, 62, 54], cut: 'short', hat: 'cap', hatCol: [40, 48, 58], top: [52, 64, 80], topKind: 'jacket', legs: [46, 50, 58], boots: [30, 30, 32] }, route: [[1187, 221, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
         route: [[386, 378, 22], [440, 398, 0], [482, 392, 40], [440, 398, 0]] },
     ],

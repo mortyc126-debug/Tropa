@@ -59,7 +59,8 @@ rep("  else if (mat === 'lake') { // a lake: like the pond, deeper and darker fu
     "    if (dw < 2.5) c = GW.wetsand[quant(vn(x * .3, y * .3, SEED + 581), x, y, 2)];\n"
     "    else { c = BEACHP[quant(clamp(.3 + fbm(x * .06, y * .06, SEED + 580) * .75 + (vn(x * .25, y * .25, SEED + 582) - .5) * .25, 0, 1), x, y, 5, .7)];\n"
     "      if (dw < 8) c = cmix(c, GW.wetsand[1], clamp(1 - (dw - 2.5) / 5.5, 0, 1) * .75);\n"
-    "      else { const st = h2(x, y, SEED + 583); if (st < .01) c = GW.pebble[3]; else if (st < .02) c = GW.pebble[1]; else if (vn(x * .1 + y * .03, y * .55, SEED + 585) > .8) c = cmix(c, BEACHP[0], .3) } } }\n"
+    "      else { const st = h2(x, y, SEED + 583); if (st < .01) c = GW.pebble[3]; else if (st < .02) c = GW.pebble[1]; else if (vn(x * .1 + y * .03, y * .55, SEED + 585) > .8) c = cmix(c, BEACHP[0], .3) }\n"
+    "      { const clump = clamp((vn(x * .09, y * .12, SEED + 586) - .42) * 3, 0, 1), wr = ssm(5.5, 7.5, dw) * (1 - ssm(9.5, 12, dw)) * clump; if (wr > .05 && h2(x, y, SEED + 587) < wr * .5) { const q = h2(x * 3, y * 5, SEED + 588); c = q < .2 ? [176, 92, 44] : q < .34 ? [196, 148, 58] : q < .5 ? [138, 70, 40] : q < .75 ? [112, 88, 56] : [74, 64, 46] } } // (the wrack: a line of leaves and twigs at the high-water mark)\n } }\n"
     "  else if (mat === 'lake' && L.pal === 'bay') c = bayColor(x, y, d); // the bay of a big lake\n"
     "  else if (mat === 'rut' || mat === 'hump') c = rutColor(L, x, y, d); // old wheel tracks, overgrown\n"
     "  else if (mat === 'dam') c = damColor(L, x, y, d); // an embankment across the water\n"
@@ -67,10 +68,14 @@ rep("  else if (mat === 'lake') { // a lake: like the pond, deeper and darker fu
 rep("    else c = biomeGround('oak', x, y) }", "    else c = biomeGround(S && S.id === 'bor' ? 'bor' : 'oak', x, y) }")
 rep("bog: { v: 16, snd: 'grass' }, lake:", "bog: { v: 16, snd: 'grass' }, beach: { v: 31, snd: 'gravel' }, dam: { v: 42, snd: 'gravel' }, rut: { v: 33, snd: 'gravel' }, hump: { v: 27, snd: 'grass' }, lake:")
 rep("function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { const d = layerD(A[i], x, y); if (d < 0) {", "function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { if (SKIPS.length && SKIPS.includes(A[i])) continue; const d = layerD(A[i], x, y); if (d < 0) {")
-rep("if (l.y >= l.gy) { l.state = 1; l.y = l.gy } }", "if (l.y >= l.gy) { l.state = 1; l.y = l.gy; const mm = matAt(l.x, l.y); if (mm === 'lake' || mm === 'pond') l.life = Math.min(l.life, 3 + Math.random() * 9) } } // (a leaf that lands on the water soon sinks)")
+rep("if (l.y >= l.gy) { l.state = 1; l.y = l.gy } }", "if (l.y >= l.gy) { l.state = 1; l.y = l.gy; const mm = matAt(l.x, l.y); if (mm === 'pond') l.life = Math.min(l.life, 3 + Math.random() * 9); else if (mm === 'lake' && leafToWater(l)) l.state = 3; else if (mm === 'beach') l.sh = true } } // (a leaf that lands on the pond soon sinks; on the bay it floats; on the beach a surge may reach it)")
+# ---- leaves afloat and leaves on the shore, the drift of them in from the open water ----
+rep("    else { l.life -= dt; // lying: a gust or the wheels lift it again", "    else if (l.state === 3) leafAfloat(l, dt);\n    else { l.life -= dt; if (l.sh) leafShore(l, dt); // lying: a gust or the wheels lift it again")
+rep("  if (leafAcc > 3) leafAcc = 0;", "  driftLeaves(dt); if (leafAcc > 3) leafAcc = 0;")
+rep("ctx.globalAlpha = l.state ? clamp(l.life / 3, 0, 1) : 1;", "ctx.globalAlpha = l.state ? clamp(l.life / 3, 0, 1) * (l.fi === undefined ? 1 : l.fi) : 1;")
 
 # ---- fallen leaves are baked into the ground by material: few on the open water, fewer on the sand and the dam ----
-rep("mat === 'pond' ? .05 : mat === 'forest' ? .7 : .34", "mat === 'pond' ? .05 : mat === 'lake' ? .02 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34")
+rep("mat === 'pond' ? .05 : mat === 'forest' ? .7 : .34", "mat === 'pond' ? .05 : mat === 'lake' ? 0 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34")
 
 # ---- glints on the open water, and the sound of it near the shore ----
 rep("drawBrooks(cx0, cy0); drawPuddles(cx0, cy0);", "drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);")
@@ -87,7 +92,7 @@ rep("ctx.beginPath(); ctx.ellipse(R.x + .5, R.y + .5, 4.8, 2.1, 0, 0, TAU); ctx.
 rep("shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y) + s.dy - cy0 + 2)", "shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y - RLIFT) + s.dy - cy0 + 2)")
 rep("ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y) - S.ay); continue }", "const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }")
 rep("ctx.beginPath(); ctx.ellipse(o.x + .5, o.y + .5, rx, ry, 0, 0, TAU); ctx.fill() }", "ctx.beginPath(); ctx.ellipse(o.x + .5, o.y + .5 - objLift(o), rx, ry, 0, 0, TAU); ctx.fill() }")
-rep("mat === 'pond' ? .05 : mat === 'lake' ? .02", "mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' ? .02")
+rep("mat === 'pond' ? .05 : mat === 'lake' ? 0", "mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' ? 0")
 
 # ---- the bike does not ride onto the water beside the dam; the barrier raises its arm for the rider ----
 rep("else if (o.pfr) { const k = flapIdx(o),", "else if (o.pfr) { const k = o.p === 'gate' ? gateIdx(o) : flapIdx(o),")
@@ -109,11 +114,20 @@ rep("    if (o && o.leaf) { drawLeafK(", "    if (o && o.cow) { drawCow(o.cow); 
 # ---- the hum of the transformer: the village's (the camp's kiosk is not here) ----
 rep("const K = OBJ.ktp;", "const K = OBJ.ktp || OBJ.mtp;")
 
+# ---- the guard who smokes: a person with a cigarette in his hand, who stands where he is put ----
+rep("  for (const [x, y] of SMOKERS) em.push([x, y, 7, .36, 2.6, 'c' + x]);", "  for (const [x, y] of SMOKERS) em.push([x, y, 7, .36, 2.6, 'c' + x]);\n  for (const P of NPCS) if (P.smoker) em.push([P.x + 2, P.y - (P.sf ? 17 : 9), 1.3, .13, .9, 'g' + P.id]);")
+rep("  for (const s of [-1, 1]) { const ph = -s * sw, carrying", "  for (const s of [-1, 1]) { if (pose.smoke !== undefined && s > 0) { const up = pose.smoke, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = up ? [s * (shW - .5), -dep - 1.2, lift(shZ) - H * .1] : [s * (shW + .1), -.6, lift(shZ) - H * .17], hd = up ? [s * .9, -dep - 2.4, lift(hz) - head * .5] : [s * (shW + .1), -1.8, lift(shZ) - H * .3];\n      t3limb(M, sh, el, .7 * bd, .6, top); t3limb(M, el, hd, .6, .5, top); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 }); t3line(M, [hd[0] - .2, hd[1] - .3, hd[2] + .2], [hd[0] - .3, hd[1] - 2.4, hd[2] + (up ? .1 : -.1)], [238, 234, 224]); M.dots.push([[hd[0] - .3, hd[1] - 2.6, hd[2] + (up ? .1 : -.1)], [236, 110, 40]]); continue }\n    const ph = -s * sw, carrying")
+rep("const pose = kind === 'walk' ? { walk: frame / 4 }", "const pose = kind === 'smoke' ? { smoke: frame } : kind === 'walk' ? { walk: frame / 4 }")
+rep("idleT: Math.random() * 3 } });", "idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } });")
+rep("dir: 4, dist: 0,", "dir: n.dir ?? 4, dist: 0,")
+rep("function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt;", "function stepNpcs(dt) { for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }")
+rep("function npcSpr(P) { if (P.sit)", "function npcSpr(P) { if (P.smoker) return npcSprite(P.look, 'smoke', P.dir, P.sf); if (P.sit)")
+
 # ---- boats afloat rock on the water (an object's own offset, set by the water's code) ----
 rep("const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));", "const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));")
 
 # ---- the game clock and the pause, for the debug hooks (a still frame at a given moment of the waves) ----
-rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, WLAY:')
+rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, get leaves() { return leaves }, WLAY:')
 
 # ---- the prefabs and the place ----
 banner = "// =====================================================================================================================\n// PLACE: Турбаза «Студёный ключ» — the start of the game and the player's base."
