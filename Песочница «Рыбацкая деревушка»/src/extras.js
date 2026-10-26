@@ -67,25 +67,28 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
     lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 34, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 7, c: '255,226,170', a: .9, k: 'lamp', glare: true }, { x: HW + 6, y: 16, r: 40, sy: .6, c: '255,206,140', a: .6, k: 'lamp', fall: 'sq' }],
     solids: [[-HW - 2, -d - 1, HW + 2, 1]].map(t3w) } };
 
-// ---- the barrier: a swing arm on a housing by the verge. Closed it lies across the road (away from us, so it stands up the picture); open it is swung
-// round to lie along the road. (A lifting arm would look the same shut or open from here, both go up the screen: this one cannot be mistaken.)
-// The lamp on the housing is red when it is shut and green when it is open. It is open unless `shut` is set on the object. ----
-PF.gate = ({ len = 30, seed = 1 } = {}) => {
-  const build = k => { const M = T3(), th = (k + 1) / 2 * (Math.PI / 2), sn = Math.sin(th), c = Math.cos(th), back = 6, ZP = 10.5, open = k > 0; M.seed = seed;
+// ---- the barrier at the entrance of the dam: a housing on the north verge and a red and white arm that crosses the road. Shut, the arm lies down across the
+// road toward us (it runs down the picture); open, it stands up (it runs up the picture): the post is on the far side of the road for this, so the two
+// can never be mistaken. The lamp on the housing is red when it is shut and green when it is open. It is open unless `shut` is set on the object.
+// (hx, hn: the way the arm points when it is down, in the model's x and n: across the road.) ----
+PF.gate = ({ len = 30, seed = 1, hx = .33, hn = -.94 } = {}) => {
+  const build = k => { const M = T3(), th = (k + 1) / 2 * 1.43, sn = Math.sin(th), c = Math.cos(th), back = 6, ZP = 10.5, open = k > 0; M.seed = seed;
     t3box(M, -3, -3, 0, 3, 3, .8, [118, 116, 110]);
     t3box(M, -2.4, -2.4, .8, 2.4, 2.4, 12, [76, 86, 96], { tex: (x, n, z) => z < 6.4 ? ((Math.floor((x + n + z) / 2) % 2) ? [212, 182, 44] : [44, 44, 48]) : (h2(Math.floor(x), Math.floor(z), seed) < .05 ? [124, 70, 48] : [76, 86, 96]) });
     t3box(M, -1, -2.6, 8.6, 1, -2.4, 10.4, open ? [64, 206, 92] : [210, 40, 34], { clean: true }); // the lamp: green open, red shut
     t3cyl(M, 0, 0, 1.3, 12, ZP + 1.2, [60, 62, 66], { topCol: [90, 92, 96] }); // the pivot
-    // the arm: a flat ribbon (seen from above) and an upright one under it, striped red and white, a dark counterweight end behind the pivot
-    const A = (s2, off, z) => [s2 * sn + off * c, s2 * c - off * sn, z], hw = 1.3, tex = (x, n, z) => { const s2 = x * sn + n * c; return s2 < 0 ? [54, 56, 60] : (Math.floor(s2 / 3.6) % 2 ? [236, 234, 226] : [202, 42, 36]) };
-    t3face(M, [A(-back, -hw, ZP), A(len, -hw, ZP), A(len, hw, ZP), A(-back, hw, ZP)], [200, 40, 34], null, { both: true, tex, zb: .5, clean: true });
-    t3face(M, [A(-back, 0, ZP - hw), A(len, 0, ZP - hw), A(len, 0, ZP + hw), A(-back, 0, ZP + hw)], [200, 40, 34], null, { both: true, tex, zb: .5, clean: true });
-    t3box(M, A(-back, 0, 0)[0] - 1.6, A(-back, 0, 0)[1] - 1.6, ZP - 1.8, A(-back, 0, 0)[0] + 1.6, A(-back, 0, 0)[1] + 1.6, ZP + 1.8, [60, 62, 66], { clean: true });
-    const tip = A(len, 0, ZP); t3box(M, tip[0] - .9, tip[1] - .9, ZP - 1.3, tip[0] + .9, tip[1] + .9, ZP + 1.3, [236, 234, 226], { clean: true }); // a white end
+    // the arm: the point at distance s along it, and a ribbon seen from above and an upright one, striped red and white, a dark counterweight end behind the pivot
+    const P = s2 => [s2 * c * hx, s2 * c * hn, ZP + s2 * sn], px = -hn, pn = hx, qx = -sn * hx, qn = -sn * hn, qz = c, hw = 1.3;
+    const R = (s2, a, bx, bn, bz) => { const p = P(s2); return [p[0] + a * bx, p[1] + a * bn, p[2] + a * bz] };
+    const tex = (x, n, z) => { const s2 = (x * hx + n * hn) * c + (z - ZP) * sn; return s2 < 0 ? [54, 56, 60] : (Math.floor(s2 / 3.6) % 2 ? [236, 234, 226] : [202, 42, 36]) };
+    t3face(M, [R(-back, -hw, px, pn, 0), R(len, -hw, px, pn, 0), R(len, hw, px, pn, 0), R(-back, hw, px, pn, 0)], [200, 40, 34], null, { both: true, tex, zb: .5, clean: true });
+    t3face(M, [R(-back, -hw, qx, qn, qz), R(len, -hw, qx, qn, qz), R(len, hw, qx, qn, qz), R(-back, hw, qx, qn, qz)], [200, 40, 34], null, { both: true, tex, zb: .5, clean: true });
+    const bk = P(-back); t3box(M, bk[0] - 1.6, bk[1] - 1.6, bk[2] - 1.8, bk[0] + 1.6, bk[1] + 1.6, bk[2] + 1.8, [60, 62, 66], { clean: true });
+    const tip = P(len); t3box(M, tip[0] - .9, tip[1] - .9, tip[2] - 1.3, tip[0] + .9, tip[1] + .9, tip[2] + 1.3, [236, 234, 226], { clean: true }); // a white end
     return M };
   const FR = fvFrames(build);
   return { s: FR[FR.length - 1].s, ax: FR[FR.length - 1].ax, ay: FR[FR.length - 1].ay, frames: FR.map(g => ({ s: g.s, night: null })), solids: [[-3, -3, 3, 3]].map(t3w) } };
-// the rest the closed arm falls on, on the far side of the road: a post with a fork
+// the rest the shut arm falls on, across the road: a post with a fork
 PF.gaterest = ({ seed = 2 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3cyl(M, 0, 0, 1.4, 0, 9.4, [92, 70, 50], { topCol: [140, 112, 84] }); t3box(M, -1.8, -1.2, 9.4, -.9, 1.2, 12.2, [92, 70, 50]); t3box(M, .9, -1.2, 9.4, 1.8, 1.2, 12.2, [92, 70, 50]); t3box(M, -2.4, -.8, 0, 2.4, .8, .8, [118, 116, 110]); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-1.6, -1.6, 1.6, 1.6]].map(t3w) } };
 // which frame the barrier shows: open (the last) unless the object is told to be shut, and swung to as it is changed

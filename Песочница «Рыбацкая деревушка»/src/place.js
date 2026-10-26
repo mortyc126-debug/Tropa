@@ -7,7 +7,7 @@
 {
   // the power: a line of wooden poles along the street, a street lamp on some of them
   const POLES = [{ n: 2, x: 330, y: 404, lamp: true, dir: 1 }, { n: 7, x: 470, y: 400 }, { n: 3, x: 620, y: 384, lamp: true, dir: -1, bird: true }, { n: 8, x: 812, y: 380, flick: true, lamp: true, dir: 1 },
-    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 6, x: 1288, y: 202, lean: -1 }, { n: 9, x: 1408, y: 176, strut: 1 }];
+    { n: 4, x: 900, y: 348, lamp: true, dir: 1, lean: 2 }, { n: 5, x: 1100, y: 266, strut: -1, sign: true }, { n: 6, x: 1288, y: 202, lean: -1 }];
   // the old wheel tracks to the two cars: where the ruts lie, the way a car came in off the road and stopped (the ruts run under it to the front wheels)
   const side = (L, o) => L.map((p, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [p[0] - dy / l * o, p[1] + dx / l * o] });
   const CARWAYS = [{ id: 'kop', grow: .34, L: [[641, 448.5], [684, 448.5], [708, 449], [728, 442], [742, 426], [748, 411]] }, { id: 'bee', grow: .42, L: [[98, 463], [114, 470], [130, 474.5], [165, 474.5]] }];
@@ -50,7 +50,8 @@
     ...[[126, 478], [135, 485], [156, 484], [166, 482], [128, 471], [172, 474], [112, 469], [104, 465]].map(([x, y], i) => ({ id: 'weed-b' + i, t: i % 3 === 2 ? 'fern' : 'grass', x, y, seed: 90 + i })),
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
-    { id: 'booth', p: 'booth', x: 1432, y: 148, seed: 4 }, { id: 'gate', p: 'gate', x: 1458, y: 168 }, { id: 'gaterest', p: 'gaterest', x: 1458, y: 139 },
+    // the checkpoint where the street comes onto the dam: the booth on the sand north of the road, the barrier across it
+    { id: 'booth', p: 'booth', x: 1210, y: 186, seed: 4 }, { id: 'gate', p: 'gate', x: 1236, y: 194, hx: .33, hn: -.94 }, { id: 'gaterest', p: 'gaterest', x: 1246, y: 222 },
   ];
   PLACES.buhta = {
     id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
@@ -75,8 +76,6 @@
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 392], [1010, 345], [1130, 275], [1215, 214]], w: 13 },
       { id: 'dam', mat: 'dam', line: [[1130, 275], [1215, 214], [1300, 184], [1400, 160], [1560, 140], [1760, 135]], w: 26, rough: .3 },
-      // a layby on the north side of the embankment where the guard's booth stands
-      { id: 'dam-pad', mat: 'dam', pad: true, side: -1, line: [[1400, 143], [1472, 134]], w: 21, dam: { top: 9, vg: 10.6, ns: 19, st: 19 }, rough: .2 },
       // the jetty: a broad raised pier, a ramp up to it from the sand (PIER in pf.js)
       { id: 'jetty', mat: 'bridge', pier: true, rect: [PIER.x - PIER.w - 1, PIER.y0 - PIER.H - 3, PIER.x + PIER.w + 6, PIER.y1 + PIER.ramp], rough: 0, bridge: { ux: 0, uy: -1 } },
       // the old wheel tracks to the cars: two ruts and the hump of grass between them, overgrown, lumpy
@@ -123,9 +122,9 @@
       { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7 },
       { id: 'dam', x: 1330, y: 175, to: 'Дамба через залив', km: 2 },
     ],
-    power: { spans: [['mtp:out', 'pole-2'], ['pole-2', 'pole-7'], ['pole-7', 'pole-3'], ['pole-3', 'pole-8'], ['pole-8', 'pole-4'], ['pole-4', 'pole-5'], ['pole-5', 'pole-6'], ['pole-6', 'pole-9']],
-      drops: [['pole-2', 'house-1'], ['pole-7', 'house-2'], ['pole-8', 'house-3'], ['pole-3', 'smokehouse'], ['pole-4', 'boatshed'], ['pole-8', 'cowshed'], ['pole-9', 'booth']],
-      exits: [{ from: 'mtp', dx: -320, dy: 70, to: 'линия от Студёного ключа' }, { from: 'pole-9', dx: 300, dy: -50, to: 'линия по дамбе' }] },
+    power: { spans: [['mtp:out', 'pole-2'], ['pole-2', 'pole-7'], ['pole-7', 'pole-3'], ['pole-3', 'pole-8'], ['pole-8', 'pole-4'], ['pole-4', 'pole-5'], ['pole-5', 'pole-6']],
+      drops: [['pole-2', 'house-1'], ['pole-7', 'house-2'], ['pole-8', 'house-3'], ['pole-3', 'smokehouse'], ['pole-4', 'boatshed'], ['pole-8', 'cowshed'], ['pole-6', 'booth']],
+      exits: [{ from: 'mtp', dx: -320, dy: 70, to: 'линия от Студёного ключа' }, { from: 'pole-6', dx: 300, dy: -60, to: 'линия по дамбе' }] },
     sounds: [],
     // the cows of the paddock (the box: where they may go)
     cows: [{ id: 'cow-1', coat: 'holstein', x: 900, y: 496, box: [868, 466, 992, 530] }, { id: 'cow-2', coat: 'red', x: 958, y: 512, box: [868, 466, 992, 530], dir: -1 }],
