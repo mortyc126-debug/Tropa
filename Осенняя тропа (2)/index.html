@@ -789,9 +789,11 @@ const RIDER_N=16,ROX=16;
 const R3B=.5,R3SS=3,R3W=32+2*ROX,R3H=44;
 const R3Z=new Float32Array(R3W*R3SS*R3H*R3SS),R3C=new Int32Array(R3W*R3SS*R3H*R3SS),R3T=new Uint8Array(R3W*R3SS*R3H*R3SS);
 const rgbI=c=>(c[0]<<16)|(c[1]<<8)|c[2];
-function riderPixels(fr,yaw,lean,steer=0){
+function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1){
   const SS=R3SS,Wd=R3W,Ht=R3H,SW=Wd*SS,SH=Ht*SS,B=R3B,D=Math.PI/180,zb=R3Z,cb=R3C,tb=R3T;zb.fill(-1e9);cb.fill(-1);tb.fill(0);
-  const ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),ls=Math.sin(lean*D),lc=Math.cos(lean*D);
+  // ps (0..1): the foot of side fs (-1 left, 1 right) put down on the ground, the bike leaning a little toward it;
+  // br (0..1): the breath of the standing rider
+  const pe=ps*ps*(3-2*ps),ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),LN=lean+6*pe*fs,ls=Math.sin(LN*D),lc=Math.cos(LN*D);
   // the model's own axes in the world (X right on screen, N away from the camera along the ground, H up)
   const Fw=[ys,yc,0],Sw=[lc*yc,-lc*ys,-ls],Hw=[ls*yc,-ls*ys,lc];
   const BBF=8,OX=16+ROX,OY=31.75; // the bottom bracket's ground point sits here on the sprite at every heading
@@ -847,7 +849,11 @@ function riderPixels(fr,yaw,lean,steer=0){
       for(let q=0;q<=20;q++){const t=q/20*(rc-tt-.4),w=.3*(1-t/r);E(cf,chh,t,-w,0,0,1);E(cf,chh,t,w,0,0,1)}}
     CULL=1;ball(A,.75,()=>HUB)};
   // ---- the pose for this pedal frame ----
-  const C=RC,th=fr/RIDER_N*Math.PI*2,o=Math.sin(th)*.6,spin=-fr/RIDER_N*Math.PI; // half a turn of the wheel per pedal cycle,
+  const C=RC,th=fr/RIDER_N*Math.PI*2,spin=-fr/RIDER_N*Math.PI,
+    // with a foot down the cranks turn to a standing position (the right pedal forward and a little low), and the rider
+    // sits over toward the foot, a little lower and forward (PDF, PDZ), breathing (PBZ)
+    TS=(fs<0?195:15)*D,dth=((TS-th+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI,thc=th+dth*pe,o=Math.sin(thc)*.6*(1-pe)+.9*pe*fs,
+    PDZ=.7*pe,PDF=.5*pe,PBZ=.45*Math.sin(br*2*Math.PI); // half a turn of the wheel per pedal cycle,
   // about its true speed; the eight glints (a quarter turn apart) and six spokes come back to the same places, so the
   // loop of frames is seamless and a glint is always rolling steadily round the tyre
   // Seen straight from behind the drawing follows the hand-made sprite, cranks close to the rear wheel; turned, the
@@ -886,17 +892,23 @@ function riderPixels(fr,yaw,lean,steer=0){
   const ik=(a,b,L1,L2,pole)=>{const ab=sub(b,a),dd=Math.min(len(ab),L1+L2-.02),u=nrm(ab),x=(L1*L1-L2*L2+dd*dd)/(2*dd),y=Math.sqrt(Math.max(0,L1*L1-x*x));
     const pp=nrm(sub(pole,mul(u,dot(pole,u))));return add(a,add(mul(u,x),mul(pp,y)))};
   const RC3=2.8;
-  for(const side of[-1,1]){const a=th+(side>0?Math.PI:0),pd=[BBX+RC3*Math.cos(-a),side*3.5,BBH+RC3*Math.sin(-a)];
-    const ank=add(pd,[-1.1,0,1.05]),hip=[5.9,side*3.2+o*.5,18.9],knee=ik(hip,ank,8.9,8.6,[.95,side*.16,.3]);
+  for(const side of[-1,1]){const a=thc+(side>0?Math.PI:0),pd=[BBX+RC3*Math.cos(-a),side*3.5,BBH+RC3*Math.sin(-a)];
+    let ank=add(pd,[-1.1,0,1.05]),toe=add(pd,[.9,0,0]),pole=[.95,side*.16,.3];const hip=[5.9+PDF,side*3.2+o*.5,18.9-PDZ];
+    if(side===fs&&pe>0){ // that foot leaves its pedal, swings out and comes down flat on the ground beside the bike
+      const a0=th+(side>0?Math.PI:0),p0=[BBX+RC3*Math.cos(-a0),side*3.5,BBH+RC3*Math.sin(-a0)],A0=add(p0,[-1.1,0,1.05]),sw=Math.sin(Math.PI*pe),gs=6.5*fs,
+        AG=[BBX+1.4,gs,(1+gs*ls)/lc+.225]; // (the sole just touches the ground, which is tilted with the bike)
+      ank=[A0[0]+(AG[0]-A0[0])*pe,A0[1]+(AG[1]-A0[1])*pe+fs*1.2*sw,A0[2]+(AG[2]-A0[2])*pe+2.4*sw];
+      toe=add(ank,[2,0,-1.05+.7*pe]);pole=[.95,fs*(.16+.4*pe),.3-.15*pe]}
+    const knee=ik(hip,ank,8.9,8.6,pole);
     tube([BBX,side*1.9,BBH],[pd[0],side*2.9,pd[2]],.32,.32,d=>tone(d,CRK),1);                                          // crank arm
     box(add(pd,[0,side*.5,-.1]),[[1.05,0,0],[0,.75,0],[0,0,.22]],d=>tone(d,PED));                                    // pedal
     tube(hip,knee,1.65,1.2,d=>tone(d,PN,.45,-.15));                                                           // thigh
     tube(knee,ank,1.2,.95,d=>tone(d,PN,.62,.05));                                                   // shin
-    const toe=add(pd,[.9,0,0]),bc=add(mul(add(ank,toe),.5),[0,0,-.05]);
+    const bc=add(mul(add(ank,toe),.5),[0,0,-.05]);
     ell(bc,mul(nrm(sub(toe,ank)),2.15),[0,1.0,0],[0,0,.95],d=>NH<-.45?SOLE:tone(d,BOOT,.5,-.1))}                      // boot
   // ---- body: hips, a torso leaning forward, the arms, the backpack on it, the scarf at the neck, the head ----
-  ell([5.5,o*.5,19.6],[3.0,0,0],[0,5.0,0],[0,0,2.6],d=>tone(d,PN,.5,-.1));
-  const P0=[5.6,19.6],P1=[12.3,26.6],ua=nrm([P1[0]-P0[0],0,P1[1]-P0[1]]),nb=[-ua[2],0,ua[0]],TC=[(P0[0]+P1[0])/2,o,(P0[1]+P1[1])/2];
+  ell([5.5+PDF,o*.5,19.6-PDZ],[3.0,0,0],[0,5.0,0],[0,0,2.6],d=>tone(d,PN,.5,-.1));
+  const P0=[5.6+PDF,19.6-PDZ],P1=[12.3+PDF,26.6-PDZ+PBZ],ua=nrm([P1[0]-P0[0],0,P1[1]-P0[1]]),nb=[-ua[2],0,ua[0]],TC=[(P0[0]+P1[0])/2,o,(P0[1]+P1[1])/2];
   ell(TC,mul(ua,5.8),[0,5.9,0],mul(nb,3.5),d=>U0<-.78?JKD:tone(d,JK,.5,-.12));
   // arms: shoulder to the hand on the grip, the elbow bent out and a little back
   for(const side of[-1,1]){const sh=add(TC,add(mul(ua,4.3),[0,side*4.9,0])),hd=BARP(side*6.4),el=ik(sh,hd,4.7,4.5,[-.5,side*.55,-.7]);
@@ -907,9 +919,9 @@ function riderPixels(fr,yaw,lean,steer=0){
       if(U0===4){if(U1>.3)return Math.abs(U2)<.2&&U1<.58?BUCK:PKD;if(U1<-.85)return PKD;if(U2<-.86)return PKL;return PKc}
       return tone(d,PK,.4,-.1)});
   for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(t0,t1,.42,.42,()=>STRAP,1)}
-  const HC=[14.5,o,30.1];
-  ell([11.7,o,28.1],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
-  const KN=[11.4,o+2.5,28.2];ball(KN,.95,d=>d>-.05?SCF:SCD);
+  const HC=[14.5+PDF,o,30.1-PDZ+PBZ];
+  ell([11.7+PDF,o,28.1-PDZ+PBZ],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
+  const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];ball(KN,.95,d=>d>-.05?SCF:SCD);
   // head: the beanie over the crown and the back, a ribbed band, hair at the nape, a sliver of face in front
   const FD=nrm([1,0,-.45]);
   ell(HC,[3.0,0,0],[0,3.75,0],[0,0,3.0],d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;
@@ -3324,8 +3336,8 @@ function rStore(yi, li, f, d) { let a = RSETS.get(rk(yi, li)); if (!a) { a = new
   if (a.n === RIDER_N) { const m = new Uint8Array(RW * RH), dd = c.getContext('2d').getImageData(0, 0, RW, RH).data; for (let i = 0; i < m.length; i++) m[i] = dd[i * 4 + 3] ? 1 : 0; a.mask = m; a.sh = [] } }
 const rReady = (yi, li) => { const a = RSETS.get(rk(yi, li)); return !!a && a.n === RIDER_N };
 const RWORK = [];
-try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer);postMessage({yi:j.yi,li:j.li,f:j.f,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
-  for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
+try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
+  for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; if (m.sk !== undefined) { stStore(m.sk, m.d); return } RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); SPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
 function rJob(yi, li, f) { const yaw = yi * YSTEP; return { yi, li, f, yaw, lean: li * LEAN_DEG, steer: li * STEER_DEG } }
 function rNext() { // the next sprite to make: the present heading and lean; then the upright headings, coarse ones first
   // (every 45°, then every 15°, then every 5°), nearest the present one first; then the leans the same way
@@ -3334,7 +3346,11 @@ function rNext() { // the next sprite to make: the present heading and lean; the
     ring(0); ring(1); ring(-1); RORDER = o; RORDER.yi = R.yi; RORDER.li = R.li }
   for (const [yi, li] of RORDER) { const a = RSETS.get(rk(yi, li)); if (a && a.n === RIDER_N) continue; for (let k = 0; k < RIDER_N; k++) { const f = (R.f + k) % RIDER_N; if ((!a || !a[f]) && !RPND.has(rk(yi, li) * 32 + f)) return [yi, li, f] } } return null }
 let RORDER = null;
-function rWarm() { if (RWORK.length) { let busy = RWORK.reduce((a, w) => a + w.busy, 0); while (busy < RWORK.length * 6) { const j = rNext(); if (!j) return; RPND.add(rk(j[0], j[1]) * 32 + j[2]); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage(rJob(...j)) } return }
+function rWarm() { if (RWORK.length) { let busy = RWORK.reduce((a, w) => a + w.busy, 0);
+    // (the frames of a foot going down come first)
+    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi) }) }
+    while (busy < RWORK.length * 6) { const j = rNext(); if (!j) return; RPND.add(rk(j[0], j[1]) * 32 + j[2]); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage(rJob(...j)) } return }
+  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi)); stStore(k, r.d); return }
   const j = rNext(); if (j) { const q = rJob(...j), r = riderLocal(q.f, q.yaw, q.lean, q.steer); rStore(j[0], j[1], j[2], r.d) } }
 function rPick(yi, li) { if (rReady(yi, li)) return [yi, li]; let best = null, bd = 1e9; for (const [k, a] of RSETS) { if (a.n !== RIDER_N) continue; const yy = Math.floor(k / 3), ll = k % 3 - 1, dy = Math.min(Math.abs(yy - yi), NY - Math.abs(yy - yi)), d = dy + Math.abs(ll - li) * 1.5; if (d < bd) { bd = d; best = [yy, ll] } } return best }
 // where the lamps are on the sprite for a heading: the front lamp on the handlebar, the rear light on the rack
@@ -3430,12 +3446,43 @@ function kickLeaf() { if (leaves.length > 260) return; const back = Math.random(
   const K = lkPick(leafSpAt(x, gy, Math.random), Math.random); leaves.push({ x, y: gy - 3 - Math.random() * 5, gy, ph: Math.random() * 6.28, ph2: Math.random() * 8, vy: 9 + Math.random() * 6, fl: .6, state: 0, life: 20 + Math.random() * 20, k: K.id, rot: Math.floor(Math.random() * 8), age: .3 }) }
 // a mushroom trodden flat: its cap spread low, the stalk gone
 function squash(cv) { const w = cv.width, h = cv.height, c = document.createElement('canvas'); c.width = w + 2; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(cv, 0, 0, w, h, 0, Math.ceil(h * .55), w + 2, Math.floor(h * .45)); return c }
+// ================= standing: a foot on the ground when the bike is still =================
+// Once the bike has stood still for a moment, the rider takes one foot off the pedal and sets it flat on the ground
+// beside the bike (on the side toward the camera), which leans a little toward it; as he is about to ride off the foot goes back. That is a short run of
+// frames (riderPixels' ps: 0 riding .. 1 foot down), made for the heading and the pedal position the bike stopped in:
+// frame 0 is the riding sprite itself, the last is the standing pose, and a standing rider breathes (br). The workers make
+// them on the spot, the movement waits for each frame (and never skips one) and plays back to the same riding sprite, so
+// the pedals and the wheels do not jump. The bike does not move or turn while he stands.
+const ST_N = 8, ST_I = 4, ST_IDLE = [0, 1, 0, 3], // (the breath: base, in, base, out; ST_IDLE[m] / ST_I is br)
+   STAND = { k: 0, go: 0, t: 0, yi: 0, f0: 0, cv: null, still: 0, m: 0, mt: 0, w: 0, cool: 0 }, SPR_ST = new Map(), SPND = new Set(), SQ = [];
+const stKey = (yi, f0, tag) => yi + '|' + f0 + '|' + tag;
+const stSide = yi => Math.sin(yi * YSTEP * D2R) > .01 ? 1 : -1; // the foot goes down on the side that faces the camera (his right when he heads east, his left heading west)
+const stSpec = tag => tag[0] === 't' ? { ps: +tag.slice(1) / ST_N, br: 0 } : { ps: 1, br: +tag.slice(1) / ST_I };
+function stWant(yi, f0) { SQ.length = 0; const L = []; for (let j = 1; j <= ST_N; j++) L.push('t' + j); for (const m of ST_IDLE) if (m) L.push('i' + m);
+  for (const tag of L) { const k = stKey(yi, f0, tag); if (!SPR_ST.has(k) && !SPND.has(k)) SQ.push([k, yi, f0, tag]) } }
+function stStore(k, d) { const c = document.createElement('canvas'); c.width = RW; c.height = RH; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(d), RW, RH), 0, 0);
+  const m = new Uint8Array(RW * RH); for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] ? 1 : 0; c.mask = m; c.sh = []; SPND.delete(k); SPR_ST.set(k, c);
+  if (SPR_ST.size > 900) { const keep = STAND.yi + '|' + STAND.f0 + '|'; let n = 0; for (const q of SPR_ST.keys()) { if (q.startsWith(keep)) continue; SPR_ST.delete(q); if (++n >= 300) break } } }
+const stGet = j => SPR_ST.get(stKey(STAND.yi, STAND.f0, 't' + j));
+function stepStand(dt) { const S = STAND; S.cool = Math.max(0, S.cool - dt); const move = !!wantDir() && !KEYS.has('Space'), rev = KEYS.has('KeyX') || REVHOLD || R.autoRev > 0;
+  // he has stopped altogether, the bar is straight and the riding sprite of this heading is made (the movement starts from it)
+  const still = Math.abs(R.v) < .8 && !move && !rev && Math.abs(R.steer) < .05 && !R.walk && rReady(R.yi, 0);
+  S.still = still ? S.still + dt : 0;
+  if (!S.k && !S.go) { if (S.still < .3 || S.cool > 0) return; S.go = 1; S.yi = R.yi; S.f0 = R.f; S.t = 0; S.w = 0; stWant(S.yi, S.f0) }
+  if (S.go >= 0 && (move || rev || Math.abs(R.v) > 1.5)) S.go = -1; // about to ride off: the foot goes back
+  if (S.go > 0) { S.t += dt;
+    if (stGet(S.k + 1)) { S.w = 0; if (S.t >= 1 / 18) { S.k++; S.t = 0; S.m = 0; S.mt = 0; if (S.k === ST_N) S.go = 0 } }
+    // a frame that does not come (a worker lost): ask again, and give the movement up rather than hold the bike
+    else { S.w += dt; stWant(S.yi, S.f0); if (S.w > 1.2) { S.go = -1; S.cool = 4 } } }
+  else if (S.go < 0) { if (!S.k) S.go = 0; else { S.t += dt; if (S.t >= 1 / 26) { S.t = 0; if (--S.k <= 0) { S.k = 0; S.go = 0 } } } }
+  else if (S.k === ST_N) { S.mt += dt; if (S.mt >= .55) { S.mt = 0; S.m = (S.m + 1) % ST_IDLE.length } } // standing: he breathes
+  S.cv = !S.k ? null : S.k === ST_N && ST_IDLE[S.m] ? SPR_ST.get(stKey(S.yi, S.f0, 'i' + ST_IDLE[S.m])) || stGet(ST_N) : stGet(S.k) }
 function stepRider(dt) {
-  const want = wantDir(), surf = SURF[matAt(R.x, R.y)] || SURF.bor; R.surf = matAt(R.x, R.y);
+  const want = STAND.k > 0 || STAND.go ? null : wantDir(), surf = SURF[matAt(R.x, R.y)] || SURF.bor; R.surf = matAt(R.x, R.y);
   let vt = 0, stT = 0, brake = KEYS.has('Space'), refused = false;
   // backing up: the rider walks the bike backwards, straight, at a walking pace. On demand (X, or the «Назад» button
   // held), or by itself when the bike is wedged: pushed on toward something that will not let it go on or turn round
-  const revHeld = KEYS.has('KeyX') || REVHOLD;
+  const revHeld = !(STAND.k > 0 || STAND.go) && (KEYS.has('KeyX') || REVHOLD);
   if (R.autoRev > 0) R.autoRev -= dt;
   if (revHeld || R.autoRev > 0) { vt = -9; stT = 0; R.walk = true }
   else if (want && !brake) { const tgt = Math.atan2(want[0], -want[1]), da = wrapA(tgt - R.psi); stT = clamp(da * 1.4, -.55, .55); vt = want[2] * surf.v * (Math.abs(da) > 1.4 ? .55 : 1);
@@ -3619,7 +3666,7 @@ function drawWorld() {
   if (shLayer.width !== W + 4 || shLayer.height !== H + 4) { shLayer.width = W + 4; shLayer.height = H + 4 }
   for (const [v, a] of SHSET) { shCtx.clearRect(0, 0, shLayer.width, shLayer.height);
     for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  shCtx.drawImage(shadowChunk(ci, cj, v), ci * CK - cx0 + 2, cj * CK - cy0 + 2) }
-    const a2 = RSETS.get(rk(...(rPick(R.yi, R.li) || [0, 0]))); if (a2 && a2.mask) { if (!a2.sh[v]) { const c = castShadowV(a2.mask, RW, RH, ROXS, ROYS, SUNV[v][0], SUNV[v][1]); a2.sh[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } const s = a2.sh[v]; shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y) + s.dy - cy0 + 2) }
+    const a2 = STAND.cv || RSETS.get(rk(...(rPick(R.yi, R.li) || [0, 0]))); if (a2 && a2.mask) { if (!a2.sh[v]) { const c = castShadowV(a2.mask, RW, RH, ROXS, ROYS, SUNV[v][0], SUNV[v][1]); a2.sh[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } const s = a2.sh[v]; shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y) + s.dy - cy0 + 2) }
     ctx.globalAlpha = a; ctx.drawImage(shLayer, cx0 - 2, cy0 - 2); ctx.globalAlpha = 1 }
   drawFlecks(cx0, cy0); drawFrost(cx0, cy0); drawRings();
   drawWireShadows(cx0, cy0);
@@ -3638,7 +3685,7 @@ function drawWorld() {
     if (o && o.wire) { drawWire(o.wire); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y) - S.ay); continue }
-    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y) - ROYS } continue }
+    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y) - ROYS } continue }
     const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));
     // pushed by the bike: leaning away from it (the next sway pose over, and the sprite sheared about its foot)
     if (o.bp && Math.abs(o.bp) > .02) { const sh = o.bp * (SOFT[o.t].sh || .3), fy = Math.round(o.y + (o.ky || 0)); ctx.save(); ctx.transform(1, 0, -sh, 1, sh * fy, 0);
@@ -3646,7 +3693,7 @@ function drawWorld() {
     else if (o.fcv) { const k = frameIdx(o); ctx.drawImage(o.fcv[k], x, y) } else if (o.pfr) { const k = flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
   // the rider behind a crown: his shape shows faintly through it, so he is never lost in the wood
   { const rx = Math.round(R.x) - ROXS, ry = Math.round(R.y) - ROYS; if (VIS.some(o => o.nk && o.y > R.y && R.x > o.x - o.ax && R.x < o.x - o.ax + o.mw && R.y - 10 > o.y - o.ay && R.y - 10 < o.y - o.ay + o.mh && o.mask[Math.round(R.y - 10 - o.y + o.ay) * o.mw + Math.round(R.x - o.x + o.ax)])) {
-    const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])), c = a[R.f] || a.find(Boolean); ctx.globalAlpha = .42; ctx.drawImage(c, rx, ry); ctx.globalAlpha = 1; GHOSTN++ } } }
+    const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])), c = STAND.cv || a[R.f] || a.find(Boolean); ctx.globalAlpha = .42; ctx.drawImage(c, rx, ry); ctx.globalAlpha = 1; GHOSTN++ } } }
   drawDripsSplash();
   // the falling rain, its splashes (screen space)
   scrT();
@@ -4028,7 +4075,7 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); stepRider(dt); stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); stepStand(dt); stepRider(dt); stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
   sndUpdate(dt); ft('звук'); rWarm(); ft('велосипедист'); buildSome(paused ? 8 : 4); ft('фоновая сборка');
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
   drawWorld(); ft('мир'); drawSmoke(); drawFog(); drawLight(); drawLife(); ft('свет'); drawGlare(); drawMurk();
@@ -4041,7 +4088,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, KEYS, blocked, matAt, toW, toL };
+window.__SB = { WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
