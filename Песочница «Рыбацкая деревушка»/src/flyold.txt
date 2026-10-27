@@ -1,5 +1,0 @@
-// ---- birds over the canopy by day ----
-let FLY = [], flyT = 12;
-function stepFlyers(dt) { flyT -= dt; if (flyT <= 0) { flyT = (14 + Math.random() * 30) * (1 - .45 * bump(SH, 6, 6.8, 8.5, 9.5)); if (WX.rain < .3 && WX.fog < .6 && LT.day > .5) { const n = 1 + Math.floor(Math.random() * 5), dir = Math.random() < .5 ? 1 : -1, y0 = Math.random() * H * .6, vy = (Math.random() - .5) * 20, v = 38 + Math.random() * 25;
-      for (let i = 0; i < n; i++) FLY.push({ x: dir > 0 ? -8 - i * 7 - Math.random() * 6 : W + 8 + i * 7 + Math.random() * 6, y: y0 + i * (3 + Math.random() * 4) * (i % 2 ? 1 : -1), vx: dir * v * (.95 + Math.random() * .1), vy, ph: Math.random() * 6 }) } }
-  for (const f of FLY) { f.x += f.vx * dt; f.y += f.vy * dt + Math.sin(t * 2 + f.ph) * 3 * dt; f.ph += dt * (9 + Math.random()) } FLY = FLY.filter(f => f.x > -60 && f.x < W + 60) }

@@ -2097,10 +2097,10 @@ PF.roadsign = ({ text = 'Р' } = {}) => { const sp = t3sprite(() => { const M = 
 // clearing, the ways, the buildings, the brook, a red dot where the stand is) and its rules ----
 PF.stand = ({ title = 'СХЕМА', rules = 'ПРАВИЛА' } = {}) => { const W = 30, Z0 = 7, Z1 = 29, board = [226, 222, 204];
   const mapCol = (u, v) => { // u, v in 0..1 across the plan: the place's own frame
-    const lx = u * PL.size[0], ly = v * PL.size[1], [wx, wy] = toW(lx, ly), m = matAt(wx, wy);
+    const SW = STANDW || PL.W, lx = u * SW.P.size[0], ly = v * SW.P.size[1], [wx, wy] = SW.toW(lx, ly), m = matAt(wx, wy);
     for (const o of OBJS) if (o.kind === 'prefab' && o.p !== 'pole' && o.p !== 'deck' && o.solids && o.solids.some(([x0, y0, x1, y1]) => wx >= x0 - 3 && wx <= x1 + 3 && wy >= y0 - 3 && wy <= y1 + 3)) return [120, 70, 50];
     return m === 'glade' || m === 'trodden' ? [168, 190, 120] : m === 'path' ? [214, 190, 140] : m === 'road' ? [176, 140, 96] : m === 'gravel' ? [190, 186, 176] : m === 'brook' ? [90, 150, 200] : [86, 120, 80] };
-  const here = [(STANDXY || [0, 0])[0] / PL.size[0], (STANDXY || [0, 0])[1] / PL.size[1]];
+  const SZ = (STANDW || PL.W).P.size, here = [(STANDXY || [0, 0])[0] / SZ[0], (STANDXY || [0, 0])[1] / SZ[1]];
   const sp = t3sprite(() => { const M = T3();
     for (const x of [-W + 1, W - 1]) t3box(M, x - 1, 0, 0, x + 1, 2, Z1 + 3, PX3.log);
     t3box(M, -W, 0, Z0, W, 1.6, Z1, PX3.board, { tex: plankZ(PX3.board, 4) });
@@ -2115,7 +2115,7 @@ PF.stand = ({ title = 'СХЕМА', rules = 'ПРАВИЛА' } = {}) => { const 
     return M }, [0]);
   t3text(sp, title, [-W / 2 + 1.5, -.3, Z1 - 2], [236, 232, 214]); t3text(sp, rules, [W / 2 - 1, -.3, Z1 - 2], [236, 232, 214]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-W - 1, -3, W + 1, 0]].map(t3w) } };
-let STANDXY = null;
+let STANDXY = null, STANDW = null;
 // ---- tourists' cars in the car park, parked nose to the east: an old «Нива» and a «четвёрка» estate with a canoe on its
 // roof rack. One builder for both: a body with its corners rounded in plan, a glasshouse on top with sloping screens and
 // pillars, the lamps and grille of each make, wheels with their hubs, bumpers, mud up the sills ----
@@ -2701,7 +2701,7 @@ const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
 // eye sees a raised deck: its top lies H px up from the plan footprint (the rider riding on it is drawn lifted by as much), the ramp running up to it from
 // the sand, the east side a little thick, a hard dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left
 // by it. (Coordinates: the place's own.)
-const PIER = { x: 640, w: 14, y0: 100, y1: 244, ramp: 22, H: 6, bm: 3.5 };
+const PIER = { x: 640, w: 14, y0: 100, y1: 244, ramp: 22, H: 6, bm: 3.5, ox: 1e9, oy: 1e9 }; // (ox, oy: where its place lies in the world, set when the place is laid down)
 const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [122, 98, 70], dark: [84, 66, 46] };
 // the decking: boards across the deck (one board across, a joint now and then over the middle joist), one weathered tone with only a faint difference from
 // board to board, a very few replaced ones a shade lighter, the grain along each; a nail at each end of every board and one at the joist on every other row
@@ -2713,7 +2713,7 @@ function pierBoard(lx, n, k) { const P = PIER, X0 = P.x - P.w + P.bm, X1 = P.x +
   m *= f < .4 ? 1.05 : f > .92 ? .93 : 1; // the board's bevel
   if (f > .45 && f < .64) { const nl = jn ? (left ? [X0 + 1.4, cj - 1.4] : [cj + 1.4, X1 - 1.4]) : [X0 + 1.4, X1 - 1.4]; if (Math.abs(lx - nl[0]) < .5 || Math.abs(lx - nl[1]) < .5 || (row % 2 && Math.abs(lx - (X0 + X1) / 2) < .5)) m *= .55 }
   return cmul(PIERC.plank, k * m) }
-function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810, B = P.bm;
+function pierColor(L, x, y) { const P = PIER, lx = x - P.ox, ly = y - P.oy, H = P.H, X0 = P.x - P.w, X1 = P.x + P.w, yt0 = P.y0 - H, yt1 = P.y1 - H, yb = P.y1 + P.ramp, LN = PIERC.line, sd = SEED + 810, B = P.bm;
   const under = () => { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c };
   if (ly >= yt0 && ly < P.y1 && lx >= X1 && lx < X1 + 3.5) { // the east face of the deck, seen edge-on: the fascia board and the shadow under it
     if (lx >= X1 + 2.5 || ly < yt0 + 1) return LN; const k = ly > yt1 ? .6 : 1; if (lx < X1 + .8) return cmul(PIERC.plank, .92 * k); return cmul(Math.floor((ly - yt0) / 6) % 2 ? PIERC.dark : cmul(PIERC.dark, .86), k) }
@@ -2733,12 +2733,12 @@ function pierColor(L, x, y) { const lx = x - OX, ly = y - OY, P = PIER, H = P.H,
   if (ly >= yt1 && ly < yb && lx >= X1 && lx < X1 + 3.4 * (yb - ly) / (yb - yt1)) return lx >= X1 + 3.4 * (yb - ly) / (yb - yt1) - 1 ? LN : cmul(PIERC.dark, .9); // (the side of the ramp, a wedge)
   return under() }
 // how high above the ground a figure stands at (x, y) (world coordinates): on the deck, H; up the ramp, from 0 to H
-function deckLift(x, y) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
+function deckLift(x, y) { const P = PIER, lx = x - P.ox, ly = y - P.oy; if (lx < P.x - P.w || lx > P.x + P.w || ly < P.y0 - 4 || ly > P.y1 + P.ramp) return 0;
   return ly <= P.y1 ? P.H : P.H * (1 - (ly - P.y1) / P.ramp) }
 const objLift = o => o._lf === undefined ? (o._lf = deckLift(o.x, o.y)) : o._lf;
 // the kerbs: along the sides of the deck and of the ramp, across its end and under its front face, nothing for a bike to cross
 const DECKO = { id: 'jetty', type: 'jetty' };
-function deckBlocked(x, y, rad) { const P = PIER, lx = x - OX, ly = y - OY; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
+function deckBlocked(x, y, rad) { const P = PIER, lx = x - P.ox, ly = y - P.oy; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
   const X0 = P.x - P.w, X1 = P.x + P.w, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
   return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 + P.ramp - 1) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 + P.ramp - 1) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)) ? DECKO : false }
 let RLIFT = 0; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
@@ -3250,7 +3250,7 @@ function drawWater(cx0, cy0) {
       for (let k = 0; k < 3; k++) { const ph = age * .55 - k * .16; if (ph < 0 || ph > 1) continue; ring(fx, fy, 1 + ph * 9, .5 + ph * 4.5, HL, (1 - ph) * .42 * (.4 + .6 * sunK), j * 7 + m, .2) } } } }
   // the pier's shadow on the water: the deck's footprint moved along the light by the deck's height above the water (the game's own sun: SUNV), what of it
   // lies outside the deck itself; it follows the sun round the day, and is gone with it
-  if (typeof PIER !== 'undefined') { const Pr = PIER, x0 = OX + Pr.x - Pr.w, x1 = OX + Pr.x + Pr.w + 3.5, y0 = OY + Pr.y0, y1 = OY + Pr.y1, SHDK = [6, 20, 30];
+  if (typeof PIER !== 'undefined') { const Pr = PIER, x0 = Pr.ox + Pr.x - Pr.w, x1 = Pr.ox + Pr.x + Pr.w + 3.5, y0 = Pr.oy + Pr.y0, y1 = Pr.oy + Pr.y1, SHDK = [6, 20, 30];
     for (const [v, a] of SHSET) { const dx = SUNV[v][0] * Pr.H, dy = SUNV[v][1] * Pr.H, al = clamp(a * 1.5, 0, .4);
       for (let y = Math.max(cy0, Math.floor(y0 + dy)); y < Math.min(cy0 + H, Math.ceil(y1 + dy)); y++) for (let x = Math.max(cx0, Math.floor(x0 + dx)); x < Math.min(cx0 + W, Math.ceil(x1 + dx)); x++) put(x, y, SHDK, al) } }
   O.g.putImageData(O.img, 0, 0); ctx.drawImage(O.cv, cx0, cy0); WS.ox = cx0; WS.oy = cy0;
@@ -3383,7 +3383,7 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
 // road toward us (it runs down the picture); open, it stands up (it runs up the picture): the post is on the far side of the road for this, so the two
 // can never be mistaken. The lamp on the housing is red when it is shut and green when it is open. It is open unless `shut` is set on the object.
 // (hx, hn: the way the arm points when it is down, in the model's x and n: across the road.) ----
-PF.gate = ({ len = 30, seed = 1, hx = .33, hn = -.94 } = {}) => {
+PF.boom = ({ len = 30, seed = 1, hx = .33, hn = -.94 } = {}) => {
   const build = k => { const M = T3(), th = (k + 1) / 2 * 1.43, sn = Math.sin(th), c = Math.cos(th), back = 6, ZP = 10.5, open = k > 0; M.seed = seed;
     t3box(M, -3, -3, 0, 3, 3, .8, [118, 116, 110]);
     t3box(M, -2.4, -2.4, .8, 2.4, 2.4, 12, [76, 86, 96], { tex: (x, n, z) => z < 6.4 ? ((Math.floor((x + n + z) / 2) % 2) ? [212, 182, 44] : [44, 44, 48]) : (h2(Math.floor(x), Math.floor(z), seed) < .05 ? [124, 70, 48] : [76, 86, 96]) });
@@ -3460,7 +3460,7 @@ function cowModel(M, coat, pose) { const C = COWCOAT[coat] || COWCOAT.holstein, 
   t3line(M, [13.4, -1.4, hz + 1], [13.6, -2.4, hz + 2.6], [226, 220, 200]); t3line(M, [13.4, 1.4, hz + 1], [13.6, 2.4, hz + 2.6], [226, 220, 200]); // the horns
   const ta = tail * 1.8; t3line(M, [-11, 0, 11.4], [-12.4 - ta, 0, 7], [60, 56, 54]); t3line(M, [-12.4 - ta, 0, 7], [-12.8 - ta * 1.5, 0, 3.6], [60, 56, 54]); t3box(M, -13.6 - ta * 1.5, -.6, 2.4, -12, .6, 4.2, [44, 40, 38], { clean: true }) }
 function cowSpr(coat, dir, pose) { const key = coat + dir + pose; let r = COWSPR.get(key); if (r) return r; const sp = t3sprite(() => { const M = T3(); cowModel(M, coat, pose); return dir < 0 ? t3flipX(M) : M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay }; COWSPR.set(key, r); return r }
-function cowsInit() { for (const c of (PL.cows || [])) { const [x, y] = toW(c.x, c.y), [x0, y0] = toW(c.box[0], c.box[1]), [x1, y1] = toW(c.box[2], c.box[3]); COWS.push({ id: c.id, coat: c.coat, x, y, box: [x0, y0, x1, y1], dir: c.dir || 1, state: 'stand', t: Math.random() * 3, ph: 0, tx: x, ty: y, blink: Math.random() * 9 }) } }
+function cowsInit() { for (const W of PLW) for (const c of (W.P.cows || [])) { const toW = W.toW, [x, y] = toW(c.x, c.y), [x0, y0] = toW(c.box[0], c.box[1]), [x1, y1] = toW(c.box[2], c.box[3]); COWS.push({ id: c.id, coat: c.coat, x, y, box: [x0, y0, x1, y1], dir: c.dir || 1, state: 'stand', t: Math.random() * 3, ph: 0, tx: x, ty: y, blink: Math.random() * 9 }) } }
 function stepCows(dt) { for (const C of COWS) { C.t -= dt;
     if (C.state === 'walk') { const dx = C.tx - C.x, dy = C.ty - C.y, d = Math.hypot(dx, dy), sp = 6.5 * dt;
       if (d <= sp || C.t < -12) { C.state = Math.random() < .6 ? 'graze' : 'stand'; C.t = 3 + Math.random() * 6 } else { const nx = C.x + dx / d * sp, ny = C.y + dy / d * sp; if (COWS.some(O => O !== C && Math.hypot(O.x - nx, (O.y - ny) * 1.4) < 15 && Math.hypot(O.x - nx, O.y - ny) < Math.hypot(O.x - C.x, O.y - C.y))) { C.state = 'stand'; C.t = 1.2 } else { C.x = nx; C.y = ny; C.ph += dt * 5.2; if (Math.abs(dx) > 1.5) C.dir = dx > 0 ? 1 : -1 } } }
@@ -3520,9 +3520,9 @@ function drawGuardGlow() { for (const P of NPCS) { if (!P.smoker || P.tx === und
 // place), `upland` (kinds that belong to dry ground: never on the dam, never on the sand within `dry` px of the water) ----
 const visMat = (x, y) => { const h = layerAt(x, y); if (h.L && h.L.mat === 'dam' && damPart(h.L, x, y) === 0) { const u = underLayer(x, y); return u.L ? u.L.mat : PL.base } return h.L ? h.L.mat : PL.base };
 const lakeDist = (x, y) => bayDist(x, y);
-function scatterOK(S, L, t, x, y) { const dL = layerD(L, x, y);
+function scatterOK(S, L, t, x, y, W) { const dL = layerD(L, x, y);
   if (S.band ? dL < S.band[0] || dL > S.band[1] : dL > -6 || inPond(x, y, 4)) return false;
-  const [lx, ly] = toL(x, y);
+  const [lx, ly] = W.toL(x, y);
   if (S.box && !(lx >= S.box[0] && lx <= S.box[2] && ly >= S.box[1] && ly <= S.box[3])) return false;
   if (S.avoid && S.avoid.some(b => lx >= b[0] && lx <= b[2] && ly >= b[1] && ly <= b[3])) return false;
   if (S.shore) { const d = lakeDist(x, y); if (d < S.band[0] || d > S.band[1]) return false }
@@ -4175,7 +4175,7 @@ function gullsInit() {
   for (const o of OBJS) if (o.t === 'rock' && matAt(o.x, o.y) === 'lake') GPERCH.push({ x: o.x, y: o.y - 1, z: 3.5, g: null });
 }
 // the sand by the water where they walk: every so many px along the beaches near the village (found when the place is running: it asks what stands where)
-function gullsBeach() { for (let x = 20; x < 1260; x += 14) for (let y = 180; y < 300; y += 5) { const [wx, wy] = toW(x, y), d = bayDist(wx, wy); if (d > 4 && d < 20 && matAt(wx, wy) === 'beach' && !blocked(wx, wy, 3)) GBEACH.push([wx, wy]) } }
+function gullsBeach() { for (const W of PLW) { const B = W.P.gullBeach; if (B) for (let x = B[0]; x < B[2]; x += 14) for (let y = B[1]; y < B[3]; y += 5) { const [wx, wy] = W.toW(x, y), d = bayDist(wx, wy); if (d > 4 && d < 20 && matAt(wx, wy) === 'beach' && !blocked(wx, wy, 3)) GBEACH.push([wx, wy]) } } }
 function gullFree(P) { return !P.g && Math.hypot(R.x - P.x, R.y - P.y) > 40 }
 function gullOver(g) { // a point over the water, not far from the gull, to circle round
   for (let k = 0; k < 14; k++) { const a = Math.random() * TAU, r = 40 + Math.random() * 70, x = g.x + Math.cos(a) * r, y = g.y + Math.sin(a) * r * .7; if (bayDist(x, y) < -14 && matAt(x, y) === 'lake') return [x, y] } return [g.x, g.y - 70] }
@@ -4193,8 +4193,9 @@ function gullCall(g) { if (!SND.on || !SND.ctx || !SND.ready || paused) return; 
     o.frequency.setValueAtTime(base * (1.05 - .02 * i), t0); o.frequency.linearRampToValueAtTime(base * 1.55, t0 + .075); o.frequency.exponentialRampToValueAtTime(base * (1 - .03 * i), t0 + .23); f.type = 'bandpass'; f.frequency.value = base * 1.9; f.Q.value = 2.4;
     gn.gain.setValueAtTime(0, t0); gn.gain.linearRampToValueAtTime(.55 - .08 * i, t0 + .025); gn.gain.exponentialRampToValueAtTime(.001, t0 + .26); o.connect(f); f.connect(gn); gn.connect(out); o.start(t0); lf.start(t0); o.stop(t0 + .3); lf.stop(t0 + .3) } }
 function stepGulls(dt) { if (!GPERCH.length && !GBEACH.length) return;
-  const act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = Math.round(5 * act);
-  if (!GSTART) { GSTART = true; gullsBeach(); gullsSpawn(want) }
+  // (only about the places with a beach for them: away from it they fly off, and the beach is looked over when one first comes near)
+  const near = PLW.some(W => W.P.gullBeach && Math.hypot(R.x - W.cx, R.y - W.cy) < 1400), act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = near ? Math.round(5 * act) : 0;
+  if (!GSTART) { if (!near) return; GSTART = true; gullsBeach(); gullsSpawn(want) }
   const live = GULLS.filter(g => !g.leave).length; GSPAWNT = (typeof GSPAWNT === 'undefined' ? 0 : GSPAWNT) - dt;
   if (live < want && GSPAWNT <= 0) { GSPAWNT = 2 + Math.random() * 4; gullsSpawn(1); const g = GULLS[GULLS.length - 1]; if (g && Math.random() < .5) { g.x = CAM.x + (Math.random() < .5 ? -30 : W + 30); g.y = CAM.y + Math.random() * H * .6; if (g.perch) { g.perch.g = null; g.perch = null } g.st = 'fly'; gullUp(g, [g.x + (g.x < CAM.x ? -50 : 50), g.y]); g.z = 18; g.vz = 0; const P = GPERCH.find(gullFree); if (P) { g.st = 'land'; g.target = P; P.g = g } } }
   else if (live > want && GULLS.some(g => !g.leave && g.st !== 'off')) { const g = GULLS.find(q => !q.leave && (q.st === 'perch' || q.st === 'walk') && Math.hypot(q.x - R.x, q.y - R.y) > 60) || GULLS.find(q => !q.leave); if (g) { g.leave = true; gullUp(g, null); g.f = g.x >= R.x ? 1 : -1; g.vx = g.f * 20; g.vy = -6; g.t = 99 } }
@@ -4442,7 +4443,7 @@ const PLACES = {};
       { id: 'woodshed', name: 'Дровяник', hint: 'дрова выдают вместе с палаткой', x: 877, y: 394, r: 24 },
     ],
     exits: [
-      { id: 'east', x: 1200, y: 264, to: 'Рыбацкая деревушка и дамба', km: 1.7 },
+      { id: 'east', x: 1200, y: 264, to: 'Рыбацкая деревушка и дамба', km: 1.7, road: 'trail-east' },
       { id: 'west', x: -240, y: 578, to: 'Кордон лесника', km: 5.5 },
       { id: 'south', x: 480, y: 764, to: 'дорога в район', km: null },
     ],
@@ -4515,12 +4516,12 @@ const PLACES = {};
     ...POLES.map(P => Object.assign({ id: 'pole-' + P.n, p: 'pole', seed: 60 + P.n }, P)),
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 112, y: 480 }, { id: 'sign-east', p: 'signpost', dir: 1, text: 'ДАМБА 2,0', x: 1112, y: 296 },
     // the checkpoint at the foot of the dam, on the last of the land: the booth north of the road, the barrier across it
-    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'gate', x: 1194, y: 210, hx: .827, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
+    { id: 'booth', p: 'booth', x: 1166, y: 226, seed: 4 }, { id: 'gate', p: 'boom', x: 1194, y: 210, hx: .827, hn: -.813 }, { id: 'gaterest', p: 'gaterest', x: 1212, y: 235 },
     // the cable from the booth's panel to the barrier, over the ground
     { id: 'cable-gate', p: 'cable', x: 1178.5, y: 230, pts: [[0, 0], [4.5, .8], [9, -2], [11.8, -7], [12.4, -12], [11.4, -16.5]], seed: 3 },
   ];
   PLACES.buhta = {
-    id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222],
+    id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222], pier: PIER, gullBeach: [20, 180, 1260, 300], // (the jetty; the sand the gulls walk on)
     size: [1280, 720], margin: [240, 220], base: 'forest',
     trail: { side: ['road-west'] },
     ground: [
@@ -4564,7 +4565,8 @@ const PLACES = {};
       { id: 'shoals', n: 30, seed: 22, in: 'bay-a', band: [-16, -5], shore: true, clear: 14, kinds: [['rock', 1]] },
       { id: 'drift', n: 120, seed: 23, in: 'beach-a', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],
-    forest: { clearing: 'clearing', cell: 22, zone: .005, stands: [
+    // (in the world: the pine wood round the village reaches some 450 m from it, then the wood of the camp's country)
+    forest: { clearing: 'clearing', cell: 22, zone: .005, reach: 4500, stands: [
       { id: 'bor', share: .42, keep: .55, size: 1.05, kinds: [['pine', 6], ['birch', 1.2], ['spruce', .8], ['decid', .25]], underKeep: .5,
         under: [['juniper', 1.6], ['lowshrub', 2], ['branch', 1.4], ['grass', 1.2], ['mush', .8], ['log', .5], ['stump', .4], ['rock', .3]] },
       { id: 'mixed', share: .28, keep: .5, kinds: [['decid', 2], ['bare', 1.4], ['birch', 2.4], ['pine', 1.2], ['aspen', 1], ['rowan', .7]], bt: 'oak',
@@ -4598,12 +4600,12 @@ const PLACES = {};
       { id: 'nets-2', name: 'Сети сушатся', hint: 'развешены после лова, ветер качает их', x: 706, y: 256, r: 32 },
     ],
     exits: [
-      { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7 },
+      { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7, road: 'road-west' },
       { id: 'dam', x: 1330, y: 175, to: 'Дамба через залив', km: 2 },
     ],
     power: { spans: [['mtp:out', 'pole-2'], ['pole-2', 'pole-7'], ['pole-7', 'pole-3'], ['pole-3', 'pole-8'], ['pole-8', 'pole-4'], ['pole-4', 'pole-5'], ['pole-5', 'pole-10'], ['pole-10', 'pole-6']],
       drops: [['pole-2', 'house-1'], ['pole-7', 'house-2'], ['pole-8', 'house-3'], ['pole-3', 'smokehouse'], ['pole-4', 'boatshed'], ['pole-8', 'cowshed'], ['pole-10', 'booth']],
-      exits: [{ from: 'mtp', dx: -320, dy: 70, to: 'линия от Студёного ключа' }, { from: 'pole-6', dx: 300, dy: -60, to: 'линия по дамбе' }] },
+      exits: [{ from: 'mtp', dx: -320, dy: 70, to: 'линия от Студёного ключа', line: 'line-kb' }, { from: 'pole-6', dx: 300, dy: -60, to: 'линия по дамбе' }] },
     sounds: [],
     // the cows of the paddock (the box: where they may go)
     cows: [{ id: 'cow-1', coat: 'holstein', x: 900, y: 496, box: [868, 466, 992, 530] }, { id: 'cow-2', coat: 'red', x: 958, y: 512, box: [868, 466, 992, 530], dir: -1 }],
@@ -4717,20 +4719,26 @@ function waterMake(wy) { const q = WATERS.q++, r = rngFor(q, 5301), kind = q < W
   else if (kind === 'bog') { const rx = 500 + r() * 500, ry = 350 + r() * 300; addLayer({ id: 'bog' + q, mat: 'bog', ellipse: [px + (r() - .5) * 200, py - ry * .6, rx, ry], rough: .5 }, -2000 - q) } }
 const isStill = m => m === 'pond' || m === 'lake';
 // the names on the signposts at the forks (and how far, in km)
-const SIGNN = ['ДЕРЕВУШКА', 'КОРДОН', 'ОЗЕРО', 'ГАРЬ', 'ПАСЕКА', 'ЗИМНИК', 'ВЫРУБКА', 'ЛЕСНИЧЕСТВО', 'БОЛОТО', 'РОДНИК', 'ХУТОР', 'МЕЛЬНИЦА', 'БРОД', 'КАРЬЕР'];
+const SIGNN = ['ЗАИМКА', 'КОРДОН', 'ОЗЕРО', 'ГАРЬ', 'ПАСЕКА', 'ЗИМНИК', 'ВЫРУБКА', 'ЛЕСНИЧЕСТВО', 'БОЛОТО', 'РОДНИК', 'ХУТОР', 'МЕЛЬНИЦА', 'БРОД', 'КАРЬЕР'];
 
-// ---- a place set into the world ----
-// The place's own ground lies over the world's (its layers come above); its roads run on into the world: the trail
-// comes from the place's exit road (the one named in place.trail.out) and goes on north; other exits are side roads
-// that wander off into the forest and end there.
-const PLW = []; // the places in the world: { P, ox, oy }
-function addPlace(P, ox, oy) { const toWp = (x, y) => [x + ox, y + oy];
-  P.ground.forEach((L, i) => { const o = Object.assign({}, L); o.sd = hashStr(L.id || 'L' + i) % 9973;
+// ---- the places set into the world ----
+// Each place's own ground lies over the world's (its layers come above); its roads run on into the world: the trail
+// comes from the exit road named in place.trail.out and goes on north; a way out that a road of the world joins to
+// another place (WORLD_ROADS) goes there; the other exits are side roads that wander off into the forest and end there.
+// Every place keeps its own frame (its north-west corner at ox, oy in the world) and its own names: in a world of
+// several places the layers and things of all but the first carry the place's id before their names ('buhta/gate'),
+// so that two places may each have their 'clearing' or their 'gate'.
+const PLW = []; // the places in the world: { P, ox, oy, pre, toW, toL, C: its clearing, n }
+function addPlace(P, ox, oy, pre = '') { const toWp = (x, y) => [x + ox, y + oy], W = { P, ox, oy, pre, toW: toWp, toL: (x, y) => [x - ox, y - oy], n: PLW.length };
+  P.ground.forEach((L, i) => { const o = Object.assign({}, L); if (L.id) o.id = pre + L.id; o.sd = hashStr(L.id || 'L' + i) % 9973; o.W = W;
     if (L.line) { o.line = L.line.map(p => toWp(p[0], p[1])); if (L.mat === 'path' || L.mat === 'road' && L.id !== 'road') o.line = wanderLine(o.line, L.mat === 'path' ? 2.6 : 3, o.sd) }
     if (L.ellipse) { const [cx, cy, rx, ry] = L.ellipse, [wx, wy] = toWp(cx, cy); o.ellipse = [wx, wy, rx, ry] }
     if (L.rect) { const [x0, y0, x1, y1] = L.rect, a = toWp(x0, y0), b = toWp(x1, y1); o.rect = [a[0], a[1], b[0], b[1]] }
-    addLayer(o, 1e6 + i) });
-  PLW.push({ P, ox, oy }) }
+    addLayer(o, 1e6 + W.n * 1e4 + i) });
+  W.C = LAYER[pre + P.forest.clearing]; const C = W.C.bb; W.cx = (C[0] + C[2]) / 2; W.cy = (C[1] + C[3]) / 2;
+  if (P.pier) { P.pier.ox = ox; P.pier.oy = oy } P.W = W; PLW.push(W); return W }
+// the place a point is in (or nearest to: by how far it is outside each clearing)
+function placeOf(x, y) { let best = PLW[0], bd = 1e9; for (const W of PLW) { const d = layerD(W.C, x, y); if (d < bd) { bd = d; best = W } } return best }
 // a road going on from a point in a given direction, bending gently, then turning toward a goal (or ending in the forest)
 function roadOn(id, from, dir, len, w, sd, goal, mat = 'road') { const r = mulberry(sd), pts = [from]; let [x, y] = from, a = Math.atan2(dir[1], dir[0]); const st = 24;
   for (let s = 0; s < len; s += st) { if (goal) { const ga = Math.atan2(goal[1] - y, goal[0] - x), k = clamp(s / len, 0, 1); let d = wrapA(ga - a); a += d * (.08 + .5 * k * k) }
@@ -4741,18 +4749,72 @@ function roadOn(id, from, dir, len, w, sd, goal, mat = 'road') { const r = mulbe
 function bendRoad(id, a, da, b, db, w) { const la = Math.hypot(...da) || 1, lb = Math.hypot(...db) || 1, D = Math.hypot(b[0] - a[0], b[1] - a[1]) * .45, p1 = [a[0] + da[0] / la * D, a[1] + da[1] / la * D], p2 = [b[0] - db[0] / lb * D, b[1] - db[1] / lb * D], pts = [];
   for (let i = 0; i <= 24; i++) { const u = i / 24, v = 1 - u; pts.push([v * v * v * a[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * b[0], v * v * v * a[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * b[1]]) }
   for (let i = 0; i + 1 < pts.length; i += 7) addLayer({ id: id + '-' + i, mat: 'road', line: pts.slice(i, i + 9), w, rough: 1 }) }
-// ---- the world's plan: the first place at the start, the trail from it northward ----
+// ---- the world's plan: the places where the map has them, the roads between them, the trail northward ----
+// Where the places lie (their north-west corners, world px): the camp at the start, the fishing village as on the map,
+// some 1.1 km east of it and 100 m north (the map's cells are 4.67 m: the camp at 213, 243, the village at 450, 222).
+// The sandbox has its one place only, at its own margin.
+const WORLD_AT = { kluchi: [240, 220], buhta: [11159, -861] };
+// The roads between places: from one place's way out (a layer of it, and which end: 0 its first point, 1 its last) to
+// another's, along the road the map has between them (map: its bends in the map's cells, the first and the last laid on
+// the two ends), winding as a forest road winds, so long that from signpost to signpost it is what the signposts say
+// (len: px between the two ends); w: its half-width at either end. sign: a signpost where it leaves another road (at
+// `at` px along it, `side` px to its right, or its left if less than nought, the arm pointing `dir`).
+const WORLD_ROADS = [
+  { id: 'road-kb', from: ['kluchi', 'trail-east', 1], to: ['buhta', 'road-west', 0], w: [15, 13], len: 16360, swell: 1.8,
+    // (from where the map's road turns east below the camp to where it comes to the village from the west; the corner at the crossroads rounded)
+    map: [[219.7, 273.1], [226.9, 276.8], [231.9, 277.6], [238.5, 277.2], [250.9, 274], [263, 268], [283.9, 252.6], [289.3, 250.5], [296.5, 250.1], [303.9, 252.6], [315.2, 259], [349.5, 286.4], [354.5, 286.8],
+      [358.5, 272], [370.2, 257.6], [376.1, 247.1], [400.7, 229.4], [416.1, 231.7], [432.5, 245.6]],
+    sign: { at: 110, side: -28, dir: 1, text: 'ДЕРЕВУШКА 1,7' } }]; // (in the wedge between the trail and this road)
+const WORLD_SIGNS = [], JOINED = new Set();
+// The power lines between places: a 10 kV line on tall poles, straight through the wood in its cleared strip, from a pole
+// of one place's line to a thing of another's (spans of `span` px or a little less; a pole never on a road or in water).
+// A place's own power data may end in an exit with `line`: where that line is laid, the exit's loose end is not drawn.
+const WORLD_LINES = [{ id: 'line-kb', from: ['kluchi', 'pole-3'], to: ['buhta', 'mtp'], span: 560, kind: 'hv' }], LINES_LAID = new Set();
+// a road of the world laid down: the map's line set on the two ends (turned and scaled to fit them), a smooth curve
+// through it leaving and arriving the way the two roads it joins go, wandering from side to side as a forest road does
+// (long slow swings and shorter bends on them, never alike; how far they reach found so that the road comes out as long
+// as it should), then laid as road in pieces
+function worldRoad(Rd, A, B) { const LA = LAYER[A.pre + Rd.from[1]], LB = LAYER[B.pre + Rd.to[1]], pa = LA.line, pb = LB.line,
+    a = Rd.from[2] ? pa[pa.length - 1] : pa[0], a1 = Rd.from[2] ? pa[pa.length - 2] : pa[1], b = Rd.to[2] ? pb[pb.length - 1] : pb[0], b1 = Rd.to[2] ? pb[pb.length - 2] : pb[1];
+  const M = Rd.map, m0 = M[0], mE = M[M.length - 1], mx = mE[0] - m0[0], my = mE[1] - m0[1], wx = b[0] - a[0], wy = b[1] - a[1], k = Math.hypot(wx, wy) / Math.hypot(mx, my), rot = Math.atan2(wy, wx) - Math.atan2(my, mx), c = Math.cos(rot) * k, s = Math.sin(rot) * k;
+  // (the map's line is drawn stiffly: its swings away from the straight way are made wider by `swell`)
+  const ex = wx / Math.hypot(wx, wy), ey = wy / Math.hypot(wx, wy), V = M.map(([x, y]) => { const px = (x - m0[0]) * c - (y - m0[1]) * s, py = (x - m0[0]) * s + (y - m0[1]) * c, al = px * ex + py * ey, ac = (-px * ey + py * ex) * (Rd.swell || 1); return [a[0] + al * ex - ac * ey, a[1] + al * ey + ac * ex] });
+  // the curve: the corners of the line cut off again and again (so it rounds every bend and never loops), leaving and
+  // arriving the way the joined roads go (a point 250 px on along each of them), then every 12 px
+  const ua = [a[0] - a1[0], a[1] - a1[1]], ub = [b1[0] - b[0], b1[1] - b[1]], la = Math.hypot(...ua), lb = Math.hypot(...ub); let Q = [a, [a[0] + ua[0] / la * 250, a[1] + ua[1] / la * 250], ...V.slice(1, -1), [b[0] - ub[0] / lb * 250, b[1] - ub[1] / lb * 250], b];
+  for (let it = 0; it < 5; it++) { const N = [Q[0]]; for (let i = 0; i + 1 < Q.length; i++) { const [p, q] = [Q[i], Q[i + 1]]; N.push([p[0] * .75 + q[0] * .25, p[1] * .75 + q[1] * .25], [p[0] * .25 + q[0] * .75, p[1] * .25 + q[1] * .75]) } N.push(Q[Q.length - 1]); Q = N }
+  const C = [Q[0]]; for (let i = 1; i < Q.length; i++) { const p = C[C.length - 1], q = Q[i], d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d >= 12 || i === Q.length - 1) { const n = Math.max(1, Math.round(d / 12)); for (let j = 1; j <= n; j++) C.push([p[0] + (q[0] - p[0]) * j / n, p[1] + (q[1] - p[1]) * j / n]) } }
+  const S = [0]; for (let i = 1; i < C.length; i++) S.push(S[i - 1] + Math.hypot(C[i][0] - C[i - 1][0], C[i][1] - C[i - 1][1])); const L0 = S[S.length - 1], sd = hashStr(Rd.id) % 997;
+  // the bends: how far the road is off the curve, to one side or the other, along the way (none near the ends)
+  // (on the inside of a bend of the curve never more than half its radius, so the road never loops back on itself)
+  const OFF = S.map(v => ((vn(v / 1300, 1.5, sd) - .5) * 1.4 + (vn(v / 520, 2.5, sd + 1) - .5) * .7) * ssm(0, 600, v) * ssm(0, 600, L0 - v));
+  const NRM = C.map((p, i) => { const i0 = Math.max(0, i - 1), i1 = Math.min(C.length - 1, i + 1), dx = C[i1][0] - C[i0][0], dy = C[i1][1] - C[i0][1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l] });
+  const CUR = C.map((p, i) => { const i0 = Math.max(0, i - 3), i1 = Math.min(C.length - 1, i + 3), a0 = Math.atan2(-NRM[i0][0], NRM[i0][1]), a1 = Math.atan2(-NRM[i1][0], NRM[i1][1]), da = wrapA(a1 - a0), arc = S[i1] - S[i0]; return da / (arc || 1) }); // (+: turning to the right; 1/radius)
+  const bend = A0 => { const F = OFF.map((v, i) => { let f = A0 * v; const k = CUR[i]; if (Math.abs(k) > 1e-5 && f * k > 0) f = Math.sign(f) * Math.min(Math.abs(f), .4 / Math.abs(k)); return f });
+    for (let it = 0; it < 40; it++) for (let i = 1; i + 1 < F.length; i++) F[i] = (F[i - 1] + 2 * F[i] + F[i + 1]) / 4; // (the clamped stretches eased into the rest)
+    return C.map((p, i) => [p[0] + NRM[i][0] * F[i], p[1] + NRM[i][1] * F[i]]) };
+  const lenOf = P => { let L = 0; for (let i = 1; i < P.length; i++) L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); return L };
+  let lo = 0, hi = 2000, P = C; if (lenOf(C) < Rd.len) for (let it = 0; it < 22; it++) { const mid = (lo + hi) / 2; P = bend(mid); if (lenOf(P) < Rd.len) lo = mid; else hi = mid } Rd.reach = lo;
+  // every 24 px, in pieces (each overlapping the next by two points, so the ruts run on unbroken)
+  const RP = [P[0]]; let acc = 0; for (let i = 1; i < P.length; i++) { acc += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); if (acc >= 24 || i === P.length - 1) { RP.push(P[i]); acc = 0 } } Rd.pts = RP; Rd.L = lenOf(RP);
+  for (let i = 0; i + 1 < RP.length; i += 7) { const seg = RP.slice(i, i + 9), f = i / (RP.length - 1); addLayer({ id: Rd.id + '-' + i, mat: 'road', line: seg, w: Rd.w[0] + (Rd.w[1] - Rd.w[0]) * f, rough: 1, wroad: Rd.id }) }
+  if (Rd.sign) { const G = Rd.sign; let d = 0, i = 1; for (; i < RP.length - 1 && d < G.at; i++) d += Math.hypot(RP[i][0] - RP[i - 1][0], RP[i][1] - RP[i - 1][1]); const dx = RP[i][0] - RP[i - 1][0], dy = RP[i][1] - RP[i - 1][1], l = Math.hypot(dx, dy) || 1;
+    WORLD_SIGNS.push({ id: 'sign-' + Rd.id, p: 'signpost', x: RP[i][0] - dy / l * G.side, y: RP[i][1] + dx / l * G.side, params: { dir: G.dir, text: G.text } }) } }
 function worldPlan() {
-  const ox = PL.margin[0], oy = PL.margin[1]; addPlace(PL, ox, oy);
-  const T = PL.trail || {}, out = T.out ? LAYER[T.out] : null; NOTRAIL = !out;
+  const list = GAMEMODE ? Object.keys(WORLD_AT).map(id => PLACES[id]) : [PL];
+  list.forEach((P, i) => { const at = GAMEMODE ? WORLD_AT[P.id] : P.margin; addPlace(P, at[0], at[1], i ? P.id + '/' : '') });
+  // the trail: from the exit road of the place that has one
+  const TP = PLW.find(W => W.P.trail && W.P.trail.out), out = TP ? LAYER[TP.pre + TP.P.trail.out] : null; NOTRAIL = !out;
   if (out) { const end = out.line[out.line.length - 1], prev = out.line[out.line.length - 2];
     // the trail starts some way north of the exit and the road from the exit swings round to meet it
     TRLY = end[1] - 260; TRLX = end[0] + 140 - midX(0);
     const s0 = trW(midX(0), 0); bendRoad('to-trail', end, [end[0] - prev[0], end[1] - prev[1]], s0, [0, -1], 16) }
+  // the roads between the places
+  const joined = JOINED; for (const Rd of WORLD_ROADS) { const A = PLACES[Rd.from[0]].W, B = PLACES[Rd.to[0]].W; if (!A || !B || !PLW.includes(A) || !PLW.includes(B)) continue; worldRoad(Rd, A, B); joined.add(A.pre + Rd.from[1]); joined.add(B.pre + Rd.to[1]) }
   // the other ways out wander off and end in the forest
   // (a road goes on from whichever of its ends lies further from the place's middle)
-  const C = LAYER[PL.forest.clearing], cx = (C.bb[0] + C.bb[2]) / 2, cy = (C.bb[1] + C.bb[3]) / 2;
-  for (const e of T.side || []) { const L = LAYER[e], n = L.line.length, far = Math.hypot(L.line[0][0] - cx, L.line[0][1] - cy) > Math.hypot(L.line[n - 1][0] - cx, L.line[n - 1][1] - cy), a = far ? L.line[0] : L.line[n - 1], b = far ? L.line[1] : L.line[n - 2]; roadOn(e + '-on', a, [a[0] - b[0], a[1] - b[1]], 520, L.w * .9, hashStr(e) % 997) } }
+  for (const W of PLW) { const cx = W.cx, cy = W.cy;
+    for (const e of (W.P.trail || {}).side || []) { if (joined.has(W.pre + e)) continue; const L = LAYER[W.pre + e], n = L.line.length, far = Math.hypot(L.line[0][0] - cx, L.line[0][1] - cy) > Math.hypot(L.line[n - 1][0] - cx, L.line[n - 1][1] - cy), a = far ? L.line[0] : L.line[n - 1], b = far ? L.line[1] : L.line[n - 2]; roadOn(W.pre + e + '-on', a, [a[0] - b[0], a[1] - b[1]], 520, L.w * .9, hashStr(e) % 997) } } }
 
 // ---- the forest: stands everywhere, a tree (or undergrowth) per cell of a jittered grid ----
 // A cell's tree stands where its own hash puts it; it gives way to any stronger neighbour whose crown would merge with
@@ -4760,8 +4822,11 @@ function worldPlan() {
 // only, so a region comes out the same whichever is made first, and again after it has been forgotten.
 const BOG_STAND = { id: 'bog', keep: .3, kinds: [['birch', 3], ['snag', 1.2], ['bare', 1], ['spruce', .6]], under: [['grass', 4], ['reed', 2], ['lowshrub', 1.5], ['snag', .4]], underKeep: .5, size: .8 };
 const FCELL = 22, CROWN_R = { spruce: 16, pine: 20, larch: 15, birch: 15, aspen: 13, rowan: 11, decid: 28, bare: 27 }, FMEMO = new Map();
-const standAt = (x, y) => { const F = WORLD_FOREST, z = vn(x * F.zone, y * F.zone, SEED + 500) + (vn(x * .03, y * .03, SEED + 501) - .5) * .12; let acc = 0; for (const S of F.stands) { acc += S.share; if (z < acc) return S } return F.stands[F.stands.length - 1] };
-function inPlace(x, y, pad) { for (const W of PLW) { const C = LAYER[W.P.forest.clearing]; if (C && layerD(C, x, y) < pad) return true } return false }
+// the wood: the first place's stands everywhere, another place's round it (within its forest.reach of its middle, the
+// edge between the two woods wandering)
+const forestAt = (x, y) => { for (let i = 1; i < PLW.length; i++) { const W = PLW[i], F = W.P.forest; if (!F.reach) continue; const d = Math.hypot(x - W.cx, y - W.cy); if (d < F.reach * (.8 + .4 * vn(x * .0015, y * .0015, SEED + 510))) return F } return PLW[0].P.forest };
+const standAt = (x, y) => { const F = forestAt(x, y), z = vn(x * F.zone, y * F.zone, SEED + 500) + (vn(x * .03, y * .03, SEED + 501) - .5) * .12; let acc = 0; for (const S of F.stands) { acc += S.share; if (z < acc) return S } return F.stands[F.stands.length - 1] };
+function inPlace(x, y, pad) { for (const W of PLW) if (layerD(W.C, x, y) < pad) return true; return false }
 function cellCand(i, j) { const key = lkey(i, j); if (FMEMO.has(key)) return FMEMO.get(key);
   const x = i * FCELL + FCELL * (.15 + .7 * h2(i, j, SEED + 301)), y = j * FCELL + FCELL * (.15 + .7 * h2(i, j, SEED + 302)), S = matAt(x, y) === 'bog' ? BOG_STAND : standAt(x, y), r = mulberry((SEED ^ Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0);
   let c = null; if (!(inPlace(x, y, 10) || nearPath(x, y, 16) || inPond(x, y, 8) || nearPlaceThing(x, y, 18))) {
@@ -4787,6 +4852,8 @@ function regionMake(i, j) { const key = lkey(i, j); if (REGIONS.has(key)) return
   // signposts at the forks: one arm to each branch, with the names of where they go
   for (const F of TRAIL.forks) if (F.x >= x0 && F.x < x0 + RG && F.y >= y0 && F.y < y0 + RG) { const r = rngFor(F.f.s, 4402), a = SIGNN[Math.floor(r() * SIGNN.length)]; let b = SIGNN[Math.floor(r() * SIGNN.length)]; if (b === a) b = SIGNN[(SIGNN.indexOf(a) + 3) % SIGNN.length];
     list.push(addPrefab('sign-' + F.f.s, 'signpost2', F.x, F.y + 4, { left: a + ' ' + (1 + r() * 6).toFixed(1).replace('.', ','), right: b + ' ' + (1 + r() * 6).toFixed(1).replace('.', ',') }, 'world')) }
+  // the signposts of the roads between the places
+  for (const G of WORLD_SIGNS) if (G.x >= x0 && G.x < x0 + RG && G.y >= y0 && G.y < y0 + RG) list.push(addPrefab(G.id, G.p, G.x, G.y, G.params, 'world'));
   // the bridges' railing posts
   for (const [x, y, id] of WATERS.posts) if (x >= x0 && x < x0 + RG && y >= y0 && y < y0 + RG) list.push(addGen('post' + id, 'post', x, y, id, 1, 'world'));
   // puddles in the ruts of the roads
@@ -4849,7 +4916,8 @@ const hashStr = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^
 
 // ================= the place =================
 const PL = PLACES[(new URLSearchParams(location.search)).get('place') || 'buhta'] || PLACES.buhta;
-const OX = PL.margin[0], OY = PL.margin[1];
+// (the place the ride starts in: its frame is the one these give; every place has its own, P.W.toW and P.W.toL)
+const PLAT = GAMEMODE && WORLD_AT[PL.id] || PL.margin, OX = PLAT[0], OY = PLAT[1];
 const toW = (x, y) => [x + OX, y + OY], toL = (x, y) => [x - OX, y - OY];
 // ---- the ground: the world's plan (world.js) lays down the place and the trail ----
 worldPlan();
@@ -4871,7 +4939,7 @@ function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.lengt
       const m = A[i].mat; if (m === 'road' || m === 'path') for (let j = i + 1; j < A.length; j++) { const B = A[j]; if (B.mat !== m) continue; const d2 = layerD(B, x, y); if (d2 < HIT.d) { HIT.d = d2; HIT.L = B; HIT.w = B.ws ? LW : B.w } }
       return HIT } } HIT.L = null; HIT.d = 0; return HIT }
 const matAt = (x, y) => { const h = layerAt(x, y); return h.L ? h.L.mat : PL.base };
-const inClearing = (x, y, pad = 0) => { const L = LAYER[PL.forest.clearing]; return L ? layerD(L, x, y) < pad : false };
+const inClearing = (x, y, pad = 0) => inPlace(x, y, pad);
 // the colour of the ground: the game's own palettes and dithering
 function groundColor(x, y) {
   const h = layerAt(x, y), L = h.L, mat = L ? L.mat : PL.base, d = h.d; let c;
@@ -4947,7 +5015,7 @@ const TRUNK = { post: 1.2, snag: 3.4, pine: 2.6, spruce: 2.6, larch: 2.4, birch:
 const HINT = (t, sz, extra) => (t === 'mush' ? 'conif' : { sz, ...(extra || {}) });
 function addGen(id, t, x, y, seed, sz, from, extra) { const o = { id, kind: 'gen', t, type: t, x, y, wy: y, seed: seed >>> 0, sz, hint: HINT(t, sz, extra), fi: REST, from }; OBJS.push(o); return o }
 function addPrefab(id, p, x, y, params, from) { const o = { id, kind: 'prefab', p, type: p, x, y, wy: y, params, from }; OBJS.push(o); return o }
-for (const o of PL.objects) { const [x, y] = toW(o.x, o.y); if (o.p) addPrefab(o.id, o.p, x, y, o, 'place'); else addGen(o.id, o.t, x, y, o.seed ?? hashStr(o.id), o.sz ?? 1, 'place', o.bt ? { bt: o.bt } : null) }
+for (const W of PLW) for (const o of W.P.objects) { const [x, y] = W.toW(o.x, o.y), q = o.p ? addPrefab(W.pre + o.id, o.p, x, y, o, 'place') : addGen(W.pre + o.id, o.t, x, y, o.seed ?? hashStr(o.id), o.sz ?? 1, 'place', o.bt ? { bt: o.bt } : null); q.W = W; q.pid = o.id }
 // everything a sown thing must keep clear of: paths and roads, buildings, the place's own trees
 const inPond = (x, y, m) => { const h = layerAt(x, y); if (h.L && (h.L.mat === 'pond' || h.L.mat === 'lake' || h.L.mat === 'river') && h.d < -m - (h.L.mat === 'river' ? 3 : 0)) return true; if (m > 0) return layersNear(x, y).some(L => (L.mat === 'pond' || L.mat === 'lake' || L.mat === 'river') && layerD(L, x, y) < m) && !(h.L && (h.L.mat === 'road' || h.L.mat === 'bridge')); return false };
 const nearPath = (x, y, m) => layersNear(x, y).some(L => (L.mat === 'path' || L.mat === 'road' || L.mat === 'gravel' || L.mat === 'brook' || L.mat === 'bridge' || L.mat === 'river') && layerD(L, x, y) < m);
@@ -4967,15 +5035,23 @@ function fitSolids(o) { const W = o.mw, H = o.mh, D = o.dn; for (const S of o.so
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const n = D[y * W + x]; if (!(n === n)) continue; const X = x - o.ax - T3S * n; if (n >= n0 - 1 && n <= n1 + 1 && X > R0[0] && X > xm && X < R0[2] + 8) xm = X; if (X >= R0[0] && X <= R0[2] && n > nm && n < n1 + 8) nm = n }
     S.raw = [R0[0], -nm, xm, R0[3]]; S[1] = Math.min(S[1], S.oy - nm); S[2] = Math.max(S[2], S.ox + xm + T3S * nm) } }
 const inSolid = (S, x, y, rad) => { const p = S.raw ? rad + SOLID_PAD : rad; if (!(x > S[0] - p && x < S[2] + p && y > S[1] - p && y < S[3] + p)) return false; if (!S.raw) return true; const Y = y - S.oy, X = x - S.ox + T3S * Y; return X > S.raw[0] - p && X < S.raw[2] + p };
+// the poles of the power lines between the places (things of the world, there from the start)
+for (const Ln of WORLD_LINES) { const A = PLACES[Ln.from[0]].W, B = PLACES[Ln.to[0]].W; if (!A || !B || !PLW.includes(A) || !PLW.includes(B)) continue;
+  const oa = OBJS.find(o => o.id === A.pre + Ln.from[1]), ob = OBJS.find(o => o.id === B.pre + Ln.to[1]); if (!oa || !ob) continue;
+  const d = Math.hypot(ob.x - oa.x, ob.y - oa.y), n = Math.ceil(d / Ln.span), r = mulberry(hashStr(Ln.id)), ids = [oa.id]; Ln.pts = [[oa.x, oa.y]];
+  for (let k = 1; k < n; k++) { let x = 0, y = 0; for (let tr = 0; tr < 16; tr++) { const f = k / n + (tr % 2 ? 1 : -1) * Math.ceil(tr / 2) * 8 / d; x = Math.round(oa.x + (ob.x - oa.x) * f); y = Math.round(oa.y + (ob.y - oa.y) * f); if (!nearPath(x, y, 12) && !inPond(x, y, 8)) break }
+    const id = Ln.id + '-' + k; addPrefab(id, 'pole', x, y, { kind: Ln.kind, seed: 70 + k, lean: Math.round((r() - .5) * 4), sign: k % 4 === 1 }, 'world'); ids.push(id); Ln.pts.push([x, y]) }
+  ids.push(ob.id); Ln.pts.push([ob.x, ob.y]); Ln.spans = ids.slice(1).map((id, i) => [ids[i], id]); LINES_LAID.add(Ln.id) }
 // scatter: small things sown inside a layer, deterministic
-for (const S of PL.scatter || []) { const r = mulberry(S.seed), L = LAYER[S.in]; let n = 0;
-  for (let k = 0; k < S.n * 8 && n < S.n; k++) { const BB = S.box ? [...toW(S.box[0], S.box[1]), ...toW(S.box[2], S.box[3])] : L.bb, x = BB[0] + r() * (BB[2] - BB[0]), y = BB[1] + r() * (BB[3] - BB[1]), t = wpick(r, S.kinds), seed = (r() * 1e9) | 0;
-    if (!scatterOK(S, L, t, x, y)) continue; if (nearPath(x, y, S.clear) || nearObj(x, y, 14)) continue; addGen(S.id + '-' + (++n), t, x, y, seed, 1, 'scatter') } }
+for (const W of PLW) for (const S of W.P.scatter || []) { const r = mulberry(S.seed), L = LAYER[W.pre + S.in]; let n = 0;
+  for (let k = 0; k < S.n * 8 && n < S.n; k++) { const BB = S.box ? [...W.toW(S.box[0], S.box[1]), ...W.toW(S.box[2], S.box[3])] : L.bb, x = BB[0] + r() * (BB[2] - BB[0]), y = BB[1] + r() * (BB[3] - BB[1]), t = wpick(r, S.kinds), seed = (r() * 1e9) | 0;
+    if (!scatterOK(S, L, t, x, y, W)) continue; if (nearPath(x, y, S.clear) || nearObj(x, y, 14)) continue; addGen(W.pre + S.id + '-' + (++n), t, x, y, seed, 1, 'scatter').W = W } }
 PLACE_OBJS.push(...OBJS); const nearPlaceThing = nearObj;
 // the cleared strip under the power line: no trees within some 1.5 m of it (the ground under each span and exit)
-const LINE_STRIPS = (() => { const PW = PL.power, by = Object.fromEntries(PL.objects.map(o => [o.id, o])), out = []; if (!PW) return out;
+const LINE_STRIPS = (() => { const out = []; for (const W of PLW) { const PW = W.P.power, by = Object.fromEntries(W.P.objects.map(o => [o.id, o])), toW = W.toW; if (!PW) continue;
   for (const [i0, j0] of PW.spans || []) { const i = i0.split(':')[0], j = j0.split(':')[0]; if (by[i] && by[j]) out.push([toW(by[i].x, by[i].y), toW(by[j].x, by[j].y)]) }
-  for (const X of PW.exits || []) if (by[X.from.split(':')[0]]) { X.from = X.from.split(':')[0]; const a = toW(by[X.from].x, by[X.from].y); out.push([a, [a[0] + X.dx, a[1] + X.dy]]) } return out })();
+  for (const X of PW.exits || []) if (by[X.from.split(':')[0]] && !LINES_LAID.has(X.line)) { X.from = X.from.split(':')[0]; const a = toW(by[X.from].x, by[X.from].y); out.push([a, [a[0] + X.dx, a[1] + X.dy]]) } }
+  for (const Ln of WORLD_LINES) if (Ln.pts) for (let i = 0; i + 1 < Ln.pts.length; i++) out.push([Ln.pts[i], Ln.pts[i + 1]]); return out })();
 const underLine = (x, y, m) => LINE_STRIPS.some(L => segD(L, x, y) < m);
 // no tree just in front (south) of a building or a fitting of the place, where its crown would hide it from view
 const PREF_SEEN = OBJS.filter(o => o.kind === 'prefab' && o.p !== 'pole' && o.p !== 'deck');
@@ -4989,8 +5065,7 @@ const hides = (x, y) => PREF_SEEN.some(o => Math.abs(o.x - x) < 36 && y > o.y - 
 // the place's own trees: the forest keeps its crowns clear of them
 const TPLACED = []; for (const o of OBJS) if (CROWN_R[o.t]) TPLACED.push([o.x, o.y, CROWN_R[o.t] * (o.sz || 1)]);
 const placeTreeNear = (x, y, rr) => TPLACED.some(([px, py, pr]) => Math.abs(px - x) < 70 && Math.hypot(px - x, (py - y) * 1.25) < (pr + rr) * .85);
-const WORLD_FOREST = { zone: PL.forest.zone || .005, stands: PL.forest.stands };
-const OBJ = Object.fromEntries(OBJS.map(o => [o.id, o]));
+const OBJ = Object.fromEntries(OBJS.map(o => [o.id, o])), OBJS_ID = OBJ, HUMS = OBJS.filter(o => o.p === 'ktp' || o.p === 'mtp');
 // ================= the trees grown from their seeds (trees3d.js) =================
 // The forest's trees come from a library: for each kind a set of trees grown from their own seeds (a spruce stand reads
 // as twenty spruces, never one repeated), each spot taking one by its hash; the place's own trees are each grown for
@@ -5050,7 +5125,7 @@ function libWork(ms) { const t0 = performance.now();
   if (LIB_NEED.length) { const [d, E] = LIB_NEED[0]; if (E.fcv || d > 260) { LIB_NEED.shift(); return } libFrame(E); if (E.fcv) LIB_NEED.shift() } }
 // ---- growing a thing: stage one (its generator's first pass: litter, crown plan) is done for all at the start; the
 // rest (crown layers, the eight poses, the shadow mask) is spread over frames, nearest to the rider first ----
-function stage1(o) { if (o.s1) return; if (o.p === 'stand' && !STANDXY) { STANDXY = toL(o.x, o.y); for (const q of OBJS) if (q !== o && q.kind === 'prefab') stage1(q) } o.s1 = true;
+function stage1(o) { if (o.s1) return; if (o.p === 'stand' && !STANDXY) { STANDW = o.W || PL.W; STANDXY = STANDW.toL(o.x, o.y); for (const q of OBJS) if (q !== o && q.kind === 'prefab' && q.W === o.W) stage1(q) } o.s1 = true;
   if (o.kind === 'prefab') { const r = pfBuild(o); o.sp = r; o.dn = r.s.dn || null; o.ax = r.ax; o.ay = r.ay; o.cv = r.s.canvas(); o.ncv = r.night ? r.night.canvas() : null; o.mask = maskOf(r.s); o.mw = r.s.w; o.mh = r.s.h; o.solids = PF_SOLIDS(o); if (o.dn && !r.flat) fitSolids(o); o.flat = !!r.flat; o.noShadow = !!r.noShadow || o.flat; if (r.frames) { o.pfr = r.frames.map(f => f.s.canvas()); o.pfrN = r.frames.map(f => f.night ? f.night.canvas() : null) } o.ready = true; shadowDirty(o); return }
   const nk = newKind(o); if (nk) { o.nk = nk; o.solids = []; const tr = TRUNK[o.t] || 3; if (!SOFT[o.t]) o.circle = [o.x, o.y, tr * (o.sz || 1)]; o.lsp = NEW_LSP[nk.k] || 'maple'; return }
   o.g = MAKERS[o.t](mulberry(o.seed), o.seed, o.hint); if (FRAMED.has(o.t)) o.g.frames = [];
@@ -5345,7 +5420,7 @@ function stepRider(dt) {
 // ================= people =================
 // Walkers go round their routes at a stroll (1.2 m/s), stop where the route says, give way to the bike, and stand
 // shifting their weight while they wait; sitters appear at a fire while it burns.
-const NPCS = (PL.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: n.dir ?? 4, dist: 0, idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } });
+const NPCS = PLW.flatMap(W => (W.P.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = W.toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: n.dir ?? 4, dist: 0, idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } }));
 const SITS = []; cowsInit(); gullsInit(); const dirOf = (dx, dy) => ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8;
 function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }
     if (P.wait > 0) { P.wait -= dt; P.moving = false; continue }
@@ -5354,7 +5429,7 @@ function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT
     const ax = P.x + dx / (d || 1) * 7, ay = P.y + dy / (d || 1) * 7; if (Math.hypot(R.x - ax, R.y - ay) < 8) { P.moving = false; P.dir = dirOf(R.x - P.x, R.y - P.y); continue }
     if (d <= sp) { P.x = tx; P.y = ty; P.i = nx; P.wait = tw; P.moving = false; continue }
     P.x += dx / d * sp; P.y += dy / d * sp; P.dist += sp; P.dir = dirOf(dx, dy); P.moving = true }
-  SITS.length = 0; const S = PL.sitters || {}; for (const F of FIRES) { if (F.I < .35) continue; const list = S[F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
+  SITS.length = 0; for (const F of FIRES) { if (F.I < .35) continue; const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
 function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
   const k = Math.floor(P.idleT / 1.8 + P.x * .1) % 7; return k === 5 ? npcSprite(P.look, 'look', P.dir, 0) : k === 6 ? npcSprite(P.look, 'look', P.dir, 1) : npcSprite(P.look, 'idle', P.dir, k % 2) }
@@ -5537,7 +5612,7 @@ function drawWorld() {
     // pushed by the bike: leaning away from it (the next sway pose over, and the sprite sheared about its foot)
     if (o.bp && Math.abs(o.bp) > .02) { const sh = o.bp * (SOFT[o.t].sh || .3), fy = Math.round(o.y + (o.ky || 0)); ctx.save(); ctx.transform(1, 0, -sh, 1, sh * fy, 0);
       const img = o.fcv ? o.fcv[clamp(Math.round(frameIdx(o) + o.bp * 3.5), 0, o.fcv.length - 1)] : o.cv; ctx.drawImage(img, x, y); ctx.restore() }
-    else if (o.fcv) { const k = frameIdx(o); ctx.drawImage(o.fcv[k], x, y) } else if (o.pfr) { const k = o.p === 'gate' ? gateIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
+    else if (o.fcv) { const k = frameIdx(o); ctx.drawImage(o.fcv[k], x, y) } else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
   // the rider behind a crown: his shape shows faintly through it, so he is never lost in the wood
   { const rx = Math.round(R.x) - ROXS, ry = Math.round(R.y) - ROYS; if (VIS.some(o => o.nk && o.y > R.y && R.x > o.x - o.ax && R.x < o.x - o.ax + o.mw && R.y - 10 > o.y - o.ay && R.y - 10 < o.y - o.ay + o.mh && o.mask[Math.round(R.y - 10 - o.y + o.ay) * o.mw + Math.round(R.x - o.x + o.ax)])) {
     const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])), c = STAND.cv || a[R.f] || a.find(Boolean); ctx.globalAlpha = .42; ctx.drawImage(c, rx, ry); ctx.globalAlpha = 1; GHOSTN++ } } }
@@ -5554,15 +5629,16 @@ function placeLights() { SMOKERS.length = FIRES.length = LIGHTS.length = 0; for 
 // sagging curve between its two ends (in screen terms: the ends lifted by their height), sways a little in the wind, and
 // is drawn in its turn among the standing things (by its nearer end), so a tree in front of it hides it ----
 const WIRES = [];
-function placeWires() { WIRES.length = 0; const PW = PL.power; if (!PW) return; const top = o => { const r = pfBuild(o), tp = r.top || [0, 0]; return [o.x + tp[0], o.y + tp[1], o.y] };
+function placeWires() { WIRES.length = 0; for (const W of PLW) placeWiresOf(W); for (const Ln of WORLD_LINES) if (Ln.spans) placeWiresOf({ P: { power: { spans: Ln.spans } }, pre: '' }) }
+function placeWiresOf(PWW) { const PW = PWW.P.power, OBJ = id => OBJS_ID[PWW.pre + id]; if (!PW) return; const top = o => { const r = pfBuild(o), tp = r.top || [0, 0]; return [o.x + tp[0], o.y + tp[1], o.y] };
   // the points a span hangs from: a pole's clamp, or the three insulators of a 10 kV crossarm; 'id:out' is a
   // substation's low-voltage outlet
-  const ends = ref => { const [id, which] = ref.split(':'), o = OBJ[id]; if (!o) return null; const r = pfBuild(o), L = which === 'out' ? (r.outs || [r.top || [0, 0]]) : (r.tops || [r.top || [0, 0]]); return { o, pts: L.map(p => [o.x + p[0], o.y + p[1]]) } };
+  const ends = ref => { const [id, which] = ref.split(':'), o = OBJ(id); if (!o) return null; const r = pfBuild(o), L = which === 'out' ? (r.outs || [r.top || [0, 0]]) : (r.tops || [r.top || [0, 0]]); return { o, pts: L.map(p => [o.x + p[0], o.y + p[1]]) } };
   const add = (a, b, ya, yb, thin, hv) => { const len = Math.hypot(b[0] - a[0], b[1] - a[1]); WIRES.push({ a, b, ga: [a[0], ya], gb: [b[0], yb], key: Math.max(ya, yb) + .5, sag: (hv ? 1 : 1.5) + len * (hv ? .03 : .045), ph: WIRES.length * 1.7, thin, hv,
     bb: [Math.min(a[0], b[0]) - 4, Math.min(a[1], b[1]) - 4, Math.max(a[0], b[0]) + 4, Math.max(a[1], b[1]) + 2 + len * .05] }) };
   for (const [i, j] of PW.spans || []) { const A = ends(i), B = ends(j); if (!A || !B) { console.warn('power span: no', i, j); continue } const n = A.pts.length === B.pts.length ? A.pts.length : 1; for (let k = 0; k < n; k++) add(A.pts[n === 1 ? 0 : k], B.pts[n === 1 ? 0 : k], A.o.y, B.o.y, false, A.pts.length > 1) }
-  for (const [i0, j, dx, dy] of PW.drops || []) { const i = i0.split(':')[0], A = OBJ[i], B = OBJ[j]; if (!A || !B) { console.warn('power drop: no', i, j); continue } const a0 = ends(i0), a = a0 ? [a0.pts[0][0], a0.pts[0][1]] : top(A), at = dx === undefined ? (pfBuild(B).attach || [0, 0]) : [dx, dy]; add([a[0], a[1]], [B.x + at[0], B.y + at[1]], a[2], B.y, true) }
-  for (const X of PW.exits || []) { const A = ends(X.from); if (!A) continue; for (const p of A.pts) add(p, [p[0] + X.dx, p[1] + X.dy], A.o.y, A.o.y + X.dy, false, A.pts.length > 1) } }
+  for (const [i0, j, dx, dy] of PW.drops || []) { const i = i0.split(':')[0], A = OBJ(i), B = OBJ(j); if (!A || !B) { console.warn('power drop: no', i, j); continue } const a0 = ends(i0), a = a0 ? [a0.pts[0][0], a0.pts[0][1]] : top(A), at = dx === undefined ? (pfBuild(B).attach || [0, 0]) : [dx, dy]; add([a[0], a[1]], [B.x + at[0], B.y + at[1]], a[2], B.y, true) }
+  for (const X of PW.exits || []) { if (LINES_LAID.has(X.line)) continue; const A = ends(X.from); if (!A) continue; for (const p of A.pts) add(p, [p[0] + X.dx, p[1] + X.dy], A.o.y, A.o.y + X.dy, false, A.pts.length > 1) } }
 function drawWire(Wr) { const [ax, ay] = Wr.a, [bx, by] = Wr.b, len = Math.hypot(bx - ax, by - ay), n = Math.max(6, Math.round(len / 5)), g = gustNow(),
     sway = (WINDX * WIND.s * (.5 + g) * 1.6 + Math.sin(t * 1.3 + Wr.ph) * .35 * (.3 + WIND.s)) * Math.min(1, len / 80);
   // the cable: a dark core, a dull sheen along its top and a soft dark edge under it, so it reads as a cable and not a
@@ -5770,7 +5846,7 @@ function sndCamp(dt) { if (!SX.ready) { sndExtraInit(); return } const live = !p
   // the gale howling, only in strong wind, rising and falling with the gusts
   sxBed('wind_howl', live ? .32 * smst((WIND.s - .45) / .35) * (.35 + .75 * gustNow()) : 0, WINDX * .3, .8);
   // the substation's hum, heard only near it (and a little louder in the quiet of the night)
-  const K = OBJ.ktp || OBJ.mtp; if (K) { const d = Math.hypot(K.x - R.x, K.y - 10 - R.y); sxBed('hum', live ? .055 * sxAtt(d, 18) * (1 + .4 * (1 - LT.day)) : 0, (K.x - R.x) / 60, .5) }
+  let K = null; for (const o of HUMS) if (!K || Math.hypot(o.x - R.x, o.y - R.y) < Math.hypot(K.x - R.x, K.y - R.y)) K = o; if (K) { const d = Math.hypot(K.x - R.x, K.y - 10 - R.y); sxBed('hum', live ? .055 * sxAtt(d, 18) * (1 + .4 * (1 - LT.day)) : 0, (K.x - R.x) / 60, .5) }
   if (!live) return;
   // now and then: crows by day, a dog far off in the village toward evening and at night
   SX.T.crows -= step; if (SX.T.crows <= 0) { SX.T.crows = 35 + Math.random() * 70; if (LT.day > .5 && WX.rain < .3) { const h = SX.hits.crows; for (let k = 0; k < 1 + (Math.random() * 3 | 0); k++) { const o = h[Math.floor(Math.random() * h.length)] || 0; shot(SX.buf.crows, o, 1.1, .2 + Math.random() * .12, { rate: cents(40), pan: rp(.8), lp: 5000, wet: .25, at: k * (.6 + Math.random() * .8), fade: .05 }) } } }
@@ -5792,7 +5868,7 @@ function sndUpdate(dt) { if (SND.on && SND.ctx && SND.ready) sndCamp(dt); if (!S
   lvl(SND.birds, .33 * act, 3); if (doP && SND.birds.on) { const a = .5 + .45 * Math.sin(T0 * .031 + SND.birds.ph); sp_(SND.birds.parts[0].gain, .25 + .75 * a, 4); sp_(SND.birds.parts[1].gain, 1 - .75 * a, 4) }
   lvl(SND.rainLv, .5 * sm(r / .25) * (1 - .3 * sm((r - .6) / .35)), 2.5); lvl(SND.rainLt, .48 * sm((r - .12) / .45), 2.5); lvl(SND.rainHv, .39 * sm((r - .45) / .5), 2.5);
   // the spring: a quiet trickle that swells as you ride up to it
-  let sprD = 1e9; for (const S of PL.sounds || []) if (S.k === 'spring') { const [x, y] = toW(S.x, S.y); sprD = Math.min(sprD, Math.hypot(R.x - x, R.y - y)) } const prox = clamp(1 - sprD / 110, 0, 1); let fl = 0; for (const B of BROOKS) { const bb = B.L.bb; if (R.x < bb[0] - 200 || R.x > bb[2] + 200 || R.y < bb[1] - 200 || R.y > bb[3] + 200) continue; const d = segD(B.L.line, R.x, R.y) - B.L.w, big = B.L.mat === 'river' ? 2.2 : 1; fl = Math.max(fl, clamp(1 - d / (90 * big), 0, 1) * big) }
+  let sprD = 1e9; for (const W of PLW) for (const S of W.P.sounds || []) if (S.k === 'spring') { const [x, y] = W.toW(S.x, S.y); sprD = Math.min(sprD, Math.hypot(R.x - x, R.y - y)) } const prox = clamp(1 - sprD / 110, 0, 1); let fl = 0; for (const B of BROOKS) { const bb = B.L.bb; if (R.x < bb[0] - 200 || R.x > bb[2] + 200 || R.y < bb[1] - 200 || R.y > bb[3] + 200) continue; const d = segD(B.L.line, R.x, R.y) - B.L.w, big = B.L.mat === 'river' ? 2.2 : 1; fl = Math.max(fl, clamp(1 - d / (90 * big), 0, 1) * big) }
   { let lk = 1e9; for (const L of layersNear(R.x, R.y)) if (L.mat === 'lake') lk = Math.min(lk, layerD(L, R.x, R.y)); const wl = clamp(1 - Math.max(0, lk) / 90, 0, 1) * (.35 + .4 * Math.min(1, WIND.s * 1.5)); // (the water of a big lake lapping, near its shore)
     lvl(SND.stream, .32 * Math.max(prox * prox, Math.min(1.4, fl * fl), wl * wl * (.72 + .28 * Math.sin(WS.ph * TAU))), 1.2) }
   lvl(SND.rumble, .05 * sp * (1 - .6 * r), .6); lvl(SND.hiss, .012 * WET * sp * (1 - .5 * r), .8);
@@ -5811,7 +5887,7 @@ const $ = id => document.getElementById(id);
 const elClock = $('clock'), elWx = $('wxName'), elWind = $('wind'), elHint = $('hint'), elHintN = $('hintName'), elHintT = $('hintText'), elLoad = $('loading'), elLoadT = $('loadTxt'), elDev = $('devPanel');
 // where the rider is: the place's name inside it; out in the world the kind of way or wood he is in
 const elPlace = $('placeName'); let PLACEK = '';
-function placeHud() { let n; if (inPlace(R.x, R.y, 30)) n = PL.name; else { const m = matAt(R.x, R.y), S = standAt(R.x, R.y); n = m === 'bridge' ? 'Мост' : m === 'bog' ? 'Болото' : m === 'brook' ? 'Ручей' : m === 'road' ? (layerAt(R.x, R.y).L?.trail ? 'Лесная дорога' : 'Просёлок') : m === 'path' ? 'Тропинка' : ({ spruce: 'Ельник', mixed: 'Смешанный лес', hazel: 'Орешник', bor: 'Сосновый бор', birch: 'Березняк' })[S.id] || 'Лес' }
+function placeHud() { let n; if (inPlace(R.x, R.y, 30)) n = placeOf(R.x, R.y).P.name; else { const m = matAt(R.x, R.y), S = standAt(R.x, R.y); n = m === 'bridge' ? 'Мост' : m === 'bog' ? 'Болото' : m === 'brook' ? 'Ручей' : m === 'road' ? (layerAt(R.x, R.y).L?.trail || layerAt(R.x, R.y).L?.wroad ? 'Лесная дорога' : 'Просёлок') : m === 'path' ? 'Тропинка' : ({ spruce: 'Ельник', mixed: 'Смешанный лес', hazel: 'Орешник', bor: 'Сосновый бор', birch: 'Березняк' })[S.id] || 'Лес' }
   if (n !== PLACEK) { PLACEK = n; elPlace.textContent = n } }
 const ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 function windText() { const i = WINDS.reduce((b, w, k) => Math.abs(w[1] - WIND.s) < Math.abs(WINDS[b][1] - WIND.s) ? k : b, 0), ar = ARROWS[((Math.round(Math.atan2(WINDY, WINDX) / (Math.PI / 4)) % 8) + 8) % 8]; return i === 0 ? 'штиль' : '<b>' + ar + '</b> ' + WINDS[i][0] + ' ветер' }
@@ -5832,9 +5908,9 @@ const stickUp = e => { if (e.pointerId !== STICK.id) return; if (DEV.on && Math.
 cvs.addEventListener('pointerup', stickUp); cvs.addEventListener('pointercancel', stickUp);
 // ---- what is near: the nearest point of interest, shown at the bottom ----
 let HINTK = '';
-function hintUpdate() { let best = null, bd = 1e9; for (const p of PL.poi || []) { const [x, y] = toW(p.x, p.y), d = Math.hypot(R.x - x, R.y - y); if (d < p.r && d < bd) { bd = d; best = p } }
-  let k = best ? best.id : ''; let name = best ? best.name : '', text = best ? best.hint : '';
-  if (!best) for (const e of PL.exits || []) { const [x, y] = toW(e.x, e.y); if (Math.hypot(R.x - x, R.y - y) < 60 || false && Math.hypot(R.x - x, R.y - y) < 160) { k = 'exit-' + e.id; name = 'Дальше: ' + e.to; text = (e.km ? e.km.toString().replace('.', ',') + ' км · ' : '') + 'здесь тропа уйдёт в общую карту'; break } }
+function hintUpdate() { let best = null, bd = 1e9, bw = null; for (const W of PLW) for (const p of W.P.poi || []) { const [x, y] = W.toW(p.x, p.y), d = Math.hypot(R.x - x, R.y - y); if (d < p.r && d < bd) { bd = d; best = p; bw = W } }
+  let k = best ? bw.pre + best.id : ''; let name = best ? best.name : '', text = best ? best.hint : '';
+  if (!best) for (const W of PLW) for (const e of W.P.exits || []) { const [x, y] = W.toW(e.x, e.y); if (Math.hypot(R.x - x, R.y - y) < 60) { k = W.pre + 'exit-' + e.id; name = 'Дальше: ' + e.to; text = (e.km ? e.km.toString().replace('.', ',') + ' км · ' : '') + (e.road && JOINED.has(W.pre + e.road) ? 'по лесной дороге' : 'здесь тропа уйдёт в общую карту'); break } }
   if (k !== HINTK) { HINTK = k; elHint.hidden = !k; elHintN.textContent = name; elHintT.textContent = text } }
 
 // ================= the developer's view: metres, names, footprints =================
@@ -5851,7 +5927,7 @@ function drawMap() { if (!MAPX || t - mapT < .35) return; mapT = t; const g = MA
   g.clearRect(0, 0, MW, MH); g.fillStyle = '#2a3320'; g.fillRect(0, 0, MW, MH); const x0 = cx - MW / 2 * K, x1 = cx + MW / 2 * K, y0 = cy - MH / 2 * K, y1 = cy + MH / 2 * K;
   const seen = new Set(); for (let j = Math.floor(y0 / LGC); j <= Math.floor(y1 / LGC); j++) for (let i = Math.floor(x0 / LGC); i <= Math.floor(x1 / LGC); i++) for (const L of LGRID.get(lkey(i, j)) || []) seen.add(L);
   const order = [...seen].sort((a, b) => a.k - b.k);
-  for (const L of order) { const col = { lake: '#3d6a86', pond: '#3d6a86', river: '#4f7f96', brook: '#5f8fa6', bog: '#3e3a26', glade: '#56663a', road: '#c9954a', path: '#b89a6a', bridge: '#a87a4a', gravel: '#8a867c' }[L.mat]; if (!col) continue; g.fillStyle = g.strokeStyle = col;
+  for (const L of order) { const col = { lake: '#3d6a86', pond: '#3d6a86', river: '#4f7f96', brook: '#5f8fa6', bog: '#3e3a26', glade: '#56663a', road: '#c9954a', path: '#b89a6a', bridge: '#a87a4a', gravel: '#8a867c', beach: '#c8b88a', dam: '#8f8676' }[L.mat]; if (!col) continue; g.fillStyle = g.strokeStyle = col;
     if (L.ellipse) { const [ex, ey, rx, ry] = L.ellipse; g.beginPath(); g.ellipse(X(ex), Y(ey), Math.max(1, rx / K), Math.max(1, ry / K), 0, 0, TAU); g.fill() }
     else if (L.line) { g.lineWidth = Math.max(1, L.w * 2 / K); g.lineCap = 'round'; g.beginPath(); L.line.forEach((p, k) => k ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.stroke() } }
   g.fillStyle = '#f2e4c8'; g.fillRect(Math.round(X(R.x)) - 1, Math.round(Y(R.y)) - 1, 3, 3); g.fillStyle = '#e3a03c'; g.fillRect(Math.round(X(R.x + Math.sin(R.psi) * 30)), Math.round(Y(R.y - Math.cos(R.psi) * 30)), 1, 1) }
@@ -5859,23 +5935,24 @@ function drawMap() { if (!MAPX || t - mapT < .35) return; mapT = t; const g = MA
 const m1 = v => (v / 10).toFixed(1).replace('.', ',');
 function devPick(e) { const r = cvs.getBoundingClientRect(), x = CAM.x + (e.clientX - r.left) / SC, y = CAM.y + (e.clientY - r.top) / SC; let best = null, bd = 1e9;
   for (const o of objsIn(x - 60, y - 60, x + 60, y + 80)) { if (!o.ready) continue; const inside = x >= o.x - o.ax && x < o.x - o.ax + o.mw && y >= o.y - o.ay && y < o.y - o.ay + o.mh && o.mask[Math.floor(y - (o.y - o.ay)) * o.mw + Math.floor(x - (o.x - o.ax))]; const d = inside ? -1e3 + (o.y - y) * .01 : Math.hypot(o.x - x, o.y - y); if (d < bd) { bd = d; best = o } }
-  const [lx, ly] = toL(x, y); DEV.pick = { x, y, lx, ly, o: bd < 40 || bd < 0 ? best : null }; devPanel(true) }
+  const PW = placeOf(x, y), [lx, ly] = PW.toL(x, y); DEV.pick = { x, y, lx, ly, W: PW, o: bd < 40 || bd < 0 ? best : null }; devPanel(true) }
 $('devCopy').onclick = () => { const txt = $('devPick').textContent; try { navigator.clipboard.writeText(txt) } catch (e) { } $('devCopy').textContent = 'Скопировано'; setTimeout(() => $('devCopy').textContent = 'Скопировать', 1200) };
-function devPanel(force) { if (!DEV.on) return; const [lx, ly] = toL(R.x, R.y), deg = ((Math.round(R.psi / D2R) % 360) + 360) % 360;
-  $('devRider').textContent = `велосипед: x ${m1(lx)} м, y ${m1(ly)} м · курс ${deg}° · ${(R.v * .36).toFixed(1).replace('.', ',')} км/ч · ${R.surf}`;
+function devPanel(force) { if (!DEV.on) return; const RW = placeOf(R.x, R.y), [lx, ly] = RW.toL(R.x, R.y), deg = ((Math.round(R.psi / D2R) % 360) + 360) % 360;
+  $('devRider').textContent = `велосипед (${RW.P.id}): x ${m1(lx)} м, y ${m1(ly)} м · курс ${deg}° · ${(R.v * .36).toFixed(1).replace('.', ',')} км/ч · ${R.surf}`;
   $('devStats').textContent = `${Math.round(DEV.fps)} кадр/с · объектов на экране ${visCount} · готово ${OBJS.filter(o => o.ready).length}/${OBJS.length} · спрайтов велосипеда ${[...RSETS.values()].filter(a => a.n === RIDER_N).length}/${NY * 3} · костров горит ${FIRES.filter(F => F.I > .05).length} из ${FIRES.length} · ${clockText()}${GFXLOW ? ' · упрощённая графика' : ''} · деревья: ${twAlive() ? 'потоков ' + TW.filter(w => !w.dead).length : 'в основном потоке'}, библиотека ${[...TLIB.values()].filter(E => E.cv).length}/${TLIB.size}${BGBUSY ? ' · догружается' : ''} · подвисаний ${LONGF}, после загрузки ${LONGF2}${LONGF ? ' (' + Object.entries(WHY).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''}`;
-  const p = DEV.pick; $('devPick').textContent = p ? `${PL.id}: точка x ${m1(p.lx)} м, y ${m1(p.ly)} м` + (p.o ? ` · ${p.o.id} (${p.o.type}${p.o.from === 'place' ? '' : ', ' + (p.o.from === 'forest' ? 'лес вокруг' : 'рассыпано')}) в x ${m1(p.o.x - OX)} м, y ${m1(p.o.y - OY)} м` : '') : 'кликните (или коснитесь) места на земле, чтобы узнать его координаты и ближайший объект'; $('devCopy').hidden = !p }
+  const p = DEV.pick; $('devPick').textContent = p ? `${p.W.P.id}: точка x ${m1(p.lx)} м, y ${m1(p.ly)} м` + (p.o ? ` · ${p.o.pid || p.o.id} (${p.o.type}${p.o.from === 'place' ? '' : ', ' + (p.o.from === 'forest' ? 'лес вокруг' : p.o.from === 'world' ? 'в мире' : 'рассыпано')}) в x ${m1(p.o.x - p.W.ox)} м, y ${m1(p.o.y - p.W.oy)} м` : '') : 'кликните (или коснитесь) места на земле, чтобы узнать его координаты и ближайший объект'; $('devCopy').hidden = !p }
 function drawDev() { if (!DEV.on) { if (devCv.hidden === false) { dctx.clearRect(0, 0, devCv.width, devCv.height); devCv.hidden = true } return } devCv.hidden = false; const ctx = dctx; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, devCv.width, devCv.height); const cx = Math.floor(CAM.x) * SC, cy = Math.floor(CAM.y) * SC, sx = x => x * SC - cx, sy = y => y * SC - cy;
   ctx.lineWidth = 1; ctx.font = '11px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'top';
-  // the metre grid in the place's frame: every metre faint, every five metres stronger and labelled
+  // the metre grid in the frame of the place the view is in (or nearest to): every metre faint, every five metres stronger and labelled
+  const GW = placeOf(CAM.x + W / 2, CAM.y + H / 2), OX = GW.ox, OY = GW.oy;
   for (let lx = Math.floor((CAM.x - OX) / 10) * 10; lx <= CAM.x - OX + W; lx += 10) { const X = Math.round(sx(lx + OX)) + .5, five = lx % 50 === 0; ctx.strokeStyle = five ? 'rgba(255,255,255,.32)' : 'rgba(255,255,255,.09)'; ctx.beginPath(); ctx.moveTo(X, 0); ctx.lineTo(X, cvs.height); ctx.stroke(); if (five) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillText(lx / 10 + ' м', X + 3, 54) } }
   for (let ly = Math.floor((CAM.y - OY) / 10) * 10; ly <= CAM.y - OY + H; ly += 10) { const Y = Math.round(sy(ly + OY)) + .5, five = ly % 50 === 0; ctx.strokeStyle = five ? 'rgba(255,255,255,.32)' : 'rgba(255,255,255,.09)'; ctx.beginPath(); ctx.moveTo(0, Y); ctx.lineTo(cvs.width, Y); ctx.stroke(); if (five) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillText(ly / 10 + ' м', 4, Y + 3) } }
-  // the place's own border
-  ctx.strokeStyle = 'rgba(255,214,120,.8)'; ctx.setLineDash([6, 4]); ctx.strokeRect(sx(OX) + .5, sy(OY) + .5, PL.size[0] * SC, PL.size[1] * SC); ctx.setLineDash([]);
+  // the places' own borders
+  ctx.strokeStyle = 'rgba(255,214,120,.8)'; ctx.setLineDash([6, 4]); for (const Q of PLW) ctx.strokeRect(sx(Q.ox) + .5, sy(Q.oy) + .5, Q.P.size[0] * SC, Q.P.size[1] * SC); ctx.setLineDash([]);
   // footprints and names
   for (const o of VIS) { ctx.strokeStyle = 'rgba(255,90,70,.75)'; if (o.circle) { ctx.beginPath(); ctx.arc(sx(o.circle[0]), sy(o.circle[1]), o.circle[2] * SC, 0, TAU); ctx.stroke() } if (o.solids) for (const S of o.solids) { const [x0, y0, x1, y1] = S; if (!S.raw) { ctx.strokeRect(sx(x0) + .5, sy(y0) + .5, (x1 - x0) * SC, (y1 - y0) * SC); continue } const [X0, Y0, X1, Y1] = S.raw, P = (X, Y) => [sx(S.ox + X - T3S * Y), sy(S.oy + Y)]; ctx.beginPath(); for (const [X, Y] of [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]) ctx.lineTo(...P(X, Y)); ctx.closePath(); ctx.stroke() }
-    if (o.from === 'forest') continue; const label = o.id, X = sx(o.x), Y = sy(o.y) + 3, tw = ctx.measureText(label).width; ctx.fillStyle = 'rgba(16,12,8,.72)'; ctx.fillRect(X - tw / 2 - 3, Y, tw + 6, 14); ctx.fillStyle = o.from === 'place' ? '#ffe2a0' : '#bfe0ff'; ctx.fillText(label, X - tw / 2, Y + 1) }
-  for (const p of PL.poi || []) { const [x, y] = toW(p.x, p.y); ctx.strokeStyle = 'rgba(120,220,255,.6)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx(x), sy(y), p.r * SC, 0, TAU); ctx.stroke(); ctx.setLineDash([]) }
+    if (o.from === 'forest') continue; const label = o.pid || o.id, X = sx(o.x), Y = sy(o.y) + 3, tw = ctx.measureText(label).width; ctx.fillStyle = 'rgba(16,12,8,.72)'; ctx.fillRect(X - tw / 2 - 3, Y, tw + 6, 14); ctx.fillStyle = o.from === 'place' ? '#ffe2a0' : '#bfe0ff'; ctx.fillText(label, X - tw / 2, Y + 1) }
+  for (const Q of PLW) for (const p of Q.P.poi || []) { const [x, y] = Q.toW(p.x, p.y); ctx.strokeStyle = 'rgba(120,220,255,.6)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx(x), sy(y), p.r * SC, 0, TAU); ctx.stroke(); ctx.setLineDash([]) }
   if (DEV.pick) { const X = sx(DEV.pick.x), Y = sy(DEV.pick.y); ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(X - 8, Y); ctx.lineTo(X + 8, Y); ctx.moveTo(X, Y - 8); ctx.lineTo(X, Y + 8); ctx.stroke() }
   const X = sx(R.x), Y = sy(R.y); ctx.strokeStyle = '#7dff9a'; ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.moveTo(X, Y); ctx.lineTo(X + Math.sin(R.psi) * 22, Y - Math.cos(R.psi) * 22); ctx.stroke() }
 
@@ -5912,9 +5989,10 @@ let last = performance.now(), hudT = 0, FDT = 1 / 60; const PERF = { n: 0, t: 0,
 let BGBUSY = true, bgT = 0;
 // (only the first loading counts: later, riding on into new forest, things are always being grown about the rider)
 function bgCheck() { if (!BGBUSY || t - bgT < .5) return; bgT = t; BGBUSY = TWJ.size > 0 || LIB_NEED.length > 0 || BQ.length > 0 || FBQ.length > 0 || [...RSETS.values()].filter(a => a.n === RIDER_N).length < NY * 3 }
-const WHY = {}, FT = {}; let ftT = 0; const ft = k => { const n = performance.now(); FT[k] = (FT[k] || 0) + n - ftT; ftT = n };
+// (LONGLOG: the last long frames, where the rider was and what took the time, for the developer's tools)
+const WHY = {}, FT = {}, LONGLOG = []; let ftT = 0; const ft = k => { const n = performance.now(); FT[k] = (FT[k] || 0) + n - ftT; ftT = n };
 function frame(now) {
-  if (now - last > 100 && last > 0) { LONGF++; if (!BGBUSY) LONGF2++; let bk = 'gc/браузер', bv = 25; for (const k in FT) if (FT[k] > bv) { bv = FT[k]; bk = k } WHY[bk] = (WHY[bk] || 0) + 1 } for (const k in FT) FT[k] = 0; ftT = performance.now(); const rdt = clamp((now - last) / 1000, 0, .05); last = now; FDT += (rdt - FDT) * .05; const dt = Math.abs(rdt - FDT) < FDT * .3 ? FDT : rdt; LASTDT = paused ? 0 : dt; DEV.fps += (1 / Math.max(.001, rdt) - DEV.fps) * .05;
+  if (now - last > 100 && last > 0) { LONGF++; if (!BGBUSY) LONGF2++; let bk = 'gc/браузер', bv = 25; for (const k in FT) if (FT[k] > bv) { bv = FT[k]; bk = k } WHY[bk] = (WHY[bk] || 0) + 1; LONGLOG.push([Math.round(now - last), Math.round(R.x), Math.round(R.y), Object.entries(FT).filter(e => e[1] > 8).map(e => e[0] + ' ' + Math.round(e[1])).join(', ')]); if (LONGLOG.length > 80) LONGLOG.shift() } for (const k in FT) FT[k] = 0; ftT = performance.now(); const rdt = clamp((now - last) / 1000, 0, .05); last = now; FDT += (rdt - FDT) * .05; const dt = Math.abs(rdt - FDT) < FDT * .3 ? FDT : rdt; LASTDT = paused ? 0 : dt; DEV.fps += (1 / Math.max(.001, rdt) - DEV.fps) * .05;
   if (!paused) { t += dt;
     const gm = stepDay(dt); if (WX.mode === 'auto') { WX.timer -= gm / 60; if (WX.timer <= 0) autoNext() }
     const auto = WX.mode === 'auto', tgt = STATES[auto ? WX.cur : WX.mode], kk = tc => Math.min(1, auto ? gm / tc : dt * .22);
@@ -5936,7 +6014,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
