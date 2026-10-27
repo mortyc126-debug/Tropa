@@ -2212,7 +2212,7 @@ const SKINS = [[226, 178, 144], [214, 164, 128], [234, 190, 160], [196, 146, 110
 //   shirt: [r,g,b] (under a vest), legs: [r,g,b], boots: [r,g,b], carry: 'bucket'|'towel'|'backpack'|'mug'|null, carryCol, age: 'young'|'old' }
 function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.build || 1, f = L.sex === 'f', skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
   const head = H / 4.5, legH = H * .42, shZ = H - head * 1.05 - .3, hipZ = legH + .2, shW = (f ? 2.25 : 2.7) * bd, hipW = (f ? 2.15 : 1.95) * bd, dep = (f ? 1.25 : 1.35) * bd, hz = H - head * .55;
-  const walk = pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), bob = walk == null ? 0 : Math.abs(Math.cos(walk * TAU)) * .25, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
+  const walk = pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
   const lift = z => z + bob, sx = sway * .35;
   if (sit) { // sitting on the ground, knees up, forearms on them
     const sz = 1.2; for (const s of [-1, 1]) { const x = s * hipW * .45, hip = [x, 1, sz + .8], knee = [x * 1.2, -2.8, sz + 3.8], foot = [x * 1.2, -4.2, .6];
@@ -2220,8 +2220,9 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
     const tz0 = sz + .6, tz1 = sz + .6 + (shZ - hipZ) * .95; t3torso(M, tz0, tz1, hipW, dep, shW, dep, top, { tex: torsoTex(L, tz0, tz1) });
     for (const s of [-1, 1]) { const sh = [s * shW * .92, 1, tz1 - .6], el = [s * shW * .9, -1.4, tz1 - 3.4], hd = [s * hipW * .4, -2.6, sz + 3.6]; t3limb(M, sh, el, .8, .7, top); t3limb(M, el, hd, .7, .6, top); t3ball(M, hd, .6, .6, .6, skin, { seg: 6 }) }
     headModel(M, L, [0, 1.1, tz1 + head * .55 + .3], head, skin, 0); return M }
-  // legs: a stride swings them from the hip, the knee bends on the leg coming forward, the boot lifts off behind
-  for (const s of [-1, 1]) { const ph = s * sw, x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = [x, 1 - ph * 1.3, lift(legH * .52) + Math.max(0, ph) * .5], foot = [x, 1 - ph * 2.2 + (ph < 0 ? .4 : 0), Math.max(0, -ph) * .9 + .6];
+  // legs: a stride swings them from the hip (ph: how far forward); the leg swinging through (sg) lifts its knee forward and its boot off the
+  // ground as it passes the other, the leg behind rises on its toes before it leaves, the leg in front reaches out nearly straight
+  for (const s of [-1, 1]) { const ph = s * sw, sg = Math.max(0, s * cw), x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = [x, 1 - ph * 1.3 - sg * .9, lift(legH * .52) + sg * .8 + Math.max(0, ph) * .2], foot = [x, 1 - ph * 2.3 + (ph < 0 ? .3 : 0) - sg * .3, .6 + sg * 1.1 + Math.max(0, -ph - .55) * 1.1];
     t3limb(M, hip, knee, 1.05 * bd, .85, legs); t3limb(M, knee, foot, .85, .65, legs); t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
   // the body: hips to waist to shoulders
   const waistZ = lift(hipZ + (shZ - hipZ) * .38); t3torso(M, lift(hipZ - .3), waistZ, hipW, dep, hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: torsoTex(L, 0, 0) });
@@ -2229,7 +2230,7 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
   if (L.topKind === 'vest') for (const s of [-1, 1]) t3face(M, [[s * .3, -.5 + 1 - dep, waistZ], [s * hipW * .8, -.5 + 1 - dep, waistZ], [s * shW * .7, -.3 + 1 - dep, lift(shZ) - .2], [s * .6, -.3 + 1 - dep, lift(shZ) - .2]], L.shirt || [180, 60, 50], null, { both: true, zb: .2 });
   if (L.carry === 'backpack') t3box(M, -shW * .7, 1 + dep * .8, waistZ, shW * .7, 1 + dep * .8 + 2.2, lift(shZ) - .4, L.carryCol || [70, 90, 60]);
   // arms: from the shoulder, swinging opposite the legs, the elbow bending forward a little; hands
-  for (const s of [-1, 1]) { const ph = -s * sw, carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0)];
+  for (const s of [-1, 1]) { const carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, ph = -s * sw * (carrying ? .3 : 1), sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1 + (carrying ? .25 : 0)), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0) + Math.max(0, ph) * .5];
     const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve); t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
     if (carrying && L.carry === 'bucket') { t3cyl(M, hd[0], hd[1] - .4, 1.5, hd[2] - 4, hd[2] - 1.2, L.carryCol || [150, 156, 160], { topCol: [70, 110, 140] }); t3line(M, [hd[0] - 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]); t3line(M, [hd[0] + 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]) }
     if (carrying && L.carry === 'mug') t3cyl(M, hd[0], hd[1] - .6, .6, hd[2] - .2, hd[2] + 1, L.carryCol || [200, 60, 50]) }
@@ -2261,9 +2262,9 @@ function headModel(M, L, c, head, skin, look) { const r = head * .5, hair = L.ha
   if (L.hat === 'beanie') { t3ball(M, [c[0], c[1] + .2, c[2] + .5], r * 1.04, r * 1.04, r * 1.05, L.hatCol || [120, 120, 126], { from: .7, tex: (x, n, z) => (fx(x - c[0], n - c[1])[1] < -r * .3 && z - c[2] < r * .5 ? null : (L.hatCol || [120, 120, 126])) }); t3ball(M, [c[0], c[1] + .05, c[2] + r * 1.3], .45, .45, .45, cmul(L.hatCol || [120, 120, 126], 1.15), { seg: 6 }) }
   if (L.hat === 'hood') { const hc = L.hatCol || L.top || [150, 60, 60]; t3ball(M, [c[0], c[1] + .35, c[2] + .2], r * 1.15, r * 1.12, r * 1.2, hc, { from: .2, tex: (x, n, z) => (fx(x - c[0], n - c[1])[1] < -r * .35 && z - c[2] < r * .55 && Math.abs(fx(x - c[0], n - c[1])[0]) < r * .75 ? null : hc) }) } }
 // the sprites of one person, made as they are first needed
-const NPC_SPR = new Map();
+const NPC_SPR = new Map(), NPC_WALKN = 8; // (frames in a walking cycle: two steps)
 function npcSprite(look, kind, dir, frame) { const key = (look.id || JSON.stringify(look)) + kind + dir + '/' + frame; let r = NPC_SPR.get(key); if (r) return r;
-  const pose = kind === 'guard' ? gpose(frame) : kind === 'walk' ? { walk: frame / 4 } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
+  const pose = kind === 'guard' ? gpose(frame) : kind === 'walk' ? { walk: frame / NPC_WALKN } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
   let MM = null; const sp = t3sprite(() => { const M = (kind === 'guard' ? guardModel : personModel)(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'guard') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMarkMouth(MM.mouth, dir) }; NPC_SPR.set(key, r); return r }
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
@@ -3659,16 +3660,18 @@ function guardStep(P, dt) { if (!P.g) guardInit(P); const G = P.g; P.st += dt; P
 // =====================================================================================================================
 // BIRDS, THE DRAWING: every bird is drawn from a handful of numbers (the body, the head, the tail, the wing) and painted with the colours of its kind,
 // at the size of its class: T (tits, sparrows, finches), M (thrushes, jays, jackdaws), C (crows, magpies, pigeons), D (ducks), G (geese, far up).
-// A pose is a side view facing right (flipped for the other way): stand, hop, peck (head down), swim, dabble; in flight the wings are spread across the heading
-// as the gulls' are: up, level, down, or folded (the finches' bounding flight). The shapes are laid down back to front (tail, far wing, body, near wing, head,
-// bill, legs, eye); a pixel is painted when a shape covers half of it.
+// A pose is a side view facing right (flipped for the other way): stand, hop, peck (head down), swim, dabble. In flight the bird is seen as the picture sees
+// everything, from the south and from above: stretched out (a slimmer body, the head forward, the tail straight back), the far wing going up the picture and
+// the near one down it, raised, level or lowered as it beats, or both shut (the finches' bounding flight); so a bird in the air is no longer than on the
+// ground, and no taller than its wings make it. The shapes are laid down back to front (tail, far wing, body, near wing, head, bill, legs, eye); a pixel is
+// painted when a shape covers half of it.
 // =====================================================================================================================
-const BSCALE = .8;   // (birds are drawn a little over life size, not as much as their classes' numbers say)
+const BSCALE = .8;   // (birds are drawn a little over life size, not as much as their classes' numbers say; the bigger ones less over it: s)
 const BCLS = {
   T: { rx: 2.5, ry: 1.7, pitch: 34, hr: 1.45, bill: 1.1, tail: 3.0, tw: 1.5, leg: 1.2, wl: 4.2 },
-  M: { rx: 3.3, ry: 2.2, pitch: 30, hr: 1.8, bill: 1.5, tail: 3.6, tw: 1.9, leg: 1.8, wl: 5.6 },
-  C: { rx: 4.1, ry: 2.5, pitch: 18, hr: 2.0, bill: 2.3, tail: 4.6, tw: 2.3, leg: 2.3, wl: 7.0 },
-  D: { rx: 4.6, ry: 2.3, pitch: 6, hr: 1.7, bill: 2.2, tail: 2.2, tw: 2.0, leg: 1.2, wl: 6.8 },
+  M: { s: .92, rx: 3.3, ry: 2.2, pitch: 30, hr: 1.8, bill: 1.5, tail: 3.6, tw: 1.9, leg: 1.8, wl: 5.6 },
+  C: { s: .85, rx: 4.1, ry: 2.5, pitch: 18, hr: 2.0, bill: 2.3, tail: 4.6, tw: 2.3, leg: 2.3, wl: 7.0 },
+  D: { s: .86, rx: 4.6, ry: 2.3, pitch: 6, hr: 1.7, bill: 2.2, tail: 2.2, tw: 2.0, leg: 1.2, wl: 6.8 },
   G: { rx: 2.6, ry: 1.1, pitch: 0, hr: 0.9, bill: 1.0, tail: 1.3, tw: 1.1, leg: 0, wl: 5.0 }
 };
 const bmix = (a, b, k) => [Math.round(a[0] + (b[0] - a[0]) * k), Math.round(a[1] + (b[1] - a[1]) * k), Math.round(a[2] + (b[2] - a[2]) * k)];
@@ -3680,17 +3683,17 @@ const bseg = (x0, y0, x1, y1, wd) => (x, y) => { const dx = x1 - x0, dy = y1 - y
 // kind: { cls, k (size), pal: {crown, face, cheek, throat, bib, back, back2, rump, wing, wing2, wbar, breast, belly, tail, bill, leg, eye, spot, crest}, spots, longtail, tailk, billk }
 // pose: 'stand' | 'hop' | 'peck' | 'swim' | 'dabble' | 'cling' (up a trunk) | 'hammer' (the head thrown back to strike) | 'fup' | 'fmid' | 'fdn' | 'fold'; flip: facing left
 function birdArt(kind, pose, flip) {
-  const C = BCLS[kind.cls], k = (kind.k || 1) * (typeof BSCALE === 'number' ? BSCALE : 1), P = kind.pal, rx = C.rx * k, ry = C.ry * k, hr = C.hr * k, bill = C.bill * k * (kind.billk || 1), tail = C.tail * k * (kind.tailk || 1), tw = C.tw * k, leg = C.leg * k, wl = C.wl * k;
   const flying = pose === 'fup' || pose === 'fmid' || pose === 'fdn' || pose === 'fold', water = pose === 'swim' || pose === 'dabble', rad = a => a * Math.PI / 180, long = kind.cls === 'D' || kind.cls === 'G';
-  const W = Math.ceil((rx + tail + hr * 2 + bill + (flying ? wl : 0)) * 2 + 8), H = Math.ceil((ry * 2 + leg + hr * 3 + (flying ? wl : 0)) * 1.3 + 8), buf = new Uint8ClampedArray(W * H * 4), ox = Math.floor(W / 2) + .5, oy = H - 3;
+  const C = BCLS[kind.cls], k = (kind.k || 1) * (typeof BSCALE === 'number' ? BSCALE : 1) * (C.s || 1), P = kind.pal, rx = C.rx * k * (flying ? .9 : 1), ry = C.ry * k * (flying ? .7 : 1), hr = C.hr * k * (flying ? .9 : 1), bill = C.bill * k * (kind.billk || 1), tail = C.tail * k * (kind.tailk || 1) * (flying ? .85 : 1), tw = C.tw * k, leg = C.leg * k, wl = C.wl * k;
+  const W = Math.ceil((rx + tail + hr * 2 + bill) * 2 + 8), H = Math.ceil((ry * 2 + leg + hr * 3 + (flying ? wl * 2 : 0)) * 1.3 + 8), buf = new Uint8ClampedArray(W * H * 4), ox = Math.floor(W / 2) + .5, oy = H - 3;
   const clingy = pose === 'cling' || pose === 'hammer'; let pitch = rad(C.pitch); if (flying) pitch = 0; if (pose === 'peck') pitch = rad(-20); if (pose === 'swim') pitch = rad(4); if (pose === 'dabble') pitch = rad(-48); if (clingy) pitch = rad(pose === 'hammer' ? 62 : 80);
   const ang = -pitch, ax_ = Math.cos(ang), ay_ = Math.sin(ang), nx = -ay_, ny = ax_;               // the body's axis (tail to head) and its normal (to the belly)
-  let bcx = ox, bcy = oy - leg - ry * (pose === 'peck' ? .8 : 1.15) - (pose === 'hop' ? 1.1 : 0); if (clingy) { bcx = ox - ry * .9; bcy = oy - rx * .55 } if (flying) { bcy = oy - Math.ceil(H * .45) } if (water) bcy = oy - ry * .45;
+  let bcx = ox, bcy = oy - leg - ry * (pose === 'peck' ? .8 : 1.15) - (pose === 'hop' ? 1.1 : 0); if (clingy) { bcx = ox - ry * .9; bcy = oy - rx * .55 } if (flying) { bcy = oy - Math.ceil(H * .5) } if (water) bcy = oy - ry * .45;
   let hcx = bcx + ax_ * rx * .78 - nx * ry * (long ? .1 : .5), hcy = bcy + ay_ * rx * .78 - ny * ry * (long ? .1 : .5);
   if (pose === 'peck') { hcx = bcx + ax_ * rx * .95 + nx * ry * .1; hcy = bcy + ay_ * rx * .95 + ny * ry * .1 + ry * .55 }
   if (clingy) { hcx = bcx + ax_ * rx * .8 + nx * ry * .1 + (pose === 'hammer' ? -ry * .3 : 0); hcy = bcy + ay_ * rx * .8 + ny * ry * .1 }
   if (pose === 'swim') { hcx = bcx + rx * .8; hcy = bcy - ry * 1.5 } if (pose === 'dabble') { hcx = bcx + rx * 1.0; hcy = bcy + ry * 1.2 }
-  if (flying && long) { hcx = bcx + rx * 1.25; hcy = bcy - ry * .15 }
+  if (flying && long) { hcx = bcx + rx * 1.25; hcy = bcy - ry * .15 } else if (flying) { hcx = bcx + rx * .92; hcy = bcy - ry * .3 }
   const rearx = bcx - ax_ * rx * .85, reary = bcy - ay_ * rx * .85, tdir = flying ? Math.PI : pose === 'dabble' ? ang + Math.PI + rad(8) : water ? Math.PI + rad(14) : ang + Math.PI + rad(10);
   const tex = rearx + Math.cos(tdir) * tail * (kind.longtail && !flying ? 1.5 : 1), tey = reary + Math.sin(tdir) * tail * (kind.longtail && !flying ? 1.5 : 1), tnx = -Math.sin(tdir), tny = Math.cos(tdir);
   const tpts = [[rearx + tnx * tw * .3, reary + tny * tw * .3], [tex + tnx * tw * .5, tey + tny * tw * .5], [tex - tnx * tw * .5, tey - tny * tw * .5], [rearx - tnx * tw * .3, reary - tny * tw * .3]];
@@ -3704,12 +3707,16 @@ function birdArt(kind, pose, flip) {
   if (!flying && !water && !clingy && leg > .5) { const lx = Math.floor(bcx + rx * .02) + .5; for (const dx of [0, k > 1.4 ? 2 : 1.4]) bpaint(buf, W, H, bseg(lx + dx, bcy + ry * .5, lx + dx - (pose === 'hop' ? .5 : 0), oy, .9), () => P.leg || [60, 50, 44], .5) }
   // the tail
   bpaint(buf, W, H, bpoly(tpts), () => P.tail, .35);
-  // the wings in flight: across the heading from the shoulders, the tips up, level or down
-  const wcol = (x, y) => (P.wing2 && Math.abs(x - bcx) > wl * .55 ? P.wing2 : P.wing);
-  if (flying && pose !== 'fold') { const sy = bcy - ry * 1.0, wb = Math.max(1.5, ry * .95), up = pose === 'fup', dn = pose === 'fdn';
-    for (const s of [-1, 1]) { const tipx = bcx + s * wl * (up ? .74 : dn ? .72 : 1), tipy = sy + (up ? -wl * .78 : dn ? wl * .42 : -wl * .06), rt = bcx + s * rx * .05;
-      bpaint(buf, W, H, bpoly([[rt, sy - wb * .5], [rt + s * rx * .7, sy + wb * .9], [tipx, tipy + (dn ? 0 : wb * .15)], [tipx, tipy - wb * .2]]), wcol, .3) } }
+  // the wings in flight: each from the shoulder (its root along the back), the tip swept a little back; the far one up the picture (raised: high over the
+  // back; level: up the picture, foreshortened; lowered: mostly behind the body), the near one down it (raised: up beside the far one; level: down the
+  // picture; lowered: well below the belly). The far wing a shade darker, the ends of both (the primaries) the darker colour of the wing.
+  const WTIP = { fup: [[-.48, -.88], [.02, -.78]], fmid: [[-.45, -.55], [-.42, .5]], fdn: [[-.4, .2], [-.5, .78]] }[pose];
+  const wingQ = ([tx, ty]) => { const sx = bcx + rx * .1, sy = bcy - ry * .3, cw = Math.max(2, rx * 1.2), l = Math.hypot(tx, ty) || 1, px = -ty / l, py = tx / l, tw2 = Math.max(.8, cw * .34), X = tx * wl, Y = ty * wl;
+    return bpoly([[sx - cw * .55, sy], [sx + cw * .45, sy], [sx + X + px * tw2, sy + Y + py * tw2], [sx + X - px * tw2, sy + Y - py * tw2]]) };
+  const wcol = far => (x, y) => { const c = P.wing2 && Math.hypot(x - bcx - rx * .12, y - bcy + ry * .35) > wl * .62 ? P.wing2 : P.wing; return far ? bdark(c, .82) : c };
+  if (WTIP) bpaint(buf, W, H, wingQ(WTIP[0]), wcol(true), .3);
   bpaint(buf, W, H, body, bodyCol, .5);
+  if (WTIP) bpaint(buf, W, H, wingQ(WTIP[1]), wcol(false), .3);
   if (long) { // a neck: from the front of the body to the head
     bpaint(buf, W, H, bseg(bcx + rx * .55, bcy - ry * .15 + (pose === 'dabble' ? ry * .6 : 0), hcx - hr * .3, hcy + hr * .2, Math.max(1.2, hr * 1.1)), (x, y) => (pose === 'swim' || flying) ? P.throat : P.face, .4) }
   if (wing) bpaint(buf, W, H, wing, wingCol, .5);
@@ -3785,6 +3792,8 @@ const BKIND = {
 // of sight, ahead, so the sky is not always full of arrivals. Small birds beat their wings fast and dip as they go (the finches, the tits and the sparrows bound),
 // crows row slowly and glide. By day only: at dusk the flocks leave to roost (the crows in a stream over the sky); in rain and fog there are few.
 // =====================================================================================================================
+// (the crows streaming to their roost high over the wood: the same crows, smaller with the height and the distance)
+BKIND.crowfar = Object.assign({}, BKIND.crow, { k: .6, feet: 'air', hab: {} });
 const BIRDS = [], BFL = [], BSPR = new Map(), BNODES = new WeakMap(), BTRUNK = new WeakMap(), BLDS = [], BOCC = new Set(), BSKY = [];
 let BTEST = false, BFIRST = false, BSPAWNT = 3, BAIRT = 30, BSKYT = 90 + Math.random() * 120, BDUSKT = 10, BZONE = { v: .3, g: .3, s: .1, f: .3, w: .1 }, BZT = 0, BSTART = false, BID = 1, BFID = 1, BCNT = 0;
 const BDBG = { rest: 0, air: 0, flush: 0, move: 0, leave: 0, cull: 0, flit: 0 }; // (what has happened, for the tests)
@@ -4016,7 +4025,7 @@ function drawBird(B) { const S = bsprite(B.kind, bPose(B), B.f < 0), sw = B.st =
 // over everything: the birds that fly over the roofs, and the geese and the crows high up
 function drawBirdsHigh() { for (const B of BIRDS) if ((B.st === 'fly' || B.st === 'flit') && B.z >= BHIGH && B.x > CAM.x - 24 && B.x < CAM.x + W + 24 && B.y - B.z > CAM.y - 30 && B.y - B.z < CAM.y + H + 30) drawBird(B);
   for (const G of BSKY) { const goose = G.kind === 'goose', haze = goose ? .78 : .86; ctx.globalAlpha = haze * (1 - .5 * WX.fog); for (const m of G.m) { const x = G.x + m[0], y = G.y + m[1] - G.z + m[2]; if (x < CAM.x - 16 || x > CAM.x + W + 16 || y < CAM.y - 16 || y > CAM.y + H + 16) continue;
-      const p = (G.ph * (goose ? 1.1 : 1.9) + m[3]) % 1, pose = !goose && Math.sin(G.ph * .7 + m[3] * 6) > .5 ? 'fmid' : p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid', S = bsprite(goose ? 'goose' : 'crow', pose, G.vx < 0); ctx.drawImage(S.cv, Math.round(x) - S.ax, Math.round(y) - S.ay) } ctx.globalAlpha = 1 } }
+      const p = (G.ph * (goose ? 1.1 : 1.9) + m[3]) % 1, pose = !goose && Math.sin(G.ph * .7 + m[3] * 6) > .5 ? 'fmid' : p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid', S = bsprite(goose ? 'goose' : 'crowfar', pose, G.vx < 0); ctx.drawImage(S.cv, Math.round(x) - S.ax, Math.round(y) - S.ay) } ctx.globalAlpha = 1 } }
 // ---- the voices ----
 function bnote(A, dst, t0, o) { const osc = A.createOscillator(), g = A.createGain(); osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f[0], t0); for (let i = 1; i < o.f.length; i++) osc.frequency.linearRampToValueAtTime(o.f[i], t0 + o.d * i / (o.f.length - 1)); let last = osc;
   if (o.bp) { const f = A.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = o.bp; f.Q.value = o.q || 1.5; osc.connect(f); last = f }
@@ -4425,12 +4434,13 @@ const PLACES = {};
       { id: 'hazel', share: .28, keep: .32, kinds: [['bare', 3], ['decid', 1], ['aspen', .6], ['birch', .5], ['spruce', .4]], bt: 'oak', underKeep: .8, under: [['barebush', 4], ['bush', 1.6], ['log', 1.2], ['branch', 1.4], ['sapling', .5], ['stump', .5], ['snag', .4]],
         extra: { p: .55, kinds: [['barebush', 3], ['bush', 1]] } } ] },
     // the people: the warden by the porch, now and then over to the order board; campers going about the camp along
-    // its paths (route points: x, y and how long they stop there, seconds); at night campers sit at their fires
+    // its paths (route points: x, y, how long they stop there, seconds, and which way they then face, degrees from the
+    // north); at night campers sit at their fires
     npcs: [
-      { id: 'warden', look: { id: 'warden', sex: 'm', age: 'old', h: 17.4, build: 1.15, skin: 1, hair: [196, 194, 188], cut: 'short', beard: [184, 182, 176], hat: 'cap', hatCol: [58, 76, 56], top: [92, 104, 64], topKind: 'jacket', legs: [62, 66, 80], boots: [40, 36, 34] }, route: [[378, 371, 40], [470, 384, 0], [552, 396, 12], [470, 384, 0]] },
-      { id: 'tourist-1', look: { id: 'tourist-1', sex: 'f', h: 16.6, build: .88, skin: 2, hair: [150, 70, 40], cut: 'tail', top: [214, 112, 46], topKind: 'jacket', legs: [64, 80, 120], boots: [200, 200, 196], carry: 'bucket' }, route: [[432, 404, 20], [470, 360, 0], [600, 352, 0], [704, 350, 0], [790, 346, 0], [792, 400, 0], [800, 444, 18], [792, 400, 0], [790, 346, 0], [704, 350, 0], [600, 352, 0], [470, 360, 0]] },
-      { id: 'tourist-2', look: { id: 'tourist-2', sex: 'm', h: 18.8, build: 1.05, skin: 0, hair: [60, 44, 32], cut: 'short', beard: [64, 46, 34], hat: 'beanie', hatCol: [130, 132, 138], top: [58, 88, 150], topKind: 'fleece', legs: [104, 98, 74], boots: [70, 54, 40], carry: 'towel' }, route: [[546, 172, 25], [546, 240, 0], [500, 320, 0], [600, 330, 0], [684, 322, 14], [600, 330, 0], [500, 320, 0], [546, 240, 0]] },
-      { id: 'tourist-3', look: { id: 'tourist-3', sex: 'm', h: 17.8, build: .9, skin: 3, hair: [40, 32, 28], cut: 'short', hat: 'hood', top: [150, 52, 56], topKind: 'hoodie', legs: [40, 42, 48], boots: [220, 220, 214], carry: 'backpack', carryCol: [60, 70, 50] }, route: [[214, 210, 30], [260, 240, 0], [330, 290, 0], [430, 330, 0], [540, 330, 0], [684, 322, 10], [540, 330, 0], [430, 330, 0], [330, 290, 0], [260, 240, 0]] },
+      { id: 'warden', look: { id: 'warden', sex: 'm', age: 'old', h: 17.4, build: 1.15, skin: 1, hair: [196, 194, 188], cut: 'short', beard: [184, 182, 176], hat: 'cap', hatCol: [58, 76, 56], top: [92, 104, 64], topKind: 'jacket', legs: [62, 66, 80], boots: [40, 36, 34] }, route: [[378, 371, 40, 180], [470, 384, 0], [552, 396, 12, 45], [470, 384, 0]] },
+      { id: 'tourist-1', look: { id: 'tourist-1', sex: 'f', h: 16.6, build: .88, skin: 2, hair: [150, 70, 40], cut: 'tail', top: [214, 112, 46], topKind: 'jacket', legs: [64, 80, 120], boots: [200, 200, 196], carry: 'bucket' }, route: [[432, 404, 20], [470, 360, 0], [600, 352, 0], [704, 350, 0], [790, 346, 0], [792, 400, 0], [800, 444, 18, 70], [792, 400, 0], [790, 346, 0], [704, 350, 0], [600, 352, 0], [470, 360, 0]] },
+      { id: 'tourist-2', look: { id: 'tourist-2', sex: 'm', h: 18.8, build: 1.05, skin: 0, hair: [60, 44, 32], cut: 'short', beard: [64, 46, 34], hat: 'beanie', hatCol: [130, 132, 138], top: [58, 88, 150], topKind: 'fleece', legs: [104, 98, 74], boots: [70, 54, 40], carry: 'towel' }, route: [[546, 172, 25, 0], [546, 240, 0], [500, 320, 0], [600, 330, 0], [684, 322, 14, 10], [600, 330, 0], [500, 320, 0], [546, 240, 0]] },
+      { id: 'tourist-3', look: { id: 'tourist-3', sex: 'm', h: 17.8, build: .9, skin: 3, hair: [40, 32, 28], cut: 'short', hat: 'hood', top: [150, 52, 56], topKind: 'hoodie', legs: [40, 42, 48], boots: [220, 220, 214], carry: 'backpack', carryCol: [60, 70, 50] }, route: [[214, 210, 30, 330], [260, 240, 0], [330, 290, 0], [430, 330, 0], [540, 330, 0], [684, 322, 10, 350], [540, 330, 0], [430, 330, 0], [330, 290, 0], [260, 240, 0]] },
     ],
     // who sits at each fire when it burns: offset from the fire and the way they face
     sitters: { 'fire-o': [[-16, 2, 90], [12, 10, 315]], 'fire-g': [[14, 3, 270]], 'fire-b': [[-13, 2, 90], [13, 3, 270]], 'fire-y': [[-14, 4, 90]], 'fire-r': [[-19, 3, 90], [3, 16, 0]] },
@@ -4579,13 +4589,13 @@ const PLACES = {};
     // the people: an old fisherman between the boats and the jetty, a man mending a net by the first house, a woman with a bucket to the well
     npcs: [
       { id: 'fisher-1', look: { id: 'fisher-1', sex: 'm', age: 'old', h: 17.2, build: 1.1, skin: 1, hair: [150, 148, 142], cut: 'short', beard: [150, 148, 142], hat: 'cap', hatCol: [70, 70, 64], top: [58, 84, 74], topKind: 'jacket', legs: [78, 84, 70], boots: [40, 52, 40], carry: 'bucket' },
-        route: [[560, 252, 20], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
+        route: [[560, 252, 20, 0], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35, 10], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25, 340], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
-        route: [[250, 400, 30], [196, 396, 0], [166, 390, 0], [160, 350, 0], [170, 326, 55], [160, 350, 0], [166, 390, 0], [196, 396, 0]] }, // (round the west end of the clothes line, not through its post)
+        route: [[250, 400, 30, 0], [196, 396, 0], [166, 390, 0], [160, 350, 0], [170, 326, 55, 315], [160, 350, 0], [166, 390, 0], [196, 396, 0]] }, // (round the west end of the clothes line, not through its post)
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
     { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
-        route: [[384, 403, 22], [444, 414, 0], [486, 407, 40], [444, 414, 0]] }, // (by the street, clear of the pole at 470,400)
+        route: [[384, 403, 22, 0], [444, 414, 0], [486, 407, 40, 350], [444, 414, 0]] }, // (by the street, clear of the pole at 470,400)
     ],
     sitters: { 'fire-1': [[-18, -20, 180], [18, -20, 180]] },
     poi: [
@@ -5419,21 +5429,53 @@ function stepRider(dt) {
   R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = R.v > 4 ? (R.steer > .16 ? 1 : R.steer < -.16 ? -1 : 0) : 0 }
 
 // ================= people =================
-// Walkers go round their routes at a stroll (1.2 m/s), stop where the route says, give way to the bike, and stand
-// shifting their weight while they wait; sitters appear at a fire while it burns.
-const NPCS = PLW.flatMap(W => (W.P.npcs || []).map(n => { const route = n.route.map(([x, y, w]) => { const p = W.toW(x, y); return [p[0], p[1], w || 0] }); return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: n.dir ?? 4, dist: 0, idleT: Math.random() * 3, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } }));
-const SITS = []; cowsInit(); gullsInit(); const dirOf = (dx, dy) => ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8;
+// Walkers go round their routes, each at their own pace (an old man slower than a young woman, slower still with a full
+// bucket, and never quite even), getting going in a step or two and slowing for the last steps before a stop; they turn as
+// they walk, a little before a corner, not all at once at it, and turn round on the spot where the way goes back. At a stop
+// they face where the route says (a route point: x, y, how long they stop, and which way they face, degrees from the north),
+// stand shifting their weight, look about now and then, and turn to watch the bike go by. They give way to it: slowing and
+// stopping when it is in their way, waiting till it has gone. Sitters appear at a fire while it burns.
+const angOf = (dx, dy) => Math.atan2(dx, -dy), dirOfA = a => ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8;
+const NPCS = PLW.flatMap(W => (W.P.npcs || []).map(n => { const route = n.route.map(([x, y, w, f]) => { const p = W.toW(x, y); return [p[0], p[1], w || 0, f] }), r = mulberry(hashStr(n.id) + 7);
+  const vmax = 12 * (n.look.age === 'old' ? .8 : 1) * (n.look.carry === 'bucket' ? .92 : 1) * (.94 + r() * .12), d0 = n.dir ?? 4;
+  return { id: n.id, look: n.look, route, i: 0, x: route[0][0], y: route[0][1], wait: route[0][2] * (.4 + Math.random() * .6), dir: d0, hd: d0 * Math.PI / 4, v: 0, vmax, ph0: r() * 9, dist: 0, gp: 0, gf: 0, idleT: Math.random() * 3, ia: 'idle', ib: 0, it: 1 + Math.random() * 2, smoker: !!n.smoker, sf: 0, st: Math.random() * 17 } }));
+const SITS = []; cowsInit(); gullsInit(); const dirOf = (dx, dy) => dirOfA(angOf(dx, dy));
+// the heading turned toward an angle at a person's pace of turning (rad/s); the sprite's direction follows it
+function npcTurn(P, a, rate, dt) { const d = wrapA(a - P.hd), m = rate * dt; P.hd = wrapA(P.hd + clamp(d, -m, m)); P.dir = dirOfA(P.hd); return Math.abs(d) - Math.min(Math.abs(d), m) }
+// standing: weight from one foot to the other, now and then a look to one side, longer waits a turn of the body and back;
+// the bike coming near is watched
+function npcIdle(P, dt) { const dR = Math.hypot(R.x - P.x, R.y - P.y);
+  if (dR < 34 && (Math.abs(R.v) > 3 || dR < 16)) { const a = angOf(R.x - P.x, R.y - P.y), off = wrapA(a - P.hd); if (Math.abs(off) > .5) npcTurn(P, a, 3.2, dt); P.ia = Math.abs(off) > .3 ? 'look' : 'idle'; P.ib = off > 0 ? 1 : 0; return }
+  if (P.fa !== undefined && npcTurn(P, P.fa, 3, dt) > .05) return; // (turning to face where they stop)
+  P.it -= dt; if (P.it > 0) return; const q = Math.random();
+  if (P.ia === 'look' || q < .55) { P.ia = 'idle'; P.ib = P.ib ? 0 : 1; P.it = 1.6 + Math.random() * 2.6 }
+  else { P.ia = 'look'; P.ib = Math.random() < .5 ? 0 : 1; P.it = .8 + Math.random() * 1.4 } }
 function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT += dt; if (P.smoker) { guardStep(P, dt); continue }
-    if (P.wait > 0) { P.wait -= dt; P.moving = false; continue }
-    const nx = (P.i + 1) % P.route.length, [tx, ty, tw] = P.route[nx], dx = tx - P.x, dy = ty - P.y, d = Math.hypot(dx, dy), sp = 12 * dt;
-    // giving way: the bike just ahead of them on their way
-    const ax = P.x + dx / (d || 1) * 7, ay = P.y + dy / (d || 1) * 7; if (Math.hypot(R.x - ax, R.y - ay) < 8) { P.moving = false; P.dir = dirOf(R.x - P.x, R.y - P.y); continue }
-    if (d <= sp) { P.x = tx; P.y = ty; P.i = nx; P.wait = tw; P.moving = false; continue }
-    P.x += dx / d * sp; P.y += dy / d * sp; P.dist += sp; P.dir = dirOf(dx, dy); P.moving = true }
+    // a stop that is over: settling the feet first (a step finished to the feet together), then standing as long as the route says
+    if (P.settle) { const g0 = Math.floor(P.gp); P.gp += dt / .07; const g1 = Math.floor(P.gp); for (let g = g0 + 1; g <= g1; g++) if (g % (NPC_WALKN / 2) === 0) { P.gp = g; P.settle = false; P.moving = false; break } P.gf = Math.floor(P.gp) % NPC_WALKN; continue }
+    if (P.wait > 0) { P.wait -= dt; P.moving = false; npcIdle(P, dt); continue }
+    const nx = (P.i + 1) % P.route.length, [tx, ty, tw] = P.route[nx], dx = tx - P.x, dy = ty - P.y, d = Math.hypot(dx, dy), stop = tw > 0;
+    // past a point they only walk through, on to the next (a few px early: the corner is taken a little short)
+    if (!stop && d < 4) { P.i = nx; continue }
+    const want = angOf(dx, dy), off = Math.abs(wrapA(want - P.hd));
+    // giving way: the bike in their way, just ahead: slow down and stop, and watch it
+    const fx = Math.sin(P.hd), fy = -Math.cos(P.hd), rx = R.x - P.x, ry = R.y - P.y, ahead = rx * fx + ry * fy, side = Math.abs(rx * fy - ry * fx), inWay = ahead > -2 && ahead < 15 && side < 7;
+    // the speed they would walk at: their own, a little uneven; less in a turn; brought down to a stop over the last steps; none while the way is blocked or they turn round
+    let vt = P.vmax * (1 + .05 * Math.sin(P.idleT * .7 + P.ph0)) * clamp(Math.cos(off), .25, 1); if (stop) vt = Math.min(vt, Math.sqrt(2 * 15 * Math.max(0, d - .2)));
+    if (off > 1.75 || inWay) vt = 0;
+    P.v += clamp(vt - P.v, -(inWay ? 34 : 20) * dt, 14 * dt);
+    if (inWay && P.v < .5) { P.v = 0; if (P.moving && Math.floor(P.gp) % (NPC_WALKN / 2)) { P.settle = true; continue } P.moving = false; npcIdle(P, dt); continue }
+    // turning: on the spot (stepping round) when the way is behind them, else as they walk; straight at a stop that is near
+    npcTurn(P, want, P.v < 1 ? 4.5 : 3.4, dt);
+    if (P.v < .05) { P.moving = off > .3; if (P.moving) { P.gp += dt / .11; P.gf = Math.floor(P.gp) % NPC_WALKN } continue } // (turning on the spot: stepping)
+    const s = P.v * dt, mx = d < 3 ? dx / (d || 1) : Math.sin(P.hd), my = d < 3 ? dy / (d || 1) : -Math.cos(P.hd);
+    if (stop && d <= Math.max(.3, s)) { P.x = tx; P.y = ty; P.i = nx; P.wait = tw; P.v = 0; P.fa = P.route[nx][3] !== undefined ? P.route[nx][3] * D2R : undefined; P.it = .5 + Math.random(); P.settle = Math.floor(P.gp) % (NPC_WALKN / 2) !== 0; P.moving = P.settle; continue }
+    // the feet: a cycle of two steps to 1.28 m, so they do not slide
+    P.x += mx * s; P.y += my * s; P.dist += s; P.gp += s / 12.8 * NPC_WALKN; P.gf = Math.floor(P.gp) % NPC_WALKN; P.moving = true }
   SITS.length = 0; for (const F of FIRES) { if (F.I < .35) continue; const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
-function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, Math.floor(P.dist / 3.2) % 4);
-  const k = Math.floor(P.idleT / 1.8 + P.x * .1) % 7; return k === 5 ? npcSprite(P.look, 'look', P.dir, 0) : k === 6 ? npcSprite(P.look, 'look', P.dir, 1) : npcSprite(P.look, 'idle', P.dir, k % 2) }
+function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, P.gf);
+  return npcSprite(P.look, P.ia === 'look' ? 'look' : 'idle', P.dir, P.ib) }
 const npcBlocks = (x, y, rad) => { for (const P of NPCS) if (Math.hypot(P.x - x, P.y - y) < 3.6 + rad) return P; for (const P of SITS) if (Math.hypot(P.x - x, P.y - y) < 4 + rad) return P; return null };
 
 // ================= camera =================
