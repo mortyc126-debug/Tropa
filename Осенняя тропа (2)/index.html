@@ -2297,7 +2297,7 @@ function torsoTex(L, z0, z1) { const c = L.top || [60, 110, 80]; return (x, n, z
 // pocket flaps, the seam behind; a coat: lapels over the sweater, the fronts' edge a little to one side, two rows of buttons, the belt
 function heroTopTex(L, z0, z1, d0, d1, hd, zw, zs) { const sh = L.shirt || [214, 222, 232], tie = L.tie, k = L.topKind, coat = k === 'coat', vz = coat ? zs - 2.6 : zw + .9;
   return (x, n, z, col) => { const t = z1 > z0 ? clamp((z - z0) / (z1 - z0), 0, 1) : 0, dn = 1 + d0 + (d1 - d0) * t, ax = Math.abs(x), fr = n < dn - hd * .3;
-    if (k === 'sweater') return z < z0 + .45 && z1 <= zw + .01 ? cmul(col, .9) : (Math.round(x * 3 + z * .5) % 2 ? col : cmul(col, .96)); // (a ribbed hem; the knit)
+    if (k === 'sweater' || k === 'home') return z < z0 + .45 && z1 <= zw + .01 ? cmul(col, .9) : (Math.round(x * 3 + z * .5) % 2 ? col : cmul(col, .96)); // (a ribbed hem; the knit)
     if (coat && Math.abs(z - zw) < .34) return fr && ax < .34 && Math.abs(z - zw) < .2 ? [172, 146, 100] : cmul(col, .74); // the belt, its buckle in front
     if (fr) { const w = z > vz ? (z - vz) / (zs - vz) * (coat ? 1.15 : 1.05) : -1;
       if (ax < w) { if (coat) return ax > w - .34 ? cmul(col, 1.14) : sh;
@@ -2387,6 +2387,9 @@ const HEROES = {
     rc: { jacket: [184, 136, 88], jacketD: [142, 100, 62], jacketL: [214, 170, 120], pants: [50, 56, 84], pantsD: [36, 40, 60], pantsL: [76, 84, 114], boot: [70, 48, 36], sole: [34, 26, 22],
       glove: [226, 178, 146], gloveL: [242, 204, 178], gloveD: [178, 128, 100], hair: [112, 64, 42], coat: true, hat: false, tail: true, pack: false, scarf: [66, 106, 84], scarfS: [96, 138, 110], scarfD: [44, 74, 58] } } };
 HEROES.dasha.office = Object.assign({}, HEROES.dasha.look, { id: 'hero-dasha-office', topKind: 'sweater', top: [146, 70, 80], scarf: null }); // (her coat on the hook)
+// at home: a sweatshirt, soft trousers, socks
+HEROES.roma.home = Object.assign({}, HEROES.roma.look, { id: 'hero-roma-home', topKind: 'home', top: [88, 100, 96], legs: [72, 76, 90], boots: [196, 192, 184], sole: [150, 146, 140] });
+HEROES.dasha.home = Object.assign({}, HEROES.dasha.look, { id: 'hero-dasha-home', topKind: 'home', top: [184, 150, 170], legs: [84, 84, 100], boots: [214, 208, 200], sole: [170, 164, 156], scarf: null });
 const INTRO_ON = /[?&]intro\b/.test(location.search) || typeof INTRO_PREVIEW !== 'undefined';
 const HERO0 = INTRO_ON ? null : (() => { try { return localStorage.getItem('trail.hero') } catch (e) { return null } })(); let HERO = HEROES[HERO0] || HEROES.roma, HGEN = 0;
 // the hero changed: their pictures made again (on foot at once as needed; on the bike in the background, the old ones dropped)
@@ -2420,8 +2423,8 @@ function t3shift(M, dx, dn, dz) { const seen = new Set(), S = p => { if (!seen.h
   for (const f of M.faces) { if (f.tex) { const tx = f.tex; f.tex = (x, n, z, ...a) => tx(x - dx, n - dn, z - dz, ...a) } f.pts.forEach(S); f.c = [f.c[0] + dx, f.c[1] + dn, f.c[2] + dz] } for (const L of M.lines) { S(L.a); S(L.b) } for (const d of M.dots) S(d[0]); return M }
 const t3join = (A, ...Bs) => { for (const B of Bs) { A.faces.push(...B.faces); A.lines.push(...B.lines); A.dots.push(...B.dots) } return A };
 // a card's model drawn: scaled to the card, its origin at O on the card
-function cardDraw(M, weather) { if (!weather) for (const f of M.faces) f.clean = true; t3scale(M, CARD.S); const sp = t3sprite(() => M, [0])[0]; return { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay } }
-const cardP = (O, x, n, z) => [O[0] + (x + n * T3S) * CARD.S, O[1] + (-n - z * T3K) * CARD.S];
+function cardDraw(M, weather, S = CARD.S) { if (!weather) for (const f of M.faces) f.clean = true; t3scale(M, S); const sp = t3sprite(() => M, [0])[0]; return { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay } }
+const cardP = (O, x, n, z, S = CARD.S) => [O[0] + (x + n * T3S) * S, O[1] + (-n - z * T3K) * S];
 
 // ---- the furniture of the office ----
 function cardDesk(x0, n0, x1, n1, o = {}) { const M = T3(), top = o.col || [204, 200, 190], leg = [120, 124, 130];
@@ -2493,25 +2496,311 @@ const CARD_OFFICE = {
     g.save(); g.globalCompositeOperation = 'lighter'; { const [sx, sy] = P(2, 26, 11.5), gr = g.createRadialGradient(sx, sy, 0, sx, sy, 14); gr.addColorStop(0, 'rgba(70,96,130,.16)'); gr.addColorStop(1, 'rgba(60,80,110,0)'); g.fillStyle = gr; g.fillRect(sx - 14, sy - 14, 28, 28) } g.restore();
     g.fillStyle = `rgba(30,40,70,${.12 + .1 * (1 - day)})`; g.fillRect(0, 0, CARD.W, CARD.H) },
   lines: h => [h.id === 'dasha' ? 'Даша. Понедельник, девять утра.' : 'Рома. Понедельник, девять утра.', 'Отчёт. Совещание. Снова отчёт.'] };
-const INTRO_CARDS = [CARD_OFFICE];
+// ---- what the cards have in common: letters in the game's pixel font, rain, light, a cut to black, trees, people ----
+Object.assign(PF_FONT, { ':': ['.', '#', '.', '#', '.'], '-': ['...', '...', '###', '...', '...'], '?': ['##.', '..#', '.#.', '...', '.#.'], '!': ['#', '#', '#', '.', '#'] });
+function cardText(g, t, x, y, col, k = 1) { g.fillStyle = col; let X = Math.round(x); y = Math.round(y);
+  for (const ch of t) { if (ch === ' ') { X += 2 * k; continue } const f = PF_FONT[ch]; if (!f) { X += 4 * k; continue }
+    f.forEach((row, j) => [...row].forEach((v, i) => { if (v === '#') g.fillRect(X + i * k, y + j * k, k, k) })); X += (f[0].length + 1) * k } }
+const cardTextW = (t, k = 1) => pfTextW(t) * k;
+// rain over the whole card: k how hard, w the wind's slant
+function cardRain(g, T, k = 1, w = .35) { g.fillStyle = 'rgba(200,214,236,.42)';
+  for (let i = 0; i < 70 * k; i++) { const sp = 150 + h2(i, 2, 41) * 60, y = (h2(i, 1, 41) * 220 + T * sp) % 200 - 12, x = (h2(i, 0, 41) * 300 + y * w) % 280 - 12; g.fillRect(Math.round(x), Math.round(y), 1, 3) } }
+// a light (added: a lamp, a screen) over a disc of r px, fading out from its middle
+function cardGlow(g, x, y, r, rgb, a) { g.save(); g.globalCompositeOperation = 'lighter'; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r); g.restore() }
+const cardShade = (g, c) => { g.fillStyle = c; g.fillRect(0, 0, CARD.W, CARD.H) };
+// the dark between two moments of one card (v: where in its moment; d: how long the dark lasts each side)
+const cardCut = (g, v, lo = true, hi = true, d = .07) => { const a = Math.max(lo ? 1 - v / d : 0, hi ? 1 - (1 - v) / d : 0); if (a > 0) cardShade(g, `rgba(12,10,8,${Math.min(1, a)})`) };
+// a round dot of whole pixels (a button on the phone)
+function cardDisc(g, x, y, r, col) { g.fillStyle = col; for (let j = -r; j <= r; j++) { const w = Math.floor(Math.sqrt(r * r - j * j + r * .8)); g.fillRect(Math.round(x - w), Math.round(y + j), 2 * w + 1, 1) } }
+// a tear-off calendar's leaf in the corner: the month, the day, the day of the week and the time
+function cardCalendar(g, day, wd, time, x = 6, y = 6) { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 1, y + 1, 34, 32); g.fillStyle = '#f0ece2'; g.fillRect(x, y, 34, 32); g.fillStyle = '#c0453a'; g.fillRect(x, y, 34, 8);
+  cardText(g, 'ОКТЯБРЬ', x + 17 - cardTextW('ОКТЯБРЬ') / 2, y + 2, '#f8eee4'); cardText(g, day, x + 17 - cardTextW(day, 2) / 2, y + 10, '#2a2a30', 2); const t = wd + ' ' + time; cardText(g, t, x + 17 - cardTextW(t) / 2, y + 23, '#6a6a72') }
+// the phone, close, in a corner of the card (as a drawing in a comic): its lines, the two buttons of a call (ring), how clearly it is seen (a),
+// a slider (0..1) under the question, or its screen gone dark
+function cardPhone(g, a, lines, o = {}) { if (a <= 0) return; g.save(); g.globalAlpha = Math.min(1, a); const w = 54, h = 86, x = CARD.W - w - 8, y = 8, T = o.T || 0;
+  g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(x + 2, y + 2, w, h); g.fillStyle = '#1c1c22'; g.fillRect(x, y, w, h); g.fillStyle = '#3c3c46'; g.fillRect(x + 1, y + 1, w - 2, 1); g.fillRect(x + w / 2 - 5, y + 3, 10, 1);
+  g.fillStyle = o.off ? '#050506' : '#101a2c'; g.fillRect(x + 3, y + 6, w - 6, h - 12);
+  if (!o.off) { lines.forEach((t, i) => cardText(g, t, x + w / 2 - cardTextW(t) / 2, y + 16 + i * 10, i ? '#9aa6bc' : '#f2f4f8'));
+    if (o.ring) { const p = Math.sin(T * 9) > 0; cardDisc(g, x + 15, y + h - 20, 5, '#d0403a'); cardDisc(g, x + w - 15, y + h - 20, p ? 6 : 5, '#3cb060'); cardText(g, 'Х', x + 14, y + h - 22, '#fff') }
+    if (o.slide != null) { g.fillStyle = '#2c3446'; g.fillRect(x + 8, y + h - 24, w - 16, 7); cardDisc(g, x + 11 + (w - 22) * o.slide, y + h - 21, 3, '#e8ecf4') } }
+  g.restore() }
+// a spruce of stacked cones, a birch in its autumn yellow
+function cardCone(M, x, n, r, z0, z1, col, o = {}) { const seg = 9, tip = [x, n, z1], ctr = [x, n, z0 + (z1 - z0) * .3];
+  for (let i = 0; i < seg; i++) { const a0 = i / seg * TAU, a1 = (i + 1) / seg * TAU; t3face(M, [[x + Math.cos(a0) * r, n + Math.sin(a0) * r, z0], [x + Math.cos(a1) * r, n + Math.sin(a1) * r, z0], tip], col, ctr, o) } }
+function cardSpruce(M, x, n, h, seed) { t3cyl(M, x, n, .7, 0, h * .2, [92, 66, 46]); const col = cmix([44, 70, 52], [58, 82, 56], h2(seed, 1, 3));
+  for (const [r, a, b] of [[.21, .12, .46], [.17, .3, .64], [.12, .48, .82], [.07, .66, 1]]) cardCone(M, x, n, h * r, h * a, h * b, col, { tex: (X, N, Z, c) => (h2(Math.floor(X * 2), Math.floor(Z * 2 + N), seed) < .2 ? cmul(c, 1.22) : c) }) }
+function cardBirch(M, x, n, h, seed) { t3cyl(M, x, n, .55, 0, h * .8, [226, 224, 214], { tex: (X, N, Z, c) => (h2(Math.floor(Z * 1.5), Math.floor(X * 3 + N * 3), seed) < .22 ? [44, 44, 40] : c) });
+  for (let k = 0; k < 6; k++) { const a = k * 2.3 + seed, r = 2 + (k % 3); t3ball(M, [x + Math.cos(a) * r, n + Math.sin(a) * r * .8, h * (.62 + (k % 3) * .12)], 3.4, 3, 3.2, k % 2 ? [214, 168, 58] : [196, 140, 48]) } }
+// a person on a card, turned to dir (in eighths of a turn: 0 north, 2 east, 4 toward us, 6 west); look, or a function giving it when
+// the frames are made (the hero: chosen after the page has loaded)
+function cardPerson(look, pose, dir) { const M = personModel(typeof look === 'function' ? look() : look, Object.assign({ fine: 1 }, pose)); t3rot(M, dir * 45); return M }
+// a person walking from a to b (model units) between moments u0 and u1 of the card (their steps as long as their speed), standing (idling)
+// before and after; o.dir, o.end: which way they face standing before and after; o.gone: not seen once at b (into the bus); o.come: the
+// moment they are first seen (out of the bus); o.clock: the card's moment as this walker counts it (for a card that goes round)
+function cardWalker(look, a, b, u0, u1, o = {}) { const dx = b[0] - a[0], dn = b[1] - a[1], len = Math.hypot(dx, dn), wd = (Math.round(Math.atan2(dx, dn) / (Math.PI / 4)) % 8 + 8) % 8;
+  return { n: o.sortN ?? a[1], frames: 12, make: f => t3shift(cardPerson(look, f < 8 ? { walk: f / 8 } : { sway: f % 2 ? 1 : -1 }, f < 8 ? wd : f < 10 ? (o.end ?? wd) : (o.dir ?? wd)), a[0], a[1], 0),
+    at: (T, u) => { const w = o.clock ? o.clock(T, u) : u, k = clamp((w - u0) / (u1 - u0), 0, 1); if (o.gone && k >= 1) return null; if (o.come != null && w < o.come) return null;
+      const al = Math.min(o.gone && k > .8 ? (1 - k) / .2 : 1, o.come != null ? (w - o.come) / .04 : 1), id = Math.floor(T * 1.1 + a[0] * .1) % 2;
+      return { x: dx * k, n: dn * k, f: k <= 0 ? 10 + id : k >= 1 ? 8 + id : Math.floor(k * len / 10.7 * 8) % 8, a: al } } } }
+// the townsfolk of the cards: at the bus stop, in the bus
+const CARD_FOLK = [
+  { id: 'folk-1', sex: 'm', h: 17.8, build: 1.1, skin: 3, hair: [40, 36, 34], cut: 'short', hat: 'cap', hatCol: [54, 58, 64], top: [74, 78, 66], topKind: 'jacket', legs: [46, 48, 56], boots: [32, 30, 30] },
+  { id: 'folk-2', sex: 'f', h: 16, build: 1.15, skin: 0, hair: [196, 192, 186], cut: 'short', hat: 'beanie', hatCol: [128, 52, 70], top: [104, 72, 88], topKind: 'jacket', legs: [62, 58, 66], boots: [44, 36, 34], age: 'old' },
+  { id: 'folk-3', sex: 'm', h: 17.6, build: .9, skin: 2, hair: [30, 26, 24], cut: 'short', hat: 'hood', hatCol: [58, 92, 118], top: [58, 92, 118], topKind: 'hoodie', legs: [40, 44, 60], boots: [214, 214, 210], carry: 'backpack', carryCol: [44, 46, 50] },
+  { id: 'folk-4', sex: 'f', h: 16.8, build: .95, skin: 1, hair: [72, 46, 32], cut: 'long', top: [150, 152, 160], topKind: 'jacket', legs: [36, 36, 42], boots: [30, 26, 26] },
+  { id: 'folk-5', sex: 'm', h: 18, build: 1.05, skin: 0, hair: [130, 120, 110], cut: 'short', beard: [120, 112, 104], top: [42, 44, 50], topKind: 'jacket', legs: [42, 44, 50], boots: [26, 24, 24], age: 'old' },
+  { id: 'folk-6', sex: 'f', h: 16.4, build: 1, skin: 2, hair: [150, 60, 40], cut: 'tail', top: [96, 120, 92], topKind: 'fleece', legs: [56, 60, 80], boots: [60, 44, 36] }];
+const heroIn = where => () => HERO[where] || HERO.look;
+
+// ---- home: a small flat late in the evening; the hero on the sofa by the side wall with the phone, the TV going on the far wall (a series,
+// for the noise), a takeaway on the table, the city and the rain in the window; the clock's evening going by, seven set, the lights out ----
+const CARD_HOME = {
+  O: [CARD.W / 2 - 4, CARD.H - 4], dur: 10,
+  bg() { const M = T3(), wall = [146, 134, 118], side = [130, 120, 106], floor = [116, 90, 66], wood = [120, 90, 64], sofa = [84, 98, 110], dark = [30, 30, 34];
+    t3face(M, [[-34, -4, 0], [34, -4, 0], [34, 30, 0], [-34, 30, 0]], floor, [0, 15, -5], { tex: (x, n, z, c) => { const s = Math.floor(n / 3), j = ((x + s * 7) % 16 + 16) % 16; return ((n % 3) + 3) % 3 < .25 || j < .25 ? cmul(c, .82) : h2(Math.floor(x), s, 13) < .3 ? cmul(c, .95) : c } });
+    t3face(M, [[-34, 30, 0], [34, 30, 0], [34, 30, 30], [-34, 30, 30]], wall, [0, 40, 15], { tex: (x, n, z, c) => { if (z < .9) return [98, 80, 62];
+      if (x > 8 && x < 26 && z > 8 && z < 22) return x < 8.8 || x > 25.2 || z < 8.8 || z > 21.2 || Math.abs(x - 17) < .35 ? [214, 210, 200] : [14, 18, 32];
+      if (x > -27 && x < -19 && z > 15 && z < 21) return x < -26.4 || x > -19.6 || z < 15.6 || z > 20.4 ? [92, 66, 44] : z < 17 + Math.sin(x * 1.3) * .6 ? [196, 120, 50] : z < 18.6 ? [70, 100, 64] : [150, 176, 196]; // (a picture: a forest in autumn)
+      return ((x % 4) + 4) % 4 < .35 ? cmul(c, .95) : c } });
+    t3face(M, [[-34, -4, 0], [-34, 30, 0], [-34, 30, 30], [-34, -4, 30]], side, [-44, 15, 15], { tex: (x, n, z, c) => (z < .9 ? [92, 76, 60] : c) });
+    // curtains, a shelf of books over the sofa, the rug, the sofa along the side wall, the lamp in the corner, the TV on its stand
+    for (const x of [5.6, 25.6]) t3box(M, x, 28.6, 6, x + 2.8, 29.6, 24, [140, 112, 92], { tex: (X, N, Z, c) => (((X * 3) % 2 + 2) % 2 < .6 ? cmul(c, .88) : c) });
+    t3box(M, -34, 9, 17, -31.6, 22, 17.6, wood); for (let k = 0; k < 8; k++) { const n0 = 9.4 + k * 1.5; t3box(M, -33.8, n0, 17.6, -32, n0 + 1.2, 19.8 + (k * 7 % 3) * .4, [[150, 60, 50], [60, 90, 120], [200, 180, 120], [70, 110, 80]][k % 4]) }
+    t3face(M, [[-21, 7, .06], [-5, 7, .06], [-5, 22, .06], [-21, 22, .06]], [126, 66, 58], [-13, 14, -5], { tex: (x, n, z, c) => (x < -20 || x > -6 || n < 8 || n > 21 ? [196, 170, 120] : (Math.floor(x) + Math.floor(n)) % 4 === 0 ? cmul(c, .85) : c) });
+    t3box(M, -32, 6, 0, -22, 24, 4.2, cmul(sofa, .85)); t3box(M, -29.6, 6.4, 4.2, -22.4, 23.6, 5.4, sofa, { tex: (x, n, z, c) => (Math.abs(n - 15) < .15 ? cmul(c, .8) : c) }); t3box(M, -32.4, 5.6, 4.2, -29.4, 24.4, 12, sofa);
+    for (const n of [4, 24.2]) t3box(M, -32.4, n, 0, -21.6, n + 2.2, 7.6, sofa);
+    t3cyl(M, -29, 27.6, 1.6, 0, .5, dark); t3cyl(M, -29, 27.6, .3, .5, 16, dark); t3cyl(M, -29, 27.6, 2.4, 15.5, 19, [230, 214, 172], { topCol: [244, 232, 200] });
+    t3box(M, -18, 26.4, 0, 2, 30, 5, wood, { tex: (x, n, z, c) => (Math.abs(x + 8) < .15 || Math.abs(z - 2.5) < .15 ? cmul(c, .78) : c) }); t3box(M, -9, 28.4, 5, -7, 29, 6.2, dark);
+    t3box(M, -15, 28.2, 6.2, -1, 29.2, 14.6, dark, { tex: (x, n, z, c) => (n < 28.3 && x > -14.4 && x < -1.6 && z > 6.8 && z < 14 ? [26, 34, 56] : c) });
+    // the bedside table with the alarm clock, by the sofa's end; a plant
+    t3box(M, -33, 0, 0, -26.4, 3.4, 6.4, wood); t3box(M, -32.6, 1.2, 6.4, -26.6, 2.8, 8.8, [36, 36, 40]);
+    t3cyl(M, 29, 26, 1.8, 0, 3.6, [150, 90, 60], { topCol: [70, 50, 36] }); for (let k = 0; k < 8; k++) { const a = k * 2.3; t3ball(M, [29 + Math.cos(a) * 1.6, 26 + Math.sin(a) * 1.4, 5 + (k % 3) * 1.6], 1.8, 1.5, 1.6, k % 2 ? [62, 104, 66] : [52, 90, 58]) }
+    return M },
+  units: [
+    { n: 15, frames: 2, fps: .7, make: f => t3shift(cardPerson(heroIn('home'), { chair: { seat: 5.4, lean: .2, bow: f ? .5 : .44 } }, 2), -25, 15, 0) },
+    { n: 10, frames: 1, make: () => { const M = T3(), w = [120, 90, 64]; t3box(M, -18, 9, 3.6, -9, 20, 4.3, w); for (const [x, n] of [[-17.4, 9.6], [-9.6, 9.6], [-17.4, 19.4], [-9.6, 19.4]]) t3box(M, x - .3, n - .3, 0, x + .3, n + .3, 3.6, cmul(w, .8));
+        t3box(M, -16, 12, 4.3, -12.4, 15, 6.6, [234, 230, 222], { tex: (x, n, z, c) => (z > 6.3 ? [214, 206, 190] : Math.abs(z - 5.2) < .5 && n < 12.2 ? [196, 64, 50] : c) }); // (the box from the takeaway)
+        t3line(M, [-13.4, 12.4, 6.7], [-10, 13.6, 7.6], [196, 170, 120]); t3line(M, [-13.1, 12.8, 6.7], [-9.8, 14, 7.4], [196, 170, 120]); // (chopsticks)
+        t3cyl(M, -11, 17, .7, 4.3, 6.3, [176, 40, 44], { topCol: [190, 190, 196] }); t3box(M, -15.4, 17.2, 4.3, -13.6, 18, 4.7, [40, 40, 44]); return M } }], // (a can, the remote)
+  over(g, T, u) { const O = this.O, P = (x, n, z) => cardP(O, x, n, z), off = u > .86, dark = u > .95;
+    // the city at night in the window, the rain on the glass
+    { const a = P(8.8, 30, 21.2), b = P(25.2, 30, 8.8); g.save(); g.beginPath(); g.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.clip();
+      for (let i = 0; i < 9; i++) { const x = a[0] + i * 7 - 3, h = 8 + h2(i, 1, 21) * 22; g.fillStyle = '#1e2436'; g.fillRect(x, b[1] - h, 6, h);
+        for (let j = 0; j < h / 3 - 1; j++) for (let q = 0; q < 2; q++) if (h2(i * 9 + j, q, 23) < .32) { g.fillStyle = 'rgba(250,206,120,.85)'; g.fillRect(x + 1 + q * 3, b[1] - h + 2 + j * 3, 1, 1) } }
+      g.fillStyle = 'rgba(190,200,220,.45)'; for (let k = 0; k < 24; k++) { const x = a[0] + h2(k, 3, 25) * (b[0] - a[0]), y = a[1] + ((h2(k, 4, 25) * 40 + T * 60) % (b[1] - a[1] + 4)) - 2; g.fillRect(Math.round(x), Math.round(y), 1, 2) } g.restore() }
+    // the series on the TV: a picture changing every second or so
+    const sc = Math.floor(T / 1.3), hue = [[90, 130, 190], [190, 140, 90], [80, 150, 110], [170, 90, 100]][sc % 4];
+    if (!off) { const a = P(-14.4, 28.2, 14), b = P(-1.6, 28.2, 6.8); g.fillStyle = `rgb(${hue})`; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+      g.fillStyle = `rgb(${cmul(hue, .55)})`; g.fillRect(a[0] + (b[0] - a[0]) * h2(sc, 1, 31) * .6, a[1] + (b[1] - a[1]) * .35, (b[0] - a[0]) * .3, (b[1] - a[1]) * .65); g.fillStyle = `rgb(${cmul(hue, 1.35)})`; g.fillRect(a[0], a[1], b[0] - a[0], 2) }
+    cardShade(g, `rgba(10,12,28,${dark ? .72 : off ? .66 : .5})`);
+    if (!off) { const [lx, ly] = P(-29, 27.6, 17); cardGlow(g, lx, ly, 44, '255,190,110', .28); cardGlow(g, lx, ly + 4, 11, '255,214,150', .5);
+      const [tx, ty] = P(-8, 28.2, 10.4); cardGlow(g, tx, ty, 58, hue.join(','), .14 + .05 * h2(Math.floor(T * 6), 2, 33)) }
+    if (!dark) { const [px, py] = P(-22.8, 15, 7.1); cardGlow(g, px, py, 6, '170,200,255', .45); cardGlow(g, px - 3, py - 16, 11, '150,180,240', .16) } // (the phone, its light on the face)
+    // the clock: the evening going by, then seven o'clock set, blinking
+    { const [cx, cy] = P(-32.6, 1.2, 8.8), h = 22 + 47 / 60 + Math.min(1, u / .8) * 1.4, t = u < .8 ? `${Math.floor(h) % 24}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` : (Math.floor(T * 2.5) % 2 ? '7:00' : '');
+      if (t) cardText(g, t, cx + 1, cy + 1, '#ff5a3c') } },
+  lines: h => ['Вечером — ужин из коробки, сериал фоном.', 'Будильник на семь. Завтра всё сначала.'] };
+
+// ---- the street: a bus stop on the near pavement, the road, a block of flats over the way; a bus coming along from the west, stopping
+// (its doors toward us), going on east ----
+const STREET_O = [CARD.W / 2 - 6, CARD.H - 2];
+function cardStreet(eve) { const M = T3(), pave = [128, 124, 118], road = [74, 76, 82], kerb = [158, 156, 150], fac = [172, 156, 134], glass = [58, 70, 88], lit = [238, 204, 128];
+  const tiles = (x, n, z, c) => (((x % 6) + 6) % 6 < .35 || ((n % 6) + 6) % 6 < .35 ? cmul(c, .86) : h2(Math.floor(x), Math.floor(n), 5) < .05 ? cmul(c, .93) : c);
+  t3face(M, [[-90, -14, 0], [100, -14, 0], [100, 16, 0], [-90, 16, 0]], pave, [0, 0, -5], { tex: tiles }); t3box(M, -90, 16, 0, 100, 17, 1.2, kerb);
+  t3face(M, [[-90, 17, 0], [100, 17, 0], [100, 47, 0], [-90, 47, 0]], road, [0, 32, -5], { tex: (x, n, z, c) => (Math.abs(n - 32) < .3 && ((x % 10) + 10) % 10 < 6 ? [204, 200, 186] : h2(Math.floor(x * .6), Math.floor(n * .6), 6) < .05 ? cmul(c, .86) : c) });
+  t3box(M, -90, 47, 0, 100, 48, 1.2, kerb); t3face(M, [[-90, 48, 1.2], [100, 48, 1.2], [100, 58, 1.2], [-90, 58, 1.2]], pave, [0, 53, -5], { tex: tiles });
+  // the block over the way: shops below and their green sign, flats above (in the evening some of them lit)
+  t3face(M, [[-90, 58, 0], [100, 58, 0], [100, 58, 50], [-90, 58, 50]], fac, [0, 70, 25], { tex: (x, n, z, c) => { const X = x + 90; if (z < 1.6) return cmul(c, .7);
+    if (z < 12) { const s = X % 30; if (s > 4 && s < 26 && z > 2.4 && z < 11) return s < 4.6 || s > 25.4 || z < 3 || z > 10.4 || Math.abs(s - 15) < .3 ? [70, 74, 80] : eve ? [232, 214, 160] : glass; return c }
+    if (z < 15) return [64, 96, 76];
+    const i = Math.floor(X / 11), j = Math.floor((z - 15) / 10), wx = X % 11, wz = (z - 15) % 10;
+    if (wx > 3 && wx < 9 && wz > 3 && wz < 8.6) return wx < 3.5 || wz < 3.5 ? [222, 222, 216] : eve && h2(i, j, 9) < .42 ? (h2(i, j, 8) < .5 ? lit : [250, 226, 170]) : glass;
+    return Math.abs(wz - 1.6) < .35 ? cmul(c, .9) : c } });
+  t3cyl(M, 44, 52, .5, 1.2, 31, [70, 74, 80]); t3line(M, [44, 52, 31], [44, 47.5, 32], [70, 74, 80]); t3box(M, 42.8, 46, 31, 45.2, 48.4, 32.2, [60, 64, 70]); // (a lamp over there)
+  return M }
+// the shelter: its two back posts (behind the people), or its front: the near posts, the roof, the bench, the side with an advertisement
+function cardShelter(front) { const M = T3(), post = [96, 102, 110], X = -26; // (its middle)
+  if (!front) { for (const x of [X - 13, X + 11]) t3cyl(M, x, 13, .45, 0, 23, post); return M }
+  for (const x of [X - 13, X + 11]) t3cyl(M, x, 4, .45, 0, 23, post);
+  t3box(M, X - 15, 3, 22.8, X + 13, 14.4, 23.8, [104, 112, 122], { tex: (x, n, z, c) => (z < 23.2 ? [78, 84, 92] : c) });
+  t3box(M, X - 10, 4.8, 4, X + 6, 6.8, 4.8, [156, 124, 88], { tex: plankX([156, 124, 88], 2) }); for (const x of [X - 9.5, X + 5.5]) t3box(M, x - .3, 5.4, 0, x + .3, 6.2, 4, post);
+  t3box(M, X + 11, 4, 3, X + 11.5, 13, 19, [210, 206, 196], { tex: (x, n, z, c) => (x < X + 11.45 || n < 4.6 || n > 12.4 || z < 3.6 || z > 18.4 ? c : z > 13 ? [200, 70, 60] : z > 8 ? [240, 220, 160] : [60, 110, 150]) });
+  return M }
+const cardStopSign = () => ({ n: 15, frames: 1, make: () => { const M = T3(); t3cyl(M, 36, 15, .3, 0, 20, [110, 112, 116]); t3box(M, 34, 14.7, 16, 38, 15.1, 20, [236, 232, 214], { tex: (x, n, z, c) => (x < 34.35 || x > 37.65 || z < 16.35 || z > 19.65 ? [52, 100, 170] : c) }); return M },
+  paint: (g, P) => { const [x, y] = P(36, 14.7, 19.4); cardText(g, 'А', x - 1, y + 1, '#2a4a8a') } });
+// the buses: going east (their fronts to +x), their right sides (the doors) toward us; 'city' long, white with a blue band, the 12;
+// 'paz' the little country bus, cream and white with a red band, one door, a card in its window: 107 to Студёный ключ. lit: in the evening
+const BUS = { city: { L: 110, H: 30, body: [222, 224, 220], up: [222, 224, 220], band: [56, 94, 160], doors: [[46, 53], [-6, 2]] },
+  paz: { L: 70, H: 28, body: [222, 196, 124], up: [234, 230, 216], band: [176, 62, 52], doors: [[25, 32]] } };
+function cardBus(kind, lit) { const B = BUS[kind], M = T3(), L = B.L, W = 24, H = B.H, x0 = -L / 2, x1 = L / 2, z0 = 2.6, w0 = 11, w1 = 22, dark = [30, 30, 34], glass = lit ? [226, 210, 150] : [58, 70, 88], door = x => B.doors.find(([a, b]) => x > a && x < b);
+  const face = (x, n, z, c, low) => {
+    if (x > x1 - .2) { if (z < 4.2) return dark; if (z < 6 && (n < 4.5 || n > W - 4.5) && n > 1.5 && n < W - 1.5) return [244, 238, 206]; if (z > 9.5 && n > 1.2 && n < W - 1.2) return lit ? [120, 112, 90] : [70, 86, 106]; return c } // (the front)
+    if (n > .3) return c; const d = door(x);
+    if (d) return Math.abs(x - (d[0] + d[1]) / 2) < .3 || x < d[0] + .4 || x > d[1] - .4 ? dark : z > (low ? 5.2 : 0) && z < w1 - .8 ? glass : cmul(B.up, .8);
+    if (low) return z < z0 + 1 ? cmul(c, .76) : z > 8 && z < 9.8 ? B.band : c;
+    if (z < w0 + .8 || z > w1 - .9) return c; const k = ((x - x0) % 9.5 + 9.5) % 9.5; return k < 1.4 ? cmul(c, .9) : glass };
+  t3box(M, x0, 0, z0, x1, W, w0, B.body, { tex: (x, n, z, c) => face(x, n, z, c, 1) }); t3box(M, x0, 0, w0, x1, W, w1, B.up, { tex: (x, n, z, c) => face(x, n, z, c, 0) });
+  t3box(M, x0 + .5, .5, w1, x1 - .5, W - .5, H, B.up, { tex: (x, n, z, c) => (z > H - .2 ? cmul(c, .92) : c) });
+  for (const wx of [x1 - 14, x0 + 15]) { const arch = []; for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI; arch.push([wx + Math.cos(a) * 5.8, -.06, z0 + .4 + Math.sin(a) * 4.8]) } t3face(M, arch, [26, 26, 28], null, { both: true, zb: .2 });
+    t3ball(M, [wx, .3, 4.4], 4.4, 1.3, 4.4, [34, 34, 38]); t3ball(M, [wx, -.9, 4.4], 1.8, .3, 1.8, [150, 150, 154]) } // (the wheels in their arches)
+  t3line(M, [x1 - .4, .2, w1 - 1], [x1 + 1.6, -2, w1 - 1.6], dark); t3box(M, x1 + 1.2, -2.8, w1 - 5, x1 + 2, -1.8, w1 - 1.6, dark); // (the mirror)
+  if (kind === 'city') t3box(M, x1 - 22, -.08, w1 - 3.4, x1 - 11, .1, w1 - .7, [24, 22, 20]); else t3box(M, x1 - 36, -.08, 14, x1 - 12, .1, 18.6, [236, 232, 220]); // (the route's board, or its card)
+  return M }
+function cardBusPaint(g, P, kind) { const x1 = BUS[kind].L / 2;
+  if (kind === 'city') { const [x, y] = P(x1 - 16.5, -.1, 19.95); cardText(g, '12', x - cardTextW('12') / 2, y - 2, '#ffa63a') }
+  else { const [x, y] = P(x1 - 24, -.1, 16.3), t = '107 СТ. КЛЮЧ'; cardText(g, '107', x - cardTextW(t) / 2, y - 2, '#c03a30'); cardText(g, 'СТ. КЛЮЧ', x - cardTextW(t) / 2 + cardTextW('107 '), y - 2, '#2a2a30') } }
+// a bus as a unit of a card: it comes in from the west over ua..ub, stands with its middle at xs, goes on east over uc..ud
+function cardBusUnit(kind, lit, xs, ua, ub, uc, ud, clock) { return { n: 32, frames: 1, make: () => cardBus(kind, lit), paint: (g, P) => cardBusPaint(g, P, kind),
+  at: (T, u) => { const w = clock ? clock(T, u) : u; if (w < ua || w > ud) return null; let x = xs; if (w < ub) { const e = (w - ua) / (ub - ua); x = xs - 170 * (1 - e) * (1 - e) } else if (w > uc) { const e = (w - uc) / (ud - uc); x = xs + 210 * e * e } return { x, n: 20 } } } }
+const STOP_X = 20, CITY_XS = STOP_X - 49.5, PAZ_XS = STOP_X - 28.5; // (where each stands: its front door where the people wait)
+
+// ---- the week: the same stop every morning at twenty to eight, the same people, the same bus; Tuesday grey, Wednesday rain, Thursday fog ----
+const WEEK_CLOCK = (T, u) => { const x = Math.min(u * 3, 2.999); return x - Math.floor(x) };
+const CARD_WEEK = {
+  O: STREET_O, S: 2, dur: 10.5,
+  bg: () => cardStreet(false),
+  units: [{ n: 13, frames: 1, make: () => cardShelter(false) }, { n: 3, frames: 1, make: () => cardShelter(true) }, cardStopSign(), cardBusUnit('city', false, CITY_XS, .06, .3, .64, .88, WEEK_CLOCK),
+    { n: 2, frames: 2, fps: 1, make: f => t3shift(cardPerson(CARD_FOLK[1], { chair: { seat: 4.8, lean: .3, bow: .1 }, look: f ? .5 : 0 }, 0), -30, 6.8, 0) }, // (she waits on the bench for another bus, every day)
+    cardWalker(CARD_FOLK[0], [9, 10.5], [19, 18.6], .36, .46, { gone: 1, dir: 7, clock: WEEK_CLOCK }), cardWalker(CARD_FOLK[2], [28, 11], [21.6, 18.6], .37, .44, { gone: 1, dir: 6, clock: WEEK_CLOCK }),
+    cardWalker(heroIn('look'), [18, 8], [20, 18.6], .44, .54, { gone: 1, dir: 6, clock: WEEK_CLOCK })],
+  over(g, T, u) { const x = Math.min(u * 3, 2.999), c = Math.floor(x), v = x - c;
+    if (c === 0) cardShade(g, 'rgba(150,170,200,.14)'); else if (c === 1) { cardShade(g, 'rgba(50,60,90,.24)'); cardRain(g, T, .8) } else cardShade(g, 'rgba(204,208,214,.3)');
+    cardCalendar(g, ['14', '15', '16'][c], ['ВТ', 'СР', 'ЧТ'][c], '7:40'); cardCut(g, v, c > 0, c < 2) },
+  lines: h => ['Вторник. Среда. Четверг.', 'Работа — дом. Работа — дом.'] };
+
+// ---- Friday, the evening, the rain: the 12 comes and the hero lets it go; then some other bus, the first that comes, and they get on it ----
+const CARD_STOP = {
+  O: STREET_O, S: 2, dur: 12,
+  bg: () => cardStreet(true),
+  units: [{ n: 13, frames: 1, make: () => cardShelter(false) }, { n: 3, frames: 1, make: () => cardShelter(true) }, cardStopSign(),
+    cardBusUnit('city', true, CITY_XS, .04, .17, .36, .48), cardBusUnit('paz', true, PAZ_XS, .54, .67, .86, .98),
+    cardWalker(CARD_FOLK[3], [9, 10.5], [19, 18.6], .22, .32, { gone: 1, dir: 6 }), cardWalker(CARD_FOLK[4], [28, 11], [21.6, 18.6], .24, .31, { gone: 1, dir: 6 }),
+    cardWalker(heroIn('look'), [18, 8], [20, 18.6], .72, .8, { gone: 1, dir: 6 })],
+  over(g, T, u) { const P = (x, n, z) => cardP(this.O, x, n, z, 2); cardShade(g, 'rgba(16,20,42,.5)');
+    const [lx, ly] = P(44, 47.2, 31); cardGlow(g, lx, ly, 46, '255,196,120', .32); cardGlow(g, lx, ly + 2, 8, '255,230,180', .6);
+    { const [rx, ry] = P(44, 40, 0); g.save(); g.globalCompositeOperation = 'lighter'; const gr = g.createLinearGradient(0, ry - 24, 0, ry + 30); gr.addColorStop(0, 'rgba(255,190,110,0)'); gr.addColorStop(.5, 'rgba(255,190,110,.14)'); gr.addColorStop(1, 'rgba(255,190,110,0)');
+      g.fillStyle = gr; g.fillRect(rx - 4, ry - 24, 8, 54); g.restore() } // (its light on the wet road)
+    cardRain(g, T, 1.2); cardCalendar(g, '17', 'ПТ', '18:40') },
+  lines: h => [`Пятница. Свой двенадцатый ${h.name} пропускает.`, `Подходит первый попавшийся. ${h.id === 'dasha' ? 'Она' : 'Он'} садится.`] };
+
+// ---- in the bus: the seats along the windows, the country going by in them (the town, its edges, the forest), the people getting off
+// one by one; the phone ringing, again, and again ----
+const RIDE_O = [CARD.W / 2 - 4, CARD.H - 4], RIDE_ROWS = [-36, -24, -12, 0, 12, 24, 36], RIDE_WIN = [];
+for (let k = 0; k < 10; k++) RIDE_WIN.push([-70 + 14 * k + 2, -70 + 14 * k + 14]);
+function cardBusInside(night) { const M = T3(), wall = [184, 180, 166], low = [150, 146, 134], seat = [66, 78, 118], floor = [70, 72, 78];
+  t3face(M, [[-70, -6, 0], [70, -6, 0], [70, 22, 0], [-70, 22, 0]], floor, [0, 9, -5], { tex: (x, n, z, c) => (((n % 1.6) + 1.6) % 1.6 < .3 ? cmul(c, .82) : c) });
+  t3face(M, [[-70, 22, 0], [70, 22, 0], [70, 22, 36], [-70, 22, 36]], wall, [0, 30, 15], { tex: (x, n, z, c) => { if (z < 8) return z < 1 ? cmul(low, .7) : low;
+    if (z < 18.6) { const k = ((x + 70) % 14 + 14) % 14; return k < 2 ? cmul(c, .92) : z < 8.8 || z > 17.8 ? [60, 60, 64] : [20, 24, 32] } return z > 26 ? cmul(c, (night ? .7 : .86) - (z - 26) * .03) : c } });
+  const fabric = (x, n, z, c) => { const r = h2(Math.floor(x * 2), Math.floor(z * 2 + n * 2), 61); return r < .05 ? [118, 70, 84] : r < .14 ? cmul(c, .86) : c };
+  for (const xr of RIDE_ROWS) for (const [n0, n1] of [[9.4, 14.9], [15.1, 20.8]]) { t3box(M, xr - 2.4, n0, 4, xr + 2.6, n1, 5.2, seat, { tex: fabric }); t3box(M, xr - 3.4, n0, 4, xr - 2.4, n1, 12.6, seat, { tex: fabric });
+    t3box(M, xr - 1.6, n0 + 1, 0, xr + 1.6, n1 - 1, 4, [56, 58, 64]); t3line(M, [xr - 2.9, n0 + 1, 12.9], [xr - 2.9, n1 - 1, 12.9], [200, 170, 70]) }
+  t3line(M, [-70, 20.5, 26], [70, 20.5, 26], [214, 178, 62]); for (let x = -66; x < 70; x += 6) { t3line(M, [x, 20.5, 26], [x, 20.5, 23.8], [70, 70, 74]); t3box(M, x - .5, 20.3, 22.6, x + .5, 20.7, 23.8, [60, 60, 64]) } // (the straps)
+  for (const xr of RIDE_ROWS) t3box(M, xr - 4, 21.2, 29, xr + 4, 21.9, 30.4, night && xr % 24 ? [120, 124, 128] : [236, 240, 236]); // (the lamps under the roof)
+  return M }
+const RIDE_POLES = { n: 8, frames: 1, make: () => { const M = T3(); for (const xr of RIDE_ROWS) if ((xr / 12) % 2 === 0) t3cyl(M, xr + 4.5, 8.2, .35, 0, 36, [214, 178, 62]); return M } };
+// one sitting by row xr (the window's seat or the aisle's), facing the way the bus goes; frames by pose(f)
+const cardRider = (look, xr, win, pose, frames = 1, o = {}) => ({ n: win ? 18 : 12.2, frames, fps: o.fps || 1, at: o.at, make: f => t3shift(cardPerson(look, Object.assign({ chair: { seat: 5.2, lean: .2, bow: 0 } }, pose(f)), 2), xr + 1.2, win ? 18 : 12.2, 0) });
+// the country in the windows (the bus goes east, so it goes by to the west): stage 0 the town .. 1 the forest; night 0..1
+function cardOutside(g, P, T, stage, night) { const rects = RIDE_WIN.map(([a, b]) => { const p = P(a, 22, 17.8), q = P(b, 22, 8.8); return [p[0], p[1], q[0], q[1]] });
+  g.save(); g.beginPath(); for (const [x0, y0, x1, y1] of rects) g.rect(x0, y0, x1 - x0, y1 - y0); g.clip();
+  const X0 = rects[0][0], X1 = rects[rects.length - 1][2], Y0 = rects[0][1], Y1 = rects[0][3], Hh = Y1 - Y0, town = clamp(1.2 - stage * 2, 0, 1), far = T * 16, near = T * 120;
+  const sk = g.createLinearGradient(0, Y0, 0, Y1); sk.addColorStop(0, cmixS('#26304a', '#0a0e1c', night)); sk.addColorStop(1, cmixS('#5a5466', '#141a2c', night)); g.fillStyle = sk; g.fillRect(X0, Y0, X1 - X0, Hh);
+  for (let c = Math.floor((X0 + far) / 9) - 1; c <= Math.floor((X1 + far) / 9) + 1; c++) { const x = Math.round(c * 9 - far), r = h2(c, 1, 71);
+    if (h2(c, 5, 71) < town) { const tall = stage < .3 && r < .7, h = Math.round(Hh * (tall ? .5 + r * .45 : .2 + r * .2)); g.fillStyle = '#121624'; g.fillRect(x, Y1 - h, 8, h);
+      if (!tall) { g.beginPath(); g.moveTo(x - 1, Y1 - h); g.lineTo(x + 4, Y1 - h - 4); g.lineTo(x + 9, Y1 - h); g.fill() }
+      for (let j = 0; j < h / 3 - 1; j++) for (let q = 0; q < 2; q++) if (h2(c * 31 + j, q, 73) < (tall ? .3 : .4)) { g.fillStyle = 'rgba(250,206,120,.9)'; g.fillRect(x + 2 + q * 3, Y1 - h + 2 + j * 3, 1, 1) } }
+    else { const h = Hh * (.3 + r * .55); g.fillStyle = '#0c1410'; g.beginPath(); g.moveTo(x + 4.5, Y1 - h); g.lineTo(x - 2, Y1); g.lineTo(x + 11, Y1); g.fill() } }
+  for (let c = Math.floor((X0 + near) / 80) - 1; c <= Math.floor((X1 + near) / 80) + 1; c++) { const x = Math.round(c * 80 - near); g.fillStyle = '#08090c'; g.fillRect(x, Y0, 2, Hh); if (town > .2) cardGlow(g, x + 1, Y0 + 3, 9, '255,190,110', .5 * town) }
+  g.restore() }
+const cmixS = (a, b, k) => { const p = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)), c = cmix(p(a), p(b), k); return `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})` };
+const RIDE_GONE = [.12, .22, .34, .46, .58, .7], RIDE_RINGS = [[.26, .38], [.48, .6], [.72, .86]];
+const CARD_RIDE = {
+  O: RIDE_O, dur: 11, shake: T => [0, h2(Math.floor(T * 2.6), 1, 81) < .3 ? 1 : 0],
+  bg: () => cardBusInside(false),
+  units: [RIDE_POLES, cardRider(heroIn('look'), 12, true, f => ({ chair: { seat: 5.2, lean: .25, bow: .45 } })),
+    ...[[0, -36, 1], [3, -24, 0], [5, -12, 1], [1, 0, 0], [4, 24, 1], [2, 36, 0]].map(([i, xr, win], k) => cardRider(CARD_FOLK[i], xr, win, () => ({ look: k % 2 ? .4 : -.3 }), 1, { at: (T, u) => (u > RIDE_GONE[k] + .04 ? null : { a: u > RIDE_GONE[k] ? 1 - (u - RIDE_GONE[k]) / .04 : 1 }) }))],
+  over(g, T, u) { const P = (x, n, z) => cardP(this.O, x, n, z); cardOutside(g, P, T, u, u * .7);
+    for (const xr of RIDE_ROWS) { const [x, y] = P(xr, 21, 29); cardGlow(g, x, y, 22, '220,236,255', .16 * (h2(Math.floor(T * 7), xr, 5) < .04 ? .3 : 1)) } // (the lamps under the roof, one of them failing)
+    cardShade(g, `rgba(20,26,48,${.12 + u * .2})`);
+    const ring = RIDE_RINGS.find(([a, b]) => u > a && u < b), [hx, hy] = P(15.4, 18, 6.9); cardGlow(g, hx, hy, ring ? 12 : 8, '170,200,255', ring ? .5 + .2 * Math.sin(T * 12) : .4);
+    if (ring) { const [a, b] = ring, al = Math.min((u - a) / .02, (b - u) / .02); cardPhone(g, al, ['НАЧАЛЬНИК', 'ВЫЗОВ'], { ring: 1, T }) } },
+  lines: h => ['Остановка за остановкой автобус пустеет.', 'Звонит начальник. Ещё раз. И ещё.'] };
+
+// ---- the phone off: the bus empty, the night, the forest; the missed calls, the question, the screen dark; the phone left on the seat,
+// the hero looking out of the window ----
+const CARD_PHONE = {
+  O: RIDE_O, dur: 10, shake: CARD_RIDE.shake,
+  bg: () => cardBusInside(true),
+  units: [RIDE_POLES, cardRider(heroIn('look'), 12, true, f => (f ? { chair: { seat: 5.2, lean: .1, bow: 0 }, look: 1 } : { chair: { seat: 5.2, lean: .25, bow: .45 } }), 2, { at: (T, u) => ({ f: u < .5 ? 0 : 1 }) }),
+    { n: 12, frames: 1, make: () => { const M = T3(); t3box(M, 12.2, 11.4, 5.2, 13.8, 12.4, 5.5, [24, 24, 28], { tex: (x, n, z, c) => (z > 5.45 && x > 12.4 && x < 13.6 ? [14, 16, 22] : c) }); return M }, at: (T, u) => (u < .5 ? null : {}) }],
+  over(g, T, u) { const P = (x, n, z) => cardP(this.O, x, n, z); cardOutside(g, P, T, 1, 1);
+    for (const xr of RIDE_ROWS) if (xr % 24 === 0) { const [x, y] = P(xr, 21, 29); cardGlow(g, x, y, 22, '220,236,255', .12) } // (only every other lamp at night)
+    cardShade(g, 'rgba(14,18,40,.4)');
+    if (u < .42) { const [hx, hy] = P(15.4, 18, 6.9); cardGlow(g, hx, hy, 10, '170,200,255', .45) }
+    const al = Math.min((u - .06) / .03, (.52 - u) / .04);
+    cardPhone(g, al, u < .26 ? ['НАЧАЛЬНИК', '12 ВЫЗОВОВ'] : ['ВЫКЛЮЧИТЬ?'], { off: u > .4, slide: u >= .26 ? clamp((u - .3) / .08, 0, 1) : null, T }) },
+  lines: h => [`${h.name} выключает телефон и оставляет его на сиденье.`, 'За окном только лес.'] };
+
+// ---- the end of the line: a morning in the forest, the bus at the stop; the hero is left there, the bus goes back; over the road the
+// gate of the camp, «Студёный ключ»; the hero crosses to it ----
+const END_O = [CARD.W / 2 - 6, CARD.H - 2], END_XS = -20;
+const CARD_END = {
+  O: END_O, S: 2, dur: 11,
+  bg() { const M = T3(), grass = [104, 110, 62], road = [98, 96, 94], dirt = [138, 110, 80], leaf = (x, n, c) => { const r = h2(Math.floor(x), Math.floor(n), 91); return r < .01 ? [206, 120, 50] : r < .018 ? [222, 176, 70] : r < .024 ? [170, 70, 44] : c };
+    t3face(M, [[-90, -14, 0], [100, -14, 0], [100, 18, 0], [-90, 18, 0]], grass, [0, 0, -5], { tex: (x, n, z, c) => leaf(x, n, h2(Math.floor(x), Math.floor(n), 92) < .3 ? cmul(c, .9) : c) });
+    t3face(M, [[-90, 18, 0], [100, 18, 0], [100, 44, 0], [-90, 44, 0]], road, [0, 31, -5], { tex: (x, n, z, c) => leaf(x, n, n < 18.8 || n > 43.2 ? cmul(c, .82) : h2(Math.floor(x * .4), Math.floor(n * .4), 93) < .08 ? cmul(c, .9) : c) });
+    t3face(M, [[-90, 44, 0], [100, 44, 0], [100, 110, 0], [-90, 110, 0]], [86, 92, 56], [0, 70, -5], { tex: (x, n, z, c) => (Math.abs(x) < 6 + Math.sin(n * .2) * .8 ? (h2(Math.floor(x), Math.floor(n), 94) < .1 ? cmul(dirt, .9) : dirt) : leaf(x, n, c)) });
+    // the gate, as the camp's own: log posts, the beam, the name board under it
+    for (const x of [-16, 16]) t3post(M, x, 52, 1.3, 27); t3roll(M, -21, 21, 52, 1.2, PX3.log, { z0: 24.4, endCol: PX3.end }); for (const s of [-1, 1]) t3line(M, [s * 16, 52, 18], [s * 11, 52, 24.6], PX3.logD);
+    for (const x of [-11, 11]) t3line(M, [x, 51.4, 24.6], [x, 51.4, 21], [60, 60, 64]); t3box(M, -14, 50.8, 15.2, 14, 51.6, 21, PX3.sign, { tex: plankZ(PX3.sign, 2) });
+    // the forest: spruces and birches either side of the track, behind the gate and along the far verge
+    for (let k = 0; k < 26; k++) { const side = k % 2 ? 1 : -1, x = side * (12 + h2(k, 1, 95) * 60), n = 50 + h2(k, 2, 95) * 40; if (n < 57 && Math.abs(x) < 26) continue; if (h2(k, 3, 95) < .7) cardSpruce(M, x, n, 28 + h2(k, 4, 95) * 18, k); else cardBirch(M, x, n, 22 + h2(k, 4, 95) * 8, k) }
+    return M },
+  paint(g, P) { const [x, y] = P(0, 50.8, 18.1), t = 'СТУДЕНЫЙ КЛЮЧ'; cardText(g, t, x - cardTextW(t) / 2, y - 2, `rgb(${PX3.ink})`) },
+  units: [cardBusUnit('paz', false, END_XS, -1, -.5, .3, .52),
+    cardWalker(heroIn('look'), [END_XS + 28.5, 16.4], [2, 46], .56, .82, { dir: 5, end: 0, come: .1 }),
+    { n: 2, frames: 1, make: () => { const M = T3(); for (const [x, n, c] of [[-58, 4, [170, 70, 44]], [-52, 1, [196, 110, 50]], [-46, 6, [150, 60, 40]], [52, 3, [190, 120, 50]], [58, 7, [160, 70, 44]]]) for (let k = 0; k < 4; k++) t3ball(M, [x + Math.cos(k * 1.7) * 2, n + Math.sin(k * 1.7) * 1.5, 2 + (k % 2) * 1.5], 2.6, 2.2, 2.2, cmul(c, .9 + (k % 3) * .08));
+        for (const x of [26, 42]) t3cyl(M, x, 10, .3, 0, 14, [110, 112, 116]); t3box(M, 24.4, 9.7, 9.6, 43.6, 10.3, 14, [236, 232, 214], { tex: (x, n, z, c) => (x < 24.8 || x > 43.2 || z < 10 || z > 13.6 ? [52, 100, 170] : c) }); return M },
+      paint: (g, P) => { const [x, y] = P(34, 9.7, 12.8), t = 'КОНЕЧНАЯ'; cardText(g, t, x - cardTextW(t) / 2, y - 2, '#2a4a8a') } }],
+  over(g, T, u) { const P = (x, n, z) => cardP(this.O, x, n, z, 2);
+    g.save(); g.globalCompositeOperation = 'lighter'; const gr = g.createLinearGradient(CARD.W, 0, 0, CARD.H); gr.addColorStop(0, 'rgba(255,190,120,.22)'); gr.addColorStop(.6, 'rgba(255,190,120,0)'); g.fillStyle = gr; g.fillRect(0, 0, CARD.W, CARD.H); g.restore(); // (the low sun)
+    { const [, y0] = P(0, 58, 4), [, y1] = P(0, 58, 14), mg = g.createLinearGradient(0, y1, 0, y0 + 6); mg.addColorStop(0, 'rgba(226,230,236,0)'); mg.addColorStop(.5, `rgba(226,230,236,${.22 + .05 * Math.sin(T * .7)})`); mg.addColorStop(1, 'rgba(226,230,236,0)'); g.fillStyle = mg; g.fillRect(0, y1, CARD.W, y0 + 6 - y1) } // (mist along the forest)
+    for (let i = 0; i < 12; i++) { const x = (h2(i, 1, 97) * 300 - T * (8 + h2(i, 2, 97) * 8)) % 280, y = (h2(i, 3, 97) * 200 + T * (12 + h2(i, 4, 97) * 10)) % 190 - 10, sw = Math.sin(T * 3 + i) * 2;
+      g.fillStyle = ['#d2782e', '#e0b040', '#a8442c'][i % 3]; g.fillRect(Math.round((x + 280) % 280 + sw), Math.round(y), 2, 1 + (Math.floor(T * 4 + i) % 2)) } }, // (leaves falling)
+  lines: h => ['Конечная. Турбаза «Студёный ключ».', 'Ни телефона, ни планов. Только осень.'] };
+const INTRO_CARDS = [CARD_OFFICE, CARD_HOME, CARD_WEEK, CARD_STOP, CARD_RIDE, CARD_PHONE, CARD_END];
 
 // ---- showing them ----
-const INTRO = { on: false, k: 0, T: 0, ch: 0, line: 0, made: null };
-function introMake(C) { const bg = cardDraw(C.bg()), units = C.units.map(U => ({ n: U.n, fps: U.fps || 6, frames: Array.from({ length: U.frames }, (_, f) => cardDraw(U.make(f))) })).sort((a, b) => b.n - a.n); return { C, bg, units } }
+// A card is made in steps (its still picture, then each frame of each unit), so the next card is made a little each frame while the
+// present one is looked at. A unit: { n (how far back it stands: the farther drawn first), frames, make(f), fps, at(T, u): where it is
+// now ({ x, n } model units from where it was made, f its frame, a how clearly seen) or null while not there, paint(g, P, f): letters }
+const INTRO = { on: false, k: 0, T: 0, ch: 0, line: 0, made: null, next: null };
+const cardPx = (d, S) => (x, n, z) => [d.ax + (x + n * T3S) * S, d.ay - (n + z * T3K) * S];
+function introBuild(C) { const S = C.S || CARD.S, R = { C, bg: null, units: [], steps: [] };
+  R.steps.push(() => { R.bg = cardDraw(C.bg(), false, S); if (C.paint) C.paint(R.bg.cv.getContext('2d'), cardPx(R.bg, S)) });
+  for (const U of C.units) { const V = Object.assign({}, U, { frames: [] }); R.units.push(V);
+    for (let f = 0; f < U.frames; f++) R.steps.push(() => { const d = cardDraw(U.make(f), false, S); if (U.paint) U.paint(d.cv.getContext('2d'), cardPx(d, S), f); V.frames.push(d) }) }
+  R.steps.push(() => R.units.sort((a, b) => b.n - a.n)); return R }
+function introWork(R, ms) { const t0 = performance.now(); while (R.steps.length && (ms < 0 || performance.now() - t0 < ms)) R.steps.shift()(); return !R.steps.length }
 function introStart(done) { const D = $('intro'); INTRO.on = true; INTRO.k = 0; INTRO.done = done; D.hidden = false; INTRO.wasPaused = paused; paused = true;
   const cv = $('introCv'); cv.width = CARD.W; cv.height = CARD.H; introCard(0); requestAnimationFrame(introTick) }
 function introCard(k) { INTRO.k = k; INTRO.T = 0; INTRO.ch = 0; INTRO.line = 0; const C = INTRO_CARDS[k]; $('introTxt').textContent = ''; INTRO.made = null;
-  // (made a moment later, so the plate is up first)
-  setTimeout(() => { INTRO.made = introMake(C) }, 30) }
-function introEnd() { INTRO.on = false; $('intro').hidden = true; paused = INTRO.wasPaused && false; if (INTRO.done) INTRO.done() }
+  const R = INTRO.next && INTRO.next.C === C ? INTRO.next : introBuild(C); INTRO.next = null;
+  // (finished a moment later, so the plate is up first; then the card after it begun)
+  setTimeout(() => { if (!INTRO.on || INTRO.k !== k) return; introWork(R, -1); INTRO.made = R; INTRO.T = 0; const N = INTRO_CARDS[k + 1]; INTRO.next = N ? introBuild(N) : null }, 30) }
+function introEnd() { INTRO.on = false; INTRO.next = null; $('intro').hidden = true; paused = INTRO.wasPaused && false; if (INTRO.done) INTRO.done() }
 function introNext() { if (!INTRO.on) return; const C = INTRO_CARDS[INTRO.k], L = C.lines(HERO), full = L.join('\n');
   if (INTRO.ch < full.length) { INTRO.ch = full.length; return } if (INTRO.k + 1 < INTRO_CARDS.length) introCard(INTRO.k + 1); else introEnd() }
 let INTRO_LAST = 0;
 function introTick(now) { if (!INTRO.on) return; const dt = Math.min(.05, (now - (INTRO_LAST || now)) / 1000); INTRO_LAST = now; requestAnimationFrame(introTick);
-  const C = INTRO_CARDS[INTRO.k], M = INTRO.made, g = $('introCv').getContext('2d'); if (!M) return; INTRO.T += dt; const u = clamp(INTRO.T / C.dur, 0, 1);
-  g.fillStyle = '#15110e'; g.fillRect(0, 0, CARD.W, CARD.H); const O = C.O; g.drawImage(M.bg.cv, Math.round(O[0] - M.bg.ax), Math.round(O[1] - M.bg.ay));
-  for (const U of M.units) { const f = U.frames[Math.floor(INTRO.T * U.fps + U.n) % U.frames.length]; g.drawImage(f.cv, Math.round(O[0] - f.ax), Math.round(O[1] - f.ay)) }
+  const C = INTRO_CARDS[INTRO.k], M = INTRO.made, g = $('introCv').getContext('2d'); if (!M) return; INTRO.T += dt; const u = clamp(INTRO.T / C.dur, 0, 1), S = C.S || CARD.S, O = C.O, [sx, sy] = C.shake ? C.shake(INTRO.T) : [0, 0];
+  g.fillStyle = '#15110e'; g.fillRect(0, 0, CARD.W, CARD.H); g.drawImage(M.bg.cv, Math.round(O[0] - M.bg.ax + sx), Math.round(O[1] - M.bg.ay + sy));
+  for (const U of M.units) { const st = U.at ? U.at(INTRO.T, u) : {}; if (!st || st.a <= 0) continue; const f = U.frames[(st.f ?? Math.floor(INTRO.T * (U.fps || 6) + U.n)) % U.frames.length], dx = ((st.x || 0) + (st.n || 0) * T3S) * S, dy = -(st.n || 0) * S;
+    if (st.a != null) g.globalAlpha = Math.min(1, st.a); g.drawImage(f.cv, Math.round(O[0] - f.ax + dx + sx), Math.round(O[1] - f.ay + dy + sy)); g.globalAlpha = 1 }
   C.over(g, INTRO.T, u);
+  if (INTRO.T < .5) cardShade(g, `rgba(12,10,8,${1 - INTRO.T / .5})`); // (each card comes up out of the dark)
+  if (INTRO.next && INTRO.next.steps.length) introWork(INTRO.next, 5);
   // the words, a letter at a time
   const full = C.lines(HERO).join('\n'); if (INTRO.ch < full.length) { INTRO.ch = Math.min(full.length, INTRO.ch + dt * 26); $('introTxt').textContent = full.slice(0, Math.floor(INTRO.ch)) } }
 
@@ -6354,7 +6643,8 @@ function frame(now) {
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
     ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
-  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? 8 : 2.5); ft('велосипедист'); buildSome(paused ? 8 : 4); ft('фоновая сборка');
+  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
+  if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
   drawWorld(); ft('мир'); drawSmoke(); drawFog(); drawLight(); drawLife(); ft('свет'); drawGlare(); drawMurk();
   drawRays(Math.max(sunAmt() * .55, RAYS.a * (WX.fog > .25 ? 1.25 : .85)) * LT.sunUp, RAYS.a * LT.sunUp); drawPost(); ft('эффекты'); drawDev(); camShift();
@@ -6366,7 +6656,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
