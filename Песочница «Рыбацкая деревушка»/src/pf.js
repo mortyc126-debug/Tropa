@@ -219,11 +219,13 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
   const ch = P(chimX, D * .55, RIDGE + (chim === 'brick' ? 11 : 14)), e0 = P(-HW - 3, -OVR, eave), e1 = P(HW + 3, -OVR, eave);
   const solids = [[-HW - 2, -D - 1, HW + 2, 0]]; if (porch && !gate) solids.push([door - pw, 0, door + pw, PD + 3]);
   // the things set about it are in the way too (plan y = -n: in front of the wall is +y)
+  if (gate) for (const sx of [-1, 1]) for (let q = 0; q < 3; q++) { const xa = door + sx * (gate / 2 + 4 * q / 3), xb = door + sx * (gate / 2 + 4 * (q + 1) / 3); solids.push([Math.min(xa, xb) - 1, .5 + 8.5 * q / 3, Math.max(xa, xb) + 1, .5 + 8.5 * (q + 1) / 3]) } // (the leaves of the gates swung open: three boxes along each)
   if (deco.includes('barrel')) solids.push([-HW + .9, .9, -HW + 8.1, 8.1]);
   if (deco.includes('logs')) solids.push([-HW - 10.5, -11.5, -HW - 1, -.5]);
   if (deco.includes('bench')) solids.push([HW - 20, 1.6, HW - 4, 5]);
   if (deco.includes('bucket')) solids.push([door - pw - 12.2, 2.8, door - pw - 3.8, 7.2]);
   if (deco.includes('kennel')) solids.push([door + pw + 9, 4, door + pw + 21, 12.5]);
+  if (deco.includes('laundry')) solids.push([-HW - 37.2, -D * .3 - 1.4, -HW - 4.8, -D * .3 + 1.4]); // (the posts and the washing between them, hung at the height of a rider's head)
   return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
 
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.
@@ -271,18 +273,38 @@ PF.netrack = ({ len = 56, nets = 2, seed = 7, col = [84, 82, 54], hang = 15 } = 
       for (let i = 0; i <= steps; i += 2) { const u = i / steps, x = x0 + (x1 - x0) * u, z = TOP - 1.5 - hang * (.75 + .25 * Math.sin(u * 7 + q * 2)) * (1 - .16 * Math.abs(2 * u - 1)); M.dots.push([[x + sw * (TOP - z) / hang, -1.1, z + .6], [112, 116, 120]]) } }
     return M };
   const FR = fvFrames(build), sp = FR[2];
-  return { s: sp.s, ax: sp.ax, ay: sp.ay, frames: FR.map(g => ({ s: g.s, night: null })), solids: [[-HL - 1.6, -1.8, -HL + 1.6, 1.8], [HL - 1.6, -1.8, HL + 1.6, 1.8]].map(t3w) } };
+  return { s: sp.s, ax: sp.ax, ay: sp.ay, frames: FR.map(g => ({ s: g.s, night: null })), solids: [[-HL - 1.6, -1.8, HL + 1.6, 1.8]].map(t3w) } }; // (the nets hang at the height of a rider's head: the whole span is in the way)
 
-// ---- a rack of drying fish: posts, rails, fish hung by the tail in pairs (golden smoked ones and silver salted ones) ----
-PF.fishrack = ({ len = 44, rows = 3, seed = 11, gold = .55 } = {}) => { const HL = len / 2, r = mulberry(seed);
-  const sp = t3sprite(() => { const M = T3(); M.seed = seed;
+// ---- a rack of drying fish: two posts, rails, and the fish hung by the tail on them, row after row: small silvery roach, golden smoked bream, strings of tiny dried ones; a crate of the catch at one end.
+// The fish are little patterns of pixels laid on the picture's own grid (a tail, a dark back, a pale belly, a head), not boxes: boxes of two colours side by side read as the keys of a piano.
+// Every fish is a pair of columns, so the outline the picture is given leaves a clear gap between one fish (or pair) and the next. In the wind the lower half of a fish swings a pixel.
+// The whole rack is in the way: its rails and fish hang at the height of a rider's head, so the bike stops in front of it, not only at its posts. ----
+const FISH = {
+  roach: { back: [118, 116, 94], flank: [172, 168, 142], belly: [204, 200, 174], tail: [96, 92, 76], head: [136, 130, 108] },
+  bream: { back: [108, 70, 38], flank: [160, 108, 52], belly: [198, 148, 80], tail: [88, 60, 34], head: [128, 86, 44] },
+  fresh: { back: [84, 94, 100], flank: [150, 160, 166], belly: [200, 206, 208], tail: [84, 92, 98], head: [116, 126, 132] }
+};
+// a fish `L` rows long hung by the tail: two columns, row by row (B back, F flank, L belly, T tail, H head, E eye)
+const FISH_T = { 4: ['.T', 'BF', 'BL', 'HE'], 5: ['.T', 'BF', 'BL', 'BF', 'HE'], 6: ['.T', 'BF', 'BL', 'BL', 'BF', 'HE'] };
+PF.fishrack = ({ len = 44, rows = 3, seed = 11, gold = .55, side = 1 } = {}) => { const HL = len / 2, XC = side * (HL + 6.7);
+  const build = k => { const M = T3(), r = mulberry(seed); M.seed = seed;
     for (const x of [-HL, HL]) { t3post(M, x, 0, 1.1, 30, FV.wood); t3line(M, [x, -5, 0], [x, 0, 24], FV.woodD) }
-    for (let k = 0; k < rows; k++) { const z = 14 + k * 6.5; t3roll(M, -HL - 2, HL + 2, 0, .7, FV.woodL, { z0: z, endCol: FV.woodL });
-      for (let x = -HL + 2; x < HL - 1; x += 2.6) { const g = r() < gold, c = g ? [188 + r() * 20, 128 + r() * 20, 56] : [168 + r() * 14, 174 + r() * 10, 180], f = 2.4 + r() * .8;
-        t3box(M, x, -1.8, z - f, x + 1.5, -.6, z - .3, c, { clean: true, zb: .4 }); t3box(M, x + .3, -.9, z - f - .6, x + 1.2, -.6, z - f, cmul(c, .8), { clean: true, zb: .4 }) } }
-    t3box(M, HL + 4, -2, 0, HL + 9, 2, 3, [196, 70, 52]); t3box(M, HL + 4, -2, 3, HL + 9, 2, 3.8, [226, 120, 84]); // a crate beneath
-    return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-HL - 1.6, -1.8, -HL + 1.6, 1.8], [HL - 1.6, -1.8, HL + 1.6, 1.8], [HL + 3.6, -2.4, HL + 9.4, 2.4]].map(t3w) } };
+    const NF = -1.4, dot = (px, py, c) => M.dots.push([[px - T3S * NF, NF, -py - NF], c]), sw = v => Math.sign(v) * Math.round(Math.abs(v) - 1e-6); // (a dot on the picture's own pixel px, py: row py = -z for the front of the rack)
+    for (let j = 0; j < rows; j++) { const z0 = 27 - 7 * j, top = -z0, kind = j === rows - 1 && rows > 2 ? 'strings' : (r() < gold ? 'bream' : 'roach');
+      t3roll(M, -HL - 2, HL + 2, 0, .7, FV.woodL, { z0, endCol: FV.woodL });
+      if (kind === 'strings') { // strings of tiny dried roach: a thin column of pale and darker pixels, the tail end darkest
+        for (let px = -HL + 3 + Math.floor(r() * 2); px < HL - 3; px += 4 + Math.floor(r() * 2)) { if (r() < .15) continue; const L = 4 + Math.floor(r() * 4), P = FISH.roach;
+          for (let i = 0; i < L; i++) dot(px + sw(k * 1.5 * i / L), top + i, i === L - 1 ? P.back : i % 2 ? P.flank : P.belly) } }
+      else for (let px = -HL + 3 + Math.floor(r() * 2); px < HL - 5; px += 5 + Math.floor(r() * 2)) { if (r() < .12) continue; // single fish at an uneven pitch, backs mostly to the left, some the other way
+        const P = FISH[r() < .12 ? 'fresh' : kind], L = 5 + (r() < .45 ? 1 : 0) - (r() < .15 ? 1 : 0), T = FISH_T[L], fl = r() < .3;
+        for (let i = 0; i < L; i++) for (let c = 0; c < 2; c++) { const ch = T[i][fl ? 1 - c : c]; if (ch === '.') continue; dot(px + c + sw(k * 1.5 * i / L), top + i, ch === 'B' ? P.back : ch === 'F' ? P.flank : ch === 'L' ? P.belly : ch === 'T' ? P.tail : ch === 'E' ? cmul(P.head, .55) : P.head) } } }
+    // a wooden crate of the catch beside it: the fish heaped in it show on top, a few tails and heads over the rim
+    const CR = [132, 100, 66]; t3box(M, XC - 2.9, -2.4, 0, XC + 2.9, 2.4, 3.4, CR, { clean: true, tex: (x, n, z) => { if (z > 3.3) { if (!(Math.abs(x - XC) < 2.2 && Math.abs(n) < 1.7)) return cmul(CR, 1.12); const q = h2(Math.floor(x * 1.7), Math.floor(n * 1.7), seed + 5); return q < .36 ? FISH.roach.flank : q < .6 ? FISH.bream.belly : q < .8 ? FISH.roach.back : FISH.fresh.flank }
+      return (z > 1.1 && z < 2.2) ? cmul(CR, .6) : (Math.floor(x * 1.1) % 4 === 0 && z < 1.1 ? cmul(CR, .8) : CR) } });
+    for (const [dx, c] of [[-1.4, FISH.roach.belly], [.2, FISH.bream.flank], [1.6, FISH.roach.flank]]) dot(Math.round(XC + dx), -4 - Math.round(r() * 1.2), c);
+    return M };
+  const FR = fvFrames(build), sp = FR[2];
+  return { s: sp.s, ax: sp.ax, ay: sp.ay, frames: FR.map(g => ({ s: g.s, night: null })), solids: [[-HL - 1.6, -1.8, HL + 1.6, 1.8], [XC - 3.4, -2.8, XC + 3.4, 2.8]].map(t3w) } };
 
 // ---- a smokehouse: a small sooty hut with a pipe that smokes; a gate for the boats' shed: both are houses with other numbers ----
 PF.smokehouse = (o = {}) => PF.house(Object.assign({ w: 30, d: 26, h: 20, wall: 'board', col: [96, 76, 60], roof: 'tin', roofCol: [78, 72, 68], porch: false, wins: [], door: -3, chim: 'pipe', chimX: 8, sideWin: false, deco: ['logs', 'barrel'], seed: 9 }, o));

@@ -7,7 +7,7 @@ PF.bollard = ({ seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3()
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-2.6, -2.6, 2.6, 2.6]].map(t3w) } };
 PF.coil = ({ seed = 1, col = [176, 150, 104] } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const rings = (x, n) => { const r = Math.hypot(x, n); return r < 1.3 ? null : (Math.round(r * 1.6) % 2 ? col : cmul(col, .78)) };
     t3cyl(M, 0, 0, 4.2, 0, 2.2, col, { topCol: col, topTex: rings }); t3cyl(M, 0, 0, 1.5, 2.2, 3.4, cmul(col, .8), { topCol: cmul(col, .6) }); return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [] } };
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-3.2, -2.8, 3.2, 2.8]].map(t3w) } };
 // a post with a lantern on the top: the glass lights at night; c the colour of its light, flick: a worn lantern that flickers
 PF.lantern = ({ h = 24, c = '255,200,120', flick = false, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed;
     t3cyl(M, 0, 0, 1.3, 0, h, [92, 70, 50], { topCol: [140, 112, 84] }); t3box(M, -2.6, -2.6, h, 2.6, 2.6, h + .8, [60, 60, 64]);
@@ -72,7 +72,7 @@ PF.booth = ({ w = 22, d = 13, h = 23, col = [88, 122, 100], seed = 4, sign = 'О
   const ch = P(HW - 5.5, d - 4, WALL + 15), e0 = P(-HW - 2.4, -3, WALL + 1.4), e1 = P(HW + 2.4, -3, WALL + 1.4);
   return { s: sp[0].s, ax, ay, night: null, wins: WINS, attach: P(HW - 2.9 + .3, -1, WALL - .5), smoke: [[ch[0], ch[1]]], drip: [[e0[0], e0[1], e1[0], e1[1], WALL + 1.4]],
     lights: [{ x: q[0], y: q[1], r: 14, c: '255,214,140', a: .7, k: 'window', win: 0 }, { x: q[0], y: 4, r: 38, sy: .5, c: '255,200,130', a: .4, k: 'window', win: 0 }, { x: lq[0], y: lq[1], r: 6, c: '255,226,170', a: .9, k: 'lamp', glare: true, flick: true }, { x: lq[0], y: 10, r: 34, sy: .6, c: '255,214,150', a: .55, k: 'lamp', fall: 'sq', flick: true }],
-    solids: [[(-HW - 2) * K, (-d - 1) * K, (HW + 2) * K, K]].map(t3w) } };
+    solids: [[(-HW - 2) * K, (-d - 1) * K, (HW + 2) * K, K], [(-HW + 1.1) * K, .5 * K, (-HW + 7.3) * K, 6.7 * K], [(-HW + 9.1) * K, 1.3 * K, (-HW + 12.9) * K, 5.1 * K]].map(t3w) } }; // (and the stack of tyres and the red bucket in front of it)
 
 // ---- the barrier at the entrance of the dam: a housing on the north verge and a red and white arm that crosses the road. Shut, the arm lies down across the
 // road toward us (it runs down the picture); open, it stands up (it runs up the picture): the post is on the far side of the road for this, so the two

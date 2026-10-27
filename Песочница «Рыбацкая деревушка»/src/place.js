@@ -40,7 +40,7 @@
     { id: 'bollard-r0', p: 'bollard', x: PIER.x - PIER.w - 3, y: PIER.y1 + PIER.ramp - 3, seed: 20 }, { id: 'bollard-r1', p: 'bollard', x: PIER.x + PIER.w + 3, y: PIER.y1 + PIER.ramp - 3, seed: 21 },
     // on the jetty: cleats, coils of rope, a stack of crates and barrels at the edge, lanterns at the far end
     ...[[PIER.x - 10.5, 134], [PIER.x + 10.5, 134], [PIER.x - 10.5, 200], [PIER.x + 10.5, 200]].map(([x, y], i) => ({ id: 'bollard-' + i, p: 'bollard', x, y, seed: i })),
-    { id: 'coil-1', p: 'coil', x: PIER.x + 5, y: 168, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 5, y: 206, seed: 2, col: [150, 140, 120] },
+    { id: 'coil-1', p: 'coil', x: PIER.x + 7.5, y: 168, seed: 1 }, { id: 'coil-2', p: 'coil', x: PIER.x - 7.5, y: 216, seed: 2, col: [150, 140, 120] }, // (a coil is in the rider's way, so each lies toward an edge of the deck, off the row of the cleats: the deck stays rideable)
     { id: 'crates-2', p: 'crates', x: PIER.x - 2, y: 118, seed: 8 },
     { id: 'lantern-1', p: 'lantern', x: PIER.x - 11, y: 106, c: '255,196,120', seed: 1 }, { id: 'lantern-2', p: 'lantern', x: PIER.x + 11, y: 106, c: '255,236,200', flick: true, seed: 2 },
     // by the fire on the beach
@@ -116,7 +116,7 @@
       { id: 'fisher-1', look: { id: 'fisher-1', sex: 'm', age: 'old', h: 17.2, build: 1.1, skin: 1, hair: [150, 148, 142], cut: 'short', beard: [150, 148, 142], hat: 'cap', hatCol: [70, 70, 64], top: [58, 84, 74], topKind: 'jacket', legs: [78, 84, 70], boots: [40, 52, 40], carry: 'bucket' },
         route: [[560, 252, 20], [566, 296, 0], [612, 300, 0], [634, 284, 0], [640, 272, 0], [640, 214, 0], [648, 150, 35], [640, 214, 0], [640, 272, 0], [634, 284, 0], [612, 300, 0], [566, 296, 0], [420, 252, 25], [330, 254, 0], [420, 252, 0], [560, 252, 0]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
-        route: [[250, 400, 30], [196, 396, 0], [170, 326, 55], [196, 396, 0]] },
+        route: [[250, 400, 30], [196, 396, 0], [166, 390, 0], [160, 350, 0], [170, 326, 55], [160, 350, 0], [166, 390, 0], [196, 396, 0]] }, // (round the west end of the clothes line, not through its post)
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
     { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
@@ -130,6 +130,10 @@
       { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят, глядя на воду', x: 800, y: 262, r: 28 },
       { id: 'barn', name: 'Коровник', hint: 'пахнет сеном и парным молоком', x: 925, y: 486, r: 46 },
       { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 401, r: 24 },
+      { id: 'fishrack-1', name: 'Вешала для рыбы', hint: 'вялятся лещ и плотва, рядом ящик с уловом', x: 372, y: 274, r: 36 },
+      { id: 'fishrack-2', name: 'Вешала для рыбы', hint: 'здесь вялят улов, пока держится сухая погода', x: 864, y: 264, r: 30 },
+      { id: 'nets-1', name: 'Сети сушатся', hint: 'развешены после лова, ветер качает их', x: 142, y: 302, r: 36 },
+      { id: 'nets-2', name: 'Сети сушатся', hint: 'развешены после лова, ветер качает их', x: 706, y: 256, r: 32 },
     ],
     exits: [
       { id: 'west', x: -240, y: 500, to: 'Студёный ключ', km: 1.7 },
