@@ -120,7 +120,7 @@
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
     { id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] }, route: [[1206, 213, 0]] },
       { id: 'woman', look: { id: 'woman', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [170, 120, 70], cut: 'tail', top: [180, 80, 60], topKind: 'fleece', legs: [60, 64, 90], boots: [60, 50, 44], carry: 'bucket' },
-        route: [[384, 403, 22], [440, 412, 0], [482, 404, 40], [440, 412, 0]] },
+        route: [[384, 403, 22], [444, 414, 0], [486, 407, 40], [444, 414, 0]] }, // (by the street, clear of the pole at 470,400)
     ],
     sitters: { 'fire-1': [[-18, -20, 180], [18, -20, 180]] },
     poi: [

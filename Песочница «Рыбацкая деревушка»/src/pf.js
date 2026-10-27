@@ -357,10 +357,10 @@ PF.well = ({ seed = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(), W
 const CARC = { glass: [54, 68, 80], glassL: [124, 144, 156], dark: [36, 36, 38], chrome: [200, 202, 198], rust: [150, 86, 52] };
 // the weather on an old body: rust blooming from the sills, wheel arches and roof edges, primer and bare metal where the paint has gone, streaks of dirt
 // from the glass, green damp at the foot. Only the paint is worn (what the model gives back as the body's own colour).
-function carWear(c, x, n, z, sd, o = {}) { const lowZ = z < (o.low ?? 6), edge = z > (o.top ?? 99); let k = vn(x * .27 + n * .21, z * .42 + n * .15, sd + 30), thr = .7 - (lowZ ? .12 : 0) - (edge ? .08 : 0) - (o.age || 0) * .05;
+function carWear(c, x, n, z, sd, o = {}) { const lowZ = z < (o.low ?? 6), edge = z > (o.top ?? 99); let k = lowZ ? vn(x * .27 + n * .21, z * .42 + n * .15, sd + 30) : vn(x * .3 + z * .2, n * .3 + z * .22, sd + 34), thr = (lowZ ? .6 : edge ? .8 : .88) - (o.age || 0) * .04; // (low down it creeps along the sills; up on the panels it is a round spot or two) // (the rust is low down: the sills, the arches, the foot of the doors; up on the panels and the roof only a spot here and there)
   if (k > thr + .1) return cmix(c, [118, 64, 40], .8); if (k > thr) return cmix(c, [158, 92, 56], .68);
   if (vn(x * .5 + n * .3, z * .7, sd + 31) > .9 - (o.age || 0) * .02) return cmix(c, [124, 116, 108], .7); // primer
-  if (vn(x * .55, z * .05 + n * .4, sd + 32) > .66) c = cmul(c, .86); if (lowZ && z < 3.8 && vn(x * .35, z * .6, sd + 33) > .5) return cmix(c, [76, 92, 52], .45); return c }
+  if (vn(x * .55, z * .05 + n * .4, sd + 32) > .74) c = cmul(c, .9); if (lowZ && z < 3.8 && vn(x * .35, z * .6, sd + 33) > .5) return cmix(c, [76, 92, 52], .45); return c }
 function oldCarWheels(M, hl, WHx, kind) { const rim = kind === 'beetle' ? [206, 206, 200] : [186, 190, 186];
   for (const [wx, wz] of WHx) { const tyre = [], hub = [], cap = []; for (let i = 0; i < 14; i++) { const a = i / 14 * TAU; tyre.push([wx + Math.cos(a) * 3.2, -.5, wz + Math.sin(a) * 3.2]); hub.push([wx + Math.cos(a) * 1.9, -.7, wz + Math.sin(a) * 1.9]); cap.push([wx + Math.cos(a) * .8, -.8, wz + Math.sin(a) * .8]) }
     t3face(M, tyre, [30, 30, 32], null, { both: true, zb: .6, clean: true }); t3face(M, hub, rim, null, { both: true, zb: .8, clean: true }); t3face(M, cap, [150, 154, 150], null, { both: true, zb: .9, clean: true }) } }
@@ -377,15 +377,15 @@ function copeikaModel(M, o) { const { body, rods = true } = o, L = 41, W = 15, H
       if (n > 5.4 && n < W - 5.4 && z > BH - 4.6 && z < BH - 1.8) return Math.round(z * 2) % 2 ? CARC.dark : CARC.chrome; if (z > BH - 6.2 && z < BH - 5.2) return CARC.chrome }
     if (x < -hl + .5) { if ((n < 4.2 || n > W - 4.2) && z > BH - 3.6 && z < BH - 1.8) return [196, 44, 36]; if (Math.abs(n - W / 2) < 2.4 && z > BH - 4.2 && z < BH - 2.8) return [236, 236, 228] }
     return null };
-  for (let i = 0; i < plan.length; i++) { const [x0, n0] = plan[i], [x1, n1] = plan[(i + 1) % plan.length]; t3face(M, [[x0, n0, G], [x1, n1, G], [x1, n1, BH], [x0, n0, BH]], body, ctr, { tex: (x, n, z) => side(x, n, z) || carWear(body, x, n, z, 40, { low: 6.2, top: BH - 2.4, age: 1 }) }) }
-  t3face(M, plan.map(([x, n]) => [x, n, BH]), body, ctr, { clean: true, tex: (x, n, z) => { if ((x > c1 + 1 && Math.abs(n - W / 2) < .4) || (x < c0 - 1 && Math.abs(n - W / 2) < .3)) return bodyD; return carWear(body, x * 1.4, n, 1 + (n < 3 || n > W - 3 ? 7 : 0) + (x > hl - 4 || x < -hl + 4 ? 0 : 4), 41, { low: 6, age: 1 }) } }); // (the bonnet and the boot lid)
+  for (let i = 0; i < plan.length; i++) { const [x0, n0] = plan[i], [x1, n1] = plan[(i + 1) % plan.length]; t3face(M, [[x0, n0, G], [x1, n1, G], [x1, n1, BH], [x0, n0, BH]], body, ctr, { tex: (x, n, z) => side(x, n, z) || carWear(body, x, n, z, 40, { low: 4.6, top: BH - 1, age: 1 }) }) }
+  t3face(M, plan.map(([x, n]) => [x, n, BH]), body, ctr, { clean: true, tex: (x, n, z) => { if ((x > c1 + 1 && Math.abs(n - W / 2) < .4) || (x < c0 - 1 && Math.abs(n - W / 2) < .3)) return bodyD; return carWear(body, x * 1.4, n, x > hl - 2.5 || x < -hl + 2.5 ? 5 : n < 2.5 || n > W - 2.5 ? 9 : 7.5, 41, { low: 6, top: 8, age: 1 }) } }); // (the bonnet and the boot lid: their lips rust like the sills, their edges a little, the panels hardly)
   // the cabin: a short trapezoid, the screens sloping, the side glass split by a pillar
   const t0 = c0 + 4, t1 = c1 - 5, i0 = 1.2, i1 = W - 1.2, gctr = [(c0 + c1) / 2, W / 2, BH + 2];
   const glassT = (x, n, z) => (Math.abs(x - (c0 + c1) / 2 + 1.6) < .5 || z > H - .5) ? body : ((x - z * .5) % 6 < .9 ? CARC.glassL : CARC.glass);
   t3face(M, [[c0, i0, BH], [c1, i0, BH], [t1, i0 + .8, H], [t0, i0 + .8, H]], CARC.glass, gctr, { tex: glassT }); t3face(M, [[c0, i1, BH], [c1, i1, BH], [t1, i1 - .8, H], [t0, i1 - .8, H]], CARC.glass, gctr);
   t3face(M, [[c1, i0, BH], [c1, i1, BH], [t1, i1 - .8, H], [t1, i0 + .8, H]], CARC.glass, gctr, { tex: (x, n, z) => (n - z * .5) % 7 < .9 ? CARC.glassL : CARC.glass });
   t3face(M, [[c0, i0, BH], [c0, i1, BH], [t0, i1 - .8, H], [t0, i0 + .8, H]], CARC.glass, gctr);
-  t3face(M, [[t0, i0 + .8, H], [t1, i0 + .8, H], [t1, i1 - .8, H], [t0, i1 - .8, H]], body, gctr, { clean: true, tex: (x, n) => carWear(body, x * 1.2, n, 3, 42, { low: 6, age: 1 }) });
+  t3face(M, [[t0, i0 + .8, H], [t1, i0 + .8, H], [t1, i1 - .8, H], [t0, i1 - .8, H]], body, gctr, { clean: true, tex: (x, n) => carWear(body, x * 1.2, n, n < 2 || n > W - 2 ? 9 : 7.5, 42, { low: 6, top: 8, age: 1 }) }); // (the roof: rust only along its gutters)
   oldCarWheels(M, hl, WHx, 'copeika');
   for (const sx of [-1, 1]) { t3box(M, sx * (hl + .4) - .9, -.4, 3, sx * (hl + .4) + .9, W + .4, 4.4, CARC.chrome); t3box(M, sx * (hl + .4) - .5, 2.4, 2.4, sx * (hl + .4) + .5, 3.6, 4.4, [150, 152, 148]); t3box(M, sx * (hl + .4) - .5, W - 3.6, 2.4, sx * (hl + .4) + .5, W - 2.4, 4.4, [150, 152, 148]) }
   t3line(M, [c1 + .6, -.2, BH + 1.4], [c1 + 1.3, -1.8, BH + 2], [30, 30, 32]); t3box(M, c1 + .9, -2.6, BH + 1.4, c1 + 2.3, -1.6, BH + 2.6, [60, 60, 64]); // the driver's mirror
@@ -408,8 +408,8 @@ function beetleModel(M, o) { const { body } = o, L = 40, W = 15, hl = L / 2, nc 
     if (n < nc) { for (const wx of [-12.6, 12.2]) { const r = Math.hypot(x - wx, z - 3.2); if (r < 4.2 && z < 5.6) return CARC.dark }
       if (z < G + 1.8 + 1.4 * vn(x * .3, 2, 5)) return cmix(body, [92, 76, 56], .5); if (vn(x * .4, z * .5, 19) > .8 && z < 6.4) return CARC.rust }
     return null };
-  for (let i = 0; i < N; i++) for (let j = 0; j < rings[i].length - 1; j++) t3face(M, [rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], rings[i + 1][j]], body, [rings[i][0][0], nc, G + 2], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 6, top: 7.8, age: .6 }) });
-  for (const i of [0, N]) t3face(M, rings[i], body, [rings[i][0][0] + (i ? -4 : 4), nc, G + 3], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 6, top: 7.8, age: .6 }) });
+  for (let i = 0; i < N; i++) for (let j = 0; j < rings[i].length - 1; j++) t3face(M, [rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], rings[i + 1][j]], body, [rings[i][0][0], nc, G + 2], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 4.8, top: 8.4, age: .6 }) });
+  for (const i of [0, N]) t3face(M, rings[i], body, [rings[i][0][0] + (i ? -4 : 4), nc, G + 3], { clean: true, tex: (x, n, z) => tubTex(x, n, z) || carWear(body, x, n, z, 50, { low: 4.8, top: 8.4, age: .6 }) });
   // the cabin: an egg, narrower than the tub: a band of glass under a body-coloured roof, a pillar behind the doors, the windscreen split, a small rear window
   const xm = -1.6, hx = 11.2, roofT = [[-1, 8.8], [-.55, 12.6], [-.15, 15], [.2, 15], [.6, 13.2], [1, 9.2]], cw = x => 6.1 * Math.pow(Math.max(0, 1 - ((x - xm) / hx) ** 2), .36), roof = x => interp(roofT, (x - xm) / hx);
   const cab = []; for (let i = 0; i <= 16; i++) { const x = xm - hx + 2 * hx * i / 16, w = cw(x), t = roof(x), z0 = tub(x) - .6, R = []; for (let k = 0; k <= 8; k++) { const th = Math.PI - k * Math.PI / 8; R.push([x, nc + w * Math.cos(th), z0 + Math.max(.3, t - z0) * Math.pow(Math.sin(th), .8)]) } cab.push(R) }

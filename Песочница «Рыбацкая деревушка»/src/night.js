@@ -43,8 +43,9 @@ function foxSpots(o) { let L = FOXS.get(o); if (L) return L; L = []; FOXS.set(o,
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (m[y * w + x] && m[y * w + x - 1] && m[y * w + x + 1] && m[(y + 1) * w + x]) c.push([x, y]);
   const r = mulberry(o.seed + 99); for (let k = 0; k < 9 && c.length; k++) L.push(c.splice(Math.floor(r() * c.length), 1)[0]); return L }
 const foxAt = (o, q) => [(o._dx !== undefined ? o._dx : Math.round(o.x - o.ax)) + q[0] + .5, (o._dy !== undefined ? o._dy : Math.round(o.y - o.ay)) + q[1] + .5];
-function foxfire(L, dark) { if (dark < .45) return; const a = .16 * clamp((dark - .45) / .3, 0, 1) * (1 + .2 * WET);
-  for (const o of VIS) { if (!isFox(o)) continue; const S = foxSpots(o), fl = .8 + .2 * Math.sin(t * .7 + o.seed % 31); for (let k = 0; k < Math.min(3, S.length); k++) { const [px, py] = foxAt(o, S[k]), g = L.createRadialGradient(px, py, 0, px, py, 5);
-      g.addColorStop(0, `rgba(120,255,150,${a * fl})`); g.addColorStop(1, 'rgba(120,255,150,0)'); L.fillStyle = g; L.fillRect(px - 5, py - 5, 10, 10) } } }
+// (the glow of a speck: one small picture made once, laid on with the brightness of the moment)
+let FOXG = null; const foxGlow = () => { if (FOXG) return FOXG; const c = document.createElement('canvas'); c.width = c.height = 10; const g = c.getContext('2d'), gr = g.createRadialGradient(5, 5, 0, 5, 5, 5); gr.addColorStop(0, 'rgba(120,255,150,1)'); gr.addColorStop(1, 'rgba(120,255,150,0)'); g.fillStyle = gr; g.fillRect(0, 0, 10, 10); return FOXG = c };
+function foxfire(L, dark) { if (dark < .45) return; const a = .16 * clamp((dark - .45) / .3, 0, 1) * (1 + .2 * WET), G = foxGlow(), a0 = L.globalAlpha;
+  for (const o of VIS) { if (!isFox(o)) continue; const S = foxSpots(o), fl = .8 + .2 * Math.sin(t * .7 + o.seed % 31); L.globalAlpha = a0 * Math.min(1, a * fl); for (let k = 0; k < Math.min(3, S.length); k++) { const [px, py] = foxAt(o, S[k]); L.drawImage(G, px - 5, py - 5) } } L.globalAlpha = a0 }
 function drawFoxDots() { if (LT.dark < .45) return; const a = clamp((LT.dark - .45) / .3, 0, 1); for (const o of VIS) { if (!isFox(o)) continue; const S = foxSpots(o);
     for (let k = 0; k < S.length; k++) { if (h2(o.seed, k, 73 + Math.floor(t * .5)) < .3) continue; const [px, py] = foxAt(o, S[k]); ctx.fillStyle = `rgba(150,255,170,${.55 * a})`; ctx.fillRect(Math.floor(px), Math.floor(py), 1, 1) } } }
