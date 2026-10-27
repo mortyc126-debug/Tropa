@@ -27,9 +27,13 @@ button:active{transform:translateY(2px);box-shadow:none}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;max-width:calc(100vw - 32px)}
 #hint .val{font-size:15px}
-#hint[hidden],#loading[hidden],#heroPick[hidden],#devPanel[hidden],#stick[hidden],#devCopy[hidden]{display:none}
+#hint[hidden],#loading[hidden],#heroPick[hidden],#intro[hidden],#devPanel[hidden],#stick[hidden],#devCopy[hidden]{display:none}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
 #loading .plate{font-size:15px;padding:10px 16px}
+#intro{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0c0a08;z-index:11;padding:16px;cursor:pointer}
+#introCv{image-rendering:pixelated;border:2px solid var(--plate-edge);box-shadow:0 2px 0 rgba(0,0,0,.5)}
+#introTxt{white-space:pre-line;min-height:3.2em;font-size:16px;line-height:1.5;max-width:min(92vw,640px);text-align:left}
+#introSkip{position:fixed;right:max(14px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px))}
 #heroPick{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(14,10,8,.72);z-index:9;padding:16px}
 #heroPick .plate{padding:14px 16px;text-align:center;max-width:100%}
 #heroPick .pt{font-size:16px;margin-bottom:10px;color:var(--ink)}
@@ -69,6 +73,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   <button id="bBack" type="button" title="держать, чтобы откатить велосипед назад (клавиша X)" hidden>◀ Назад</button>
 </div>
 <button id="bAct" type="button" hidden></button>
+<div id="intro" hidden><canvas id="introCv"></canvas><div class="plate" id="introTxt"></div><button id="introSkip" type="button">Пропустить</button></div>
 <div id="heroPick" hidden><div class="plate"><div class="pt">Кто едет?</div><div class="pk"><button type="button" data-h="roma"><b>Рома</b></button><button type="button" data-h="dasha"><b>Даша</b></button></div></div></div>
 <div id="loading"><div class="plate" id="loadTxt">Строю место…</div></div>
 <script>
@@ -2229,6 +2234,17 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
   const head = H / 4.5, legH = H * .42, shZ = H - head * 1.05 - .3, hipZ = legH + .2, shW = (f ? 2.25 : 2.7) * bd, hipW = (f ? 2.15 : 1.95) * bd, dep = (f ? 1.25 : 1.35) * bd, hz = H - head * .55;
   const run = pose.run != null, walk = run ? pose.run : pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : run ? .3 + (1 - Math.abs(cw)) * 1.1 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
   const lift = z => z + bob, sx = sway * .35, SA = run ? 1.45 : 1, LN = run ? 1.1 : 0; // (SA: the stride; LN: how far the shoulders lean forward)
+  if (pose.chair) { // sitting on a chair (seat height pose.seat), the hands on a desk before them (at pose.desk), typing (pose.type: the hands' frame), or in the lap
+    const C = pose.chair, sz = C.seat ?? legH * .62, dz = C.desk, ty = C.type || 0, lean = C.lean ?? .5;
+    for (const s of [-1, 1]) { const x = s * hipW * .48, hip = [x, 1, sz + .8], knee = [x * 1.08, 1 - 4.3, sz + 1], foot = [x * 1.1, 1 - 4.9, .6];
+      t3limb(M, hip, knee, 1.05 * bd, .9, legs); t3limb(M, knee, foot, .9, .7, legs); t3box(M, foot[0] - .75, foot[1] - 1.6, 0, foot[0] + .75, foot[1] + .6, 1.3, boots, { noAO: true }) }
+    const tz0 = sz + .5, tz1 = tz0 + (shZ - hipZ) * 1.02, wz = tz0 + (tz1 - tz0) * .4; t3torso(M, tz0, wz, hipW, dep, hipW * (f ? .82 : .95), dep * .95, top, { tex: torsoTex(L, 0, 0), dn1: -lean * .3 });
+    t3torso(M, wz, tz1, hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: torsoTex(L, wz, tz1), dn0: -lean * .3, dn1: -lean });
+    for (const s of [-1, 1]) { const up = dz !== undefined ? (s > 0 ? (ty % 2 ? .45 : 0) : (ty % 2 ? 0 : .45)) : 0, sh = [s * (shW - .15), 1 - lean, tz1 - .5],
+        hd = dz !== undefined ? [s * (shW * .5 + .2), 1 - 5.2 + (ty === 3 && s > 0 ? 1.2 : 0), dz + .7 + up] : [s * hipW * .45, 1 - 3.2, sz + 1.7], el = [s * (shW + .2), (sh[1] + hd[1]) / 2 + .6, Math.min(sh[2], hd[2]) - 1.2];
+      t3limb(M, sh, el, .72 * bd, .62, top); t3limb(M, el, hd, .62, .52, top); t3ball(M, hd, .6, .6, .62, skin, { seg: 6 }) }
+    t3limb(M, [0, 1 - lean, tz1 - .2], [0, 1 - lean * 1.15, tz1 + .8], .65, .6, skin);
+    headModel(M, L, [0, 1.05 - lean * 1.25 - (C.bow || 0), tz1 + head * .55 + .3 - (C.bow || 0) * .6], head, skin, look); return M }
   if (sit) { // sitting on the ground, knees up, forearms on them
     const sz = 1.2; for (const s of [-1, 1]) { const x = s * hipW * .45, hip = [x, 1, sz + .8], knee = [x * 1.2, -2.8, sz + 3.8], foot = [x * 1.2, -4.2, .6];
       t3limb(M, hip, knee, 1, .85, legs); t3limb(M, knee, foot, .85, .7, legs); t3box(M, foot[0] - .8, foot[1] - 1.4, 0, foot[0] + .8, foot[1] + .6, 1.2, boots) }
@@ -2292,14 +2308,15 @@ const HEROES = {
     rc: { jacket: [58, 66, 86], jacketD: [40, 46, 62], jacketL: [84, 94, 118], pants: [62, 74, 102], pantsD: [44, 54, 76], boot: [62, 50, 42], glove: [204, 152, 120], hair: [56, 40, 30], hat: false, tail: false, pack: false, scarf: false } },
   dasha: { id: 'dasha', name: 'Даша', look: { id: 'hero-dasha', sex: 'f', h: 16.8, build: .9, skin: 2, hair: [150, 92, 54], cut: 'tail', top: [176, 128, 82], topKind: 'jacket', legs: [50, 56, 80], boots: [92, 64, 48] },
     rc: { jacket: [176, 128, 82], jacketD: [138, 96, 58], jacketL: [204, 160, 112], pants: [50, 56, 80], pantsD: [36, 40, 60], boot: [92, 64, 48], glove: [224, 174, 140], hair: [150, 92, 54], hat: false, tail: true, pack: false, scarf: [64, 104, 82], scarfS: [44, 76, 60], scarfD: [42, 70, 56] } } };
-const HERO0 = (() => { try { return localStorage.getItem('trail.hero') } catch (e) { return null } })(); let HERO = HEROES[HERO0] || HEROES.roma, HGEN = 0;
+const INTRO_ON = /[?&]intro\b/.test(location.search) || typeof INTRO_PREVIEW !== 'undefined';
+const HERO0 = INTRO_ON ? null : (() => { try { return localStorage.getItem('trail.hero') } catch (e) { return null } })(); let HERO = HEROES[HERO0] || HEROES.roma, HGEN = 0;
 // the hero changed: their pictures made again (on foot at once as needed; on the bike in the background, the old ones dropped)
 function setHero(id) { if (!HEROES[id]) return; try { localStorage.setItem('trail.hero', id) } catch (e) { } if (HERO.id === id) return; HERO = HEROES[id]; HGEN++; HSPR.clear();
   RSETS.clear(); RPND.clear(); SPR_ST.clear(); SPND.clear(); SQ.length = 0; RORDER = null; STAND.k = 0; STAND.go = 0; STAND.cv = null; $('bHero').innerHTML = 'Герой: <b>' + HERO.name + '</b>' }
 // the choosing: the two of them standing side by side, large; a click (or a tap) on one
 function heroPortrait(id) { const L = HEROES[id].look, sp = t3sprite(() => { const M = personModel(L, { sway: id === 'roma' ? 1 : -1 }); t3rot(M, id === 'roma' ? 210 : 150); t3scale(M, NPC_K * 3.2); return M }, [0])[0]; return sp.s.canvas() }
-function heroPick(first) { const P = $('heroPick'); if (!P.dataset.made) { P.dataset.made = 1; for (const b of P.querySelectorAll('button[data-h]')) { const c = heroPortrait(b.dataset.h); c.className = 'por'; b.prepend(c); b.onclick = () => { setHero(b.dataset.h); P.hidden = true; paused = P.wasPaused } } }
-  P.wasPaused = first ? false : paused; paused = true; P.hidden = false }
+function heroPick(first) { const P = $('heroPick'); if (!P.dataset.made) { P.dataset.made = 1; for (const b of P.querySelectorAll('button[data-h]')) { const c = heroPortrait(b.dataset.h); c.className = 'por'; b.prepend(c); b.onclick = () => { setHero(b.dataset.h); P.hidden = true; paused = P.wasPaused; if (P.first && INTRO_ON) introStart(null) } } }
+  P.first = first; P.wasPaused = first ? false : paused; paused = true; P.hidden = false }
 const HDIRS = 16, HSPR = new Map(), HERO_RUN = 24; // (HERO_RUN: px per running cycle of two steps; walking: 12.8)
 // one picture of the hero: kind walk | run (eight frames a cycle), idle (two: the weight on one foot or the other), look (two: to the left, to the right)
 function heroSprite(kind, d, f) { const key = HERO.id + kind + d + '/' + f; let r = HSPR.get(key); if (r) return r;
@@ -2310,6 +2327,115 @@ function heroSprite(kind, d, f) { const key = HERO.id + kind + d + '/' + f; let 
 let HWARM = 0; function heroWarm(ms) { if (!R.foot) return; const t0 = performance.now(), d0 = R.hd16 || 0, kinds = ['walk', 'run', 'idle', 'look'];
   for (let k = 0; k <= HDIRS / 2; k++) for (const d of k ? [(d0 + k) % HDIRS, (d0 - k + HDIRS) % HDIRS] : [d0]) for (const kind of kinds) for (let f = 0; f < (kind === 'walk' || kind === 'run' ? NPC_WALKN : 2); f++) {
     if (HSPR.has(HERO.id + kind + d + '/' + f)) continue; heroSprite(kind, d, f); if (performance.now() - t0 > ms) return } }
+// =====================================================================================================================
+// THE STORY BEFORE THE GAME: cards, each a small scene made the way the game makes its world (the same models, the same
+// light), only nearer (the people about twice their size on the road), its people moving (typing, walking, the bus
+// rocking) and the day going by in it, a line or two of text under it. A tap (a click, a key) brings the whole line or
+// the next card; «Пропустить» goes straight to the road.
+// A scene: its room or its street as one still picture (bg), the things that move as units (each one model per frame,
+// drawn back to front by how far back they stand), and what is drawn over them every frame (rain on a window, a clock).
+// =====================================================================================================================
+const CARD = { W: 256, H: 176, S: 3 };
+// a model moved (all its points; its faces' textures still asked in the frame they were made in) and models put together
+function t3shift(M, dx, dn, dz) { const seen = new Set(), S = p => { if (!seen.has(p)) { seen.add(p); p[0] += dx; p[1] += dn; p[2] += dz } };
+  for (const f of M.faces) { if (f.tex) { const tx = f.tex; f.tex = (x, n, z, ...a) => tx(x - dx, n - dn, z - dz, ...a) } f.pts.forEach(S); f.c = [f.c[0] + dx, f.c[1] + dn, f.c[2] + dz] } for (const L of M.lines) { S(L.a); S(L.b) } for (const d of M.dots) S(d[0]); return M }
+const t3join = (A, ...Bs) => { for (const B of Bs) { A.faces.push(...B.faces); A.lines.push(...B.lines); A.dots.push(...B.dots) } return A };
+// a card's model drawn: scaled to the card, its origin at O on the card
+function cardDraw(M, weather) { if (!weather) for (const f of M.faces) f.clean = true; t3scale(M, CARD.S); const sp = t3sprite(() => M, [0])[0]; return { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay } }
+const cardP = (O, x, n, z) => [O[0] + (x + n * T3S) * CARD.S, O[1] + (-n - z * T3K) * CARD.S];
+
+// ---- the furniture of the office ----
+function cardDesk(x0, n0, x1, n1, o = {}) { const M = T3(), top = o.col || [204, 200, 190], leg = [120, 124, 130];
+  t3box(M, x0, n0, 7, x1, n1, 7.4, top, { tex: (x, n, z, c) => (z > 7.3 && h2(Math.floor(x * 3), Math.floor(n * 3), 31) < .04 ? cmul(c, .94) : c) });
+  for (const x of [x0 + .2, x1 - .6]) t3box(M, x, n0 + .3, 0, x + .4, n1 - .3, 7, leg); // (two side panels)
+  t3box(M, x0 + .6, o.back ? n0 + .2 : n1 - .6, 2.4, x1 - .6, o.back ? n0 + .6 : n1 - .2, 7, cmul(top, .86)); // (the panel at the far side from the sitter)
+  return M }
+// a monitor on its stand: the screen to the north (face: 1) or the south (-1); its glass a plain light (the picture on it is drawn over, every frame)
+function cardMonitor(x, n, face, glass = [176, 204, 226]) { const M = T3(), d = face > 0 ? 1 : -1, dark = [40, 42, 48];
+  t3box(M, x - 1.1, n - .5, 7.4, x + 1.1, n + .5, 7.6, dark); t3box(M, x - .25, n - .15 * d - .2, 7.6, x + .25, n - .15 * d + .2, 9.2, dark);
+  t3box(M, x - 2.9, n - .25, 8.9, x + 2.9, n + .25, 12.4, dark, { tex: (X, N, Z, c) => (d * (N - n) < 0 || Math.abs(X - x) > 2.65 || Z < 9.1 || Z > 12.2 ? c : glass) });
+  return M }
+function cardChair(x, n, back, col = [52, 56, 66]) { const M = T3(), metal = [96, 98, 104];
+  t3box(M, x - 2.2, n - 2, 4.2, x + 2.2, n + 2, 4.8, col); t3cyl(M, x, n, .3, 1.1, 4.2, metal);
+  for (let k = 0; k < 5; k++) { const a = k / 5 * TAU + .3, ex = x + Math.cos(a) * 2.4, en = n + Math.sin(a) * 2.4; t3box(M, Math.min(x, ex) - .2, Math.min(n, en) - .2, .5, Math.max(x, ex) + .2, Math.max(n, en) + .2, .9, metal); t3ball(M, [ex, en, .35], .35, .35, .35, [30, 30, 34]) }
+  if (back) { const bn = n + back * 2.3; t3box(M, x - 2, bn - .25, 5.2, x + 2, bn + .25, 10.6, col); t3box(M, x - .2, bn - .2, 4.6, x + .2, bn + .2, 5.4, metal) }
+  return M }
+// one at a desk: the chair, the person on it typing (frame f; 3: a hand on the mouse), facing north (dir 0) or south (4)
+function cardWorker(look, x, n, dir, f, o = {}) { const P = personModel(look, { chair: { seat: 4.8, desk: 7.4, type: f, lean: o.lean ?? .5, bow: o.bow || 0 }, look: o.look || 0 }); t3rot(P, dir * 45);
+  t3shift(P, x, n, 0); return t3join(cardChair(x, n + (dir === 0 ? -.4 : .4), dir === 0 ? -1 : 1), P) }
+
+// ---- the office: an open floor on a high storey, rain on the big windows, the hero at a desk with their back to us, a colleague
+// across the way; the clock goes round from nine in the morning to the evening, the light outside goes, the letters pile up ----
+const CARD_OFFICE = {
+  O: [CARD.W / 2 - 14, CARD.H - 6], dur: 9,
+  bg() { const M = T3(), wall = [178, 176, 166], side = [160, 158, 150], carpet = [92, 96, 106], WINS = [[-31, -13], [-8, 8], [13, 31]], WZ = [7, 21];
+    const inWin = (x, z) => WINS.some(([a, b]) => x > a && x < b) && z > WZ[0] && z < WZ[1];
+    t3face(M, [[-34, 0, 0], [34, 0, 0], [34, 34, 0], [-34, 34, 0]], carpet, [0, 17, -5], { tex: (x, n, z, c) => { const gx = ((x % 8) + 8) % 8, gn = ((n % 8) + 8) % 8; return gx < .35 || gn < .35 ? cmul(c, .86) : h2(Math.floor(x * 2), Math.floor(n * 2), 3) < .06 ? cmul(c, 1.06) : c } });
+    // the back wall with its windows: the city outside in the rain, grey towers, a crane
+    t3face(M, [[-34, 34, 0], [34, 34, 0], [34, 34, 24], [-34, 34, 24]], wall, [0, 44, 12], { tex: (x, n, z, c) => {
+      if (z < .8) return [96, 92, 86]; // (the skirting)
+      for (const [a, b] of WINS) if (x > a - .7 && x < b + .7 && z > WZ[0] - .7 && z < WZ[1] + .7) { if (!inWin(x, z) || Math.abs(x - (a + b) / 2) < .25) return [214, 214, 210];
+        const sky = cmix([150, 160, 172], [120, 132, 146], (z - WZ[0]) / (WZ[1] - WZ[0])), bh = 9 + 3.5 * Math.sin(x * .9) + 2.6 * Math.sin(x * .37 + 1) + (Math.floor((x + 50) / 3) % 3) * 1.3;
+        if (z < WZ[0] + bh * .6) { const far = Math.floor((x + 50) / 2.3) % 2; return ((Math.floor(z * 1.6) + Math.floor(x * 1.1)) % 3 === 0) ? [132, 140, 150] : far ? [104, 112, 124] : [96, 104, 116] } // (towers)
+        if (x > 22 && x < 22.4 && z > WZ[0] + 5) return [92, 96, 102]; if (z > 18 && z < 18.4 && x > 17 && x < 29) return [92, 96, 102]; // (a crane)
+        return sky }
+      return c } });
+    t3face(M, [[-34, 0, 0], [-34, 34, 0], [-34, 34, 24], [-34, 0, 24]], side, [-44, 17, 12], { tex: (x, n, z, c) => z < .8 ? [92, 88, 82] : c });
+    // a whiteboard on the side wall, the water cooler in the corner, a plant
+    t3face(M, [[-33.8, 10, 8], [-33.8, 24, 8], [-33.8, 24, 18], [-33.8, 10, 18]], [236, 238, 236], [-44, 17, 12], { tex: (x, n, z) => { if (n < 10.3 || n > 23.7 || z < 8.3 || z > 17.7) return [150, 152, 156]; const r = h2(Math.floor(n * 2), Math.floor(z * 2), 9); return Math.abs(Math.sin(n * 1.7 + z * .4) * 2 - (z - 13.5)) < .25 && n < 19 ? [60, 90, 170] : Math.abs(n - 21 - Math.sin(z * 2) * .4) < .2 && z > 10 && z < 16 ? [200, 70, 56] : r < .015 ? [190, 60, 50] : [236, 238, 236] } });
+    t3box(M, -32, 28, 0, -28, 32, 9, [214, 214, 212]); t3cyl(M, -30, 30, 1.6, 9, 13, [150, 196, 230], { topCol: [120, 170, 214] });
+    t3cyl(M, 30, 30, 1.6, 0, 3, [150, 90, 60], { topCol: [70, 50, 36] }); for (let k = 0; k < 7; k++) { const a = k * 2.4; t3ball(M, [30 + Math.cos(a) * 1.4, 30 + Math.sin(a) * 1.2, 4.5 + (k % 3) * 1.4], 1.6, 1.4, 1.5, k % 2 ? [62, 104, 66] : [52, 90, 58]) }
+    return M },
+  // the hero at the far desk facing us (the window and the clock behind them, the monitor's light on their face); a colleague in front with
+  // her back to us, her screen to us; beside her a desk nobody sits at today
+  units: [
+    { n: 31, frames: 4, make: f => { const M = t3join(cardDesk(-10, 22, 14, 28, { back: true }), cardMonitor(2, 23.6, 1), cardWorker(HERO.look, 2, 31, 4, f === 2 ? 0 : f, { bow: .25 }));
+        t3box(M, -.3, 25.3, 7.4, 4.3, 26.6, 7.7, [52, 54, 60]); t3cyl(M, 9, 24.5, .55, 7.4, 8.6, [236, 232, 222], { topCol: [90, 60, 40] }); // (the keyboard, a mug)
+        for (let k = 0; k < 6; k++) t3box(M, -8, 23, 7.4 + k * .18, -4.5, 26, 7.58 + k * .18, k % 2 ? [244, 244, 240] : [232, 230, 222]); return M } }, // (a stack of papers)
+    { n: 4, frames: 4, make: f => { const L = { id: 'colleague-1', sex: 'f', h: 16.6, build: .95, skin: 0, hair: [40, 34, 30], cut: 'long', top: [120, 128, 138], topKind: 'fleece', legs: [50, 50, 60], boots: [40, 36, 34] };
+        const M = t3join(cardDesk(-22, 8, -2, 15), cardMonitor(-12, 12.5, -1), cardWorker(L, -12, 4, 0, f === 1 || f === 3 ? f : 0, { lean: .6 }));
+        t3box(M, -14.3, 8.7, 7.4, -9.7, 10, 7.7, [52, 54, 60]); t3cyl(M, -19, 11, .9, 7.4, 8.2, [150, 90, 60], { topCol: [60, 104, 64] }); return M } }, // (her keyboard, a little cactus)
+    { n: 5, frames: 1, make: () => t3join(cardDesk(6, 8, 24, 15), cardMonitor(15, 12.5, -1, [40, 44, 52]), cardChair(15, 4.6, -1)) }],
+  // over it: the rain on the glass, the evening coming on outside (the city's windows lighting), the clock, the screen with its letters
+  over(g, T, u) { const O = this.O, P = (x, n, z) => cardP(O, x, n, z), day = clamp(1 - (u - .15) / .7, 0, 1);
+    for (const [a, b] of [[-31, -13], [-8, 8], [13, 31]]) { const q = [P(a, 34, 7), P(b, 34, 7), P(b, 34, 21), P(a, 34, 21)]; g.save(); g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip();
+      g.fillStyle = `rgba(28,36,60,${.65 * (1 - day)})`; g.fillRect(0, 0, CARD.W, CARD.H);
+      if (day < .8) for (let k = 0; k < 40; k++) { const r = h2(k, 7, 77), x = q[0][0] + r * (q[1][0] - q[0][0]), y = q[2][1] + h2(k, 8, 77) * (q[0][1] - q[2][1]) * .55 + (q[0][1] - q[2][1]) * .4; if (h2(k, 9, 77) < (1 - day) * .9) { g.fillStyle = 'rgba(255,214,140,.8)'; g.fillRect(Math.round(x), Math.round(y), 1, 1) } }
+      g.fillStyle = 'rgba(214,226,240,.5)'; for (let k = 0; k < 26; k++) { const x = q[0][0] + h2(k, 3, 5) * (q[1][0] - q[0][0]) + 4, y = q[2][1] + ((h2(k, 4, 5) * 60 + T * 70 * (.8 + h2(k, 6, 5) * .5)) % (q[0][1] - q[2][1] + 6)) - 3; g.fillRect(Math.round(x), Math.round(y), 1, 2); g.fillRect(Math.round(x - 1), Math.round(y + 2), 1, 1) }
+      g.restore() }
+    // the clock: from nine to half past six
+    { const [cx, cy] = P(-10.5, 34, 17), h = 9 + 9.5 * clamp(u / .92, 0, 1), r = 4.2; g.fillStyle = '#f2f0ea'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); g.strokeStyle = '#3a3c42'; g.lineWidth = 1; g.stroke();
+      g.strokeStyle = '#24262c'; for (const [a, l] of [[(h % 12) / 12 * TAU, r * .55], [(h % 1) * TAU, r * .85]]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(a) * l, cy - Math.cos(a) * l); g.stroke() } }
+    // the colleague's screen: a table, a cursor, the count of letters climbing
+    { const a = P(-14.6, 12.25, 12.15), b = P(-9.4, 12.25, 9.15), x0 = Math.round(a[0]), y0 = Math.round(a[1]), w = Math.round(b[0] - a[0]), hh = Math.round(b[1] - a[1]);
+      g.fillStyle = '#e8eef4'; g.fillRect(x0, y0, w, hh); g.fillStyle = '#4a78b8'; g.fillRect(x0, y0, w, 1); g.fillStyle = '#c4ccd6'; for (let yy = y0 + 2; yy < y0 + hh; yy += 2) g.fillRect(x0, yy, w, 1); for (let xx = x0 + 3; xx < x0 + w; xx += 4) g.fillRect(xx, y0 + 1, 1, hh - 1);
+      g.fillStyle = '#d04a3c'; const n = Math.floor(3 + u * 44); g.fillRect(x0 + w - 3, y0, 3, 1 + Math.min(3, n / 15 | 0)); if (Math.floor(T * 3) % 2) { g.fillStyle = '#20242c'; g.fillRect(x0 + 1 + (Math.floor(T * 5) % (w - 3)), y0 + 2 + (Math.floor(T) % Math.max(1, hh - 3)), 1, 1) } }
+    // the screen's light on the hero, and the cold light of the ceiling over everything
+    g.save(); g.globalCompositeOperation = 'lighter'; { const [sx, sy] = P(2, 26, 11.5), gr = g.createRadialGradient(sx, sy, 0, sx, sy, 14); gr.addColorStop(0, 'rgba(70,96,130,.16)'); gr.addColorStop(1, 'rgba(60,80,110,0)'); g.fillStyle = gr; g.fillRect(sx - 14, sy - 14, 28, 28) } g.restore();
+    g.fillStyle = `rgba(30,40,70,${.12 + .1 * (1 - day)})`; g.fillRect(0, 0, CARD.W, CARD.H) },
+  lines: h => [h.id === 'dasha' ? 'Даша. Понедельник, девять утра.' : 'Рома. Понедельник, девять утра.', 'Отчёт. Совещание. Снова отчёт.'] };
+const INTRO_CARDS = [CARD_OFFICE];
+
+// ---- showing them ----
+const INTRO = { on: false, k: 0, T: 0, ch: 0, line: 0, made: null };
+function introMake(C) { const bg = cardDraw(C.bg()), units = C.units.map(U => ({ n: U.n, fps: U.fps || 6, frames: Array.from({ length: U.frames }, (_, f) => cardDraw(U.make(f))) })).sort((a, b) => b.n - a.n); return { C, bg, units } }
+function introStart(done) { const D = $('intro'); INTRO.on = true; INTRO.k = 0; INTRO.done = done; D.hidden = false; INTRO.wasPaused = paused; paused = true;
+  const cv = $('introCv'); cv.width = CARD.W; cv.height = CARD.H; introCard(0); requestAnimationFrame(introTick) }
+function introCard(k) { INTRO.k = k; INTRO.T = 0; INTRO.ch = 0; INTRO.line = 0; const C = INTRO_CARDS[k]; $('introTxt').textContent = ''; INTRO.made = null;
+  // (made a moment later, so the plate is up first)
+  setTimeout(() => { INTRO.made = introMake(C) }, 30) }
+function introEnd() { INTRO.on = false; $('intro').hidden = true; paused = INTRO.wasPaused && false; if (INTRO.done) INTRO.done() }
+function introNext() { if (!INTRO.on) return; const C = INTRO_CARDS[INTRO.k], L = C.lines(HERO), full = L.join('\n');
+  if (INTRO.ch < full.length) { INTRO.ch = full.length; return } if (INTRO.k + 1 < INTRO_CARDS.length) introCard(INTRO.k + 1); else introEnd() }
+let INTRO_LAST = 0;
+function introTick(now) { if (!INTRO.on) return; const dt = Math.min(.05, (now - (INTRO_LAST || now)) / 1000); INTRO_LAST = now; requestAnimationFrame(introTick);
+  const C = INTRO_CARDS[INTRO.k], M = INTRO.made, g = $('introCv').getContext('2d'); if (!M) return; INTRO.T += dt; const u = clamp(INTRO.T / C.dur, 0, 1);
+  g.fillStyle = '#15110e'; g.fillRect(0, 0, CARD.W, CARD.H); const O = C.O; g.drawImage(M.bg.cv, Math.round(O[0] - M.bg.ax), Math.round(O[1] - M.bg.ay));
+  for (const U of M.units) { const f = U.frames[Math.floor(INTRO.T * U.fps + U.n) % U.frames.length]; g.drawImage(f.cv, Math.round(O[0] - f.ax), Math.round(O[1] - f.ay)) }
+  C.over(g, INTRO.T, u);
+  // the words, a letter at a time
+  const full = C.lines(HERO).join('\n'); if (INTRO.ch < full.length) { INTRO.ch = Math.min(full.length, INTRO.ch + dt * 26); $('introTxt').textContent = full.slice(0, Math.floor(INTRO.ch)) } }
+
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
   return { id: 'camper' + seed, sex: f ? 'f' : 'm', h: f ? 16.2 + r() * 1.4 : 17 + r() * 2, build: .9 + r() * .3, skin: Math.floor(r() * 4), hair: pick([[60, 42, 30], [120, 80, 40], [200, 170, 110], [40, 34, 30], [150, 70, 40]]),
@@ -5312,7 +5438,7 @@ const BIKE_L = 14; // wheelbase, px
 // ---- input: the arrows or WASD say where to go (screen directions, north up); the bike steers there as a bicycle
 // does. On a touch screen a stick appears where the thumb lands. Space brakes. ----
 const KEYS = new Set(); const STICK = { on: false, id: -1, x0: 0, y0: 0, dx: 0, dy: 0 };
-addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); KEYS.add(e.code); if (e.code === 'KeyE' || e.code === 'Enter') heroAct(); if (e.code === 'KeyG' || e.code === 'F2') toggleDev(); if (e.code === 'KeyP') togglePause() });
+addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); if (INTRO.on) { if (['Space', 'Enter', 'ArrowRight', 'KeyE'].includes(e.code)) { e.preventDefault(); introNext() } if (e.code === 'Escape') introEnd(); return } KEYS.add(e.code); if (e.code === 'KeyE' || e.code === 'Enter') heroAct(); if (e.code === 'KeyG' || e.code === 'F2') toggleDev(); if (e.code === 'KeyP') togglePause() });
 addEventListener('keyup', e => KEYS.delete(e.code)); addEventListener('blur', () => KEYS.clear());
 function wantDir() { let x = 0, y = 0; if (KEYS.has('ArrowUp') || KEYS.has('KeyW')) y -= 1; if (KEYS.has('ArrowDown') || KEYS.has('KeyS')) y += 1; if (KEYS.has('ArrowLeft') || KEYS.has('KeyA')) x -= 1; if (KEYS.has('ArrowRight') || KEYS.has('KeyD')) x += 1;
   if (x || y) { const m = Math.hypot(x, y); return [x / m, y / m, 1] } if (STICK.on) { const m = Math.hypot(STICK.dx, STICK.dy); if (m > 6) return [STICK.dx / m, STICK.dy / m, Math.min(1, (m - 6) / 40)] } return null }
@@ -6063,6 +6189,9 @@ const DEV = { on: false, pick: null, fps: 60 };
 function toggleDev() { DEV.on = !DEV.on; elDev.hidden = !DEV.on; bDev.innerHTML = 'Сетка: <b>' + (DEV.on ? 'вкл' : 'выкл') + '</b>'; if (!DEV.on) DEV.pick = null }
 bDev.onclick = toggleDev;
 $('bHero').innerHTML = 'Герой: <b>' + HERO.name + '</b>'; $('bHero').onclick = () => heroPick(false);
+$('intro').onclick = e => { if (e.target.id !== 'introSkip') introNext() }; $('introSkip').onclick = e => { e.stopPropagation(); introEnd() };
+function introSize() { const q = Math.min(innerWidth * .94 / CARD.W, (innerHeight - 170) / CARD.H), k = q >= 2 ? Math.floor(q) : Math.max(1, q), // (whole pixels when there is room; on a phone's narrow screen as wide as it goes)
+   cv = $('introCv'); cv.style.width = CARD.W * k + 'px'; cv.style.height = CARD.H * k + 'px' } introSize(); addEventListener('resize', introSize);
 if (GAMEMODE) $('bSeed').onclick = () => { try { localStorage.setItem('trail.seed', (Math.random() * 1e9) | 0) } catch (e) { } location.reload() };
 // ---- the map in the corner (the game): the ways, the water and the places about the rider, north up, 1:12 ----
 const MAPC = GAMEMODE ? $('map') : null, MAPX = MAPC ? MAPC.getContext('2d') : null; let mapT = -9;
