@@ -22,13 +22,20 @@ body{margin:0;font-size:14px;background:var(--bg);color:var(--ink);font-family:v
 button{pointer-events:auto;font:inherit;font-size:12px;color:var(--ink);background:var(--plate);border:2px solid var(--plate-edge);
   padding:5px 7px;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.45)}
 button b{color:var(--amber);font-weight:600}
+#bAct{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));font-size:15px;padding:10px 14px;color:var(--amber)}
 button:active{transform:translateY(2px);box-shadow:none}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;max-width:calc(100vw - 32px)}
 #hint .val{font-size:15px}
-#hint[hidden],#loading[hidden],#devPanel[hidden],#stick[hidden],#devCopy[hidden]{display:none}
+#hint[hidden],#loading[hidden],#heroPick[hidden],#devPanel[hidden],#stick[hidden],#devCopy[hidden]{display:none}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
 #loading .plate{font-size:15px;padding:10px 16px}
+#heroPick{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(14,10,8,.72);z-index:9;padding:16px}
+#heroPick .plate{padding:14px 16px;text-align:center;max-width:100%}
+#heroPick .pt{font-size:16px;margin-bottom:10px;color:var(--ink)}
+#heroPick .pk{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+#heroPick .pk button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 14px;font-size:15px}
+#heroPick .por{image-rendering:pixelated;height:min(34vh,190px);width:auto}
 #devPanel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:calc(84px + env(safe-area-inset-top,0px));
   max-width:min(560px,calc(100vw - 24px));font:12px/1.4 ui-monospace,Menlo,monospace;pointer-events:auto}
 #devPanel div{margin:1px 0}
@@ -58,9 +65,12 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   <button id="bWeather" type="button">Погода: <b>авто</b></button>
   <button id="bTime" type="button">Время: <b>цикл</b></button>
   <button id="bWind" type="button">Ветер: <b>авто</b></button>
+  <button id="bHero" type="button">Герой: <b>Рома</b></button>
   <button id="bSeed" type="button" title="другой лес и другая тропа (турбаза, деревушка и дорога между ними остаются)">Новый лес</button><button id="bDev" type="button" hidden>Сетка: <b>выкл</b></button>
-  <button id="bBack" type="button" title="держать, чтобы откатить велосипед назад (клавиша X)">◀ Назад</button>
+  <button id="bBack" type="button" title="держать, чтобы откатить велосипед назад (клавиша X)" hidden>◀ Назад</button>
 </div>
+<button id="bAct" type="button" hidden></button>
+<div id="heroPick" hidden><div class="plate"><div class="pt">Кто едет?</div><div class="pk"><button type="button" data-h="roma"><b>Рома</b></button><button type="button" data-h="dasha"><b>Даша</b></button></div></div></div>
 <div id="loading"><div class="plate" id="loadTxt">Строю лес…</div></div>
 <script>
 const GAMEMODE = true;
@@ -789,7 +799,7 @@ const RIDER_N=16,ROX=16;
 const R3B=.5,R3SS=3,R3W=32+2*ROX,R3H=44;
 const R3Z=new Float32Array(R3W*R3SS*R3H*R3SS),R3C=new Int32Array(R3W*R3SS*R3H*R3SS),R3T=new Uint8Array(R3W*R3SS*R3H*R3SS);
 const rgbI=c=>(c[0]<<16)|(c[1]<<8)|c[2];
-function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0){
+function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
   const SS=R3SS,Wd=R3W,Ht=R3H,SW=Wd*SS,SH=Ht*SS,B=R3B,D=Math.PI/180,zb=R3Z,cb=R3C,tb=R3T;zb.fill(-1e9);cb.fill(-1);tb.fill(0);
   // ps (0..1): the foot of side fs (-1 left, 1 right) put down on the ground, the bike leaning a little toward it;
   // br (0..1): the breath of the standing rider
@@ -851,7 +861,7 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0){
       for(let q=0;q<=20;q++){const t=q/20*(rc-tt-.4),w=.3*(1-t/r);E(cf,chh,t,-w,0,0,1);E(cf,chh,t,w,0,0,1)}}
     CULL=1;ball(A,.75,()=>HUB)};
   // ---- the pose for this pedal frame ----
-  const C=RC,th=fr/RIDER_N*Math.PI*2,spin=-fr/RIDER_N*Math.PI,
+  const C=hr?Object.assign({},RC,hr):RC,th=fr/RIDER_N*Math.PI*2,spin=-fr/RIDER_N*Math.PI,
     // with a foot down the cranks turn to a standing position (the right pedal forward and a little low), and the rider
     // sits over toward the foot, a little lower and forward (PDF, PDZ), breathing (PBZ)
     TS=(fs<0?195:15)*D,dth=((TS-th+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI,thc=th+dth*pe,o=Math.sin(thc)*.6*(1-pe)+.9*pe*fs-(gk===5?.7*GE*fs:0),
@@ -917,24 +927,29 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0){
       el=ik(sh,hd,4.7,4.5,[-.5+.2*hg,side*(.55+.45*hg),-.7+.5*hg]);
     tube(sh,el,1.2,1.0,d=>tone(d,JK,.45,-.1));tube(el,hd,1.0,.85,d=>tone(d,JK,.45,-.1));
     ell(add(hd,[.1,side*.2,.25]),[1.1,0,0],[0,1.0,0],[0,0,.9],d=>tone(d,GLV,.45,-.15))}
-  const PKC=add(TC,add(mul(ua,2.4),mul(nb,3.5+.85)));
+  if(C.pack!==false){const PKC=add(TC,add(mul(ua,2.4),mul(nb,3.5+.85)));
   box(PKC,[mul(ua,3.1),[0,3.9,0],mul(nb,.95)],d=>{
       if(U0===4){if(U1>.3)return Math.abs(U2)<.2&&U1<.58?BUCK:PKD;if(U1<-.85)return PKD;if(U2<-.86)return PKL;return PKc}
       return tone(d,PK,.4,-.1)});
-  for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(t0,t1,.42,.42,()=>STRAP,1)}
+  for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(t0,t1,.42,.42,()=>STRAP,1)}}
   const HC=[14.5+PDF-(gk===3?.5*GE:0),o+(gk===1?-.7:gk===2?.7:0)*GE,30.1-PDZ+PBZ+(gk===3?.6*GE:0)];
+  const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];if(C.scarf!==false){
   ell([11.7+PDF,o,28.1-PDZ+PBZ],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
-  const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];ball(KN,.95,d=>d>-.05?SCF:SCD);
+  ball(KN,.95,d=>d>-.05?SCF:SCD)}else ell([12.3+PDF,o,28.4-PDZ+PBZ],[1.6,0,.3],[0,3.4,0],[-.3,0,1.4],d=>tone(d,JK,.5,-.12)); // (no scarf: the jacket's collar)
   // head: the beanie over the crown and the back, a ribbed band, hair at the nape, a sliver of face in front
   const hpsi=(gk===1?-62:gk===2?62:0)*D*GE,hth=(gk===3?38:gk===6?9:0)*D*GE,hcp=Math.cos(hth),hsp=Math.sin(hth),hcy=Math.cos(hpsi),hsy=Math.sin(hpsi),
     HR=v=>{const f1=v[0]*hcp-v[2]*hsp,h1=v[0]*hsp+v[2]*hcp;return[f1*hcy-v[1]*hsy,f1*hsy+v[1]*hcy,h1]};
   const FD=nrm([1,0,-.45]);
-  ell(HC,HR([3.0,0,0]),HR([0,3.75,0]),HR([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;
+  if(C.hat===false){const HRT=T3([C.hairL||C.hair.map(v=>Math.min(255,v+36)),C.hair,C.hairD||C.hair.map(v=>v*.62|0)]);
+    // bareheaded: the hair over the crown and the back of the head, the face and the forehead in front; a ponytail behind
+    ell(HC,HR([3.0,0,0]),HR([0,3.75,0]),HR([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;if(fd>.34&&hh<.42)return d>.2?SKIN:SKIND;return tone(d,HRT,.5,-.1)});
+    if(C.tail){ell(add(HC,HR([-3.1,0,.1])),HR([1.1,0,.5]),HR([0,.95,0]),HR([.6,0,-1.6]),d=>tone(d,HRT,.45,-.15));ell(add(HC,HR([-3.9,0,-2.3])),HR([.75,0,.2]),HR([0,.7,0]),HR([.4,0,-1.4]),d=>tone(d,HRT,.45,-.15))}}
+  else{ell(HC,HR([3.0,0,0]),HR([0,3.75,0]),HR([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;
       if(fd>.42&&hh<.32)return d>.2?SKIN:SKIND;
       if(hh<-.38&&fd<.3)return HAIR;
       if(hh<-.02&&fd<.62)return Math.floor((Math.atan2(U1,U0)+Math.PI)*3.6)%2?BND:BN;
       return tone(d,BNT,.55,-.05)});
-  ball(add(HC,HR([1.0,0,3.5])),1.3,d=>d>-.05?POM:POMD);
+  ball(add(HC,HR([1.0,0,3.5])),1.3,d=>d>-.05?POM:POMD)}
   // ---- resolve: majority colour per pixel (thin parts count for more so a crank or a stay does not vanish) ----
   const s=new Spr(Wd,Ht),kc=new Int32Array(9),kw=new Float32Array(9),dd=s.d;
   for(let y=0;y<Ht;y++)for(let x=0;x<Wd;x++){let n=0,wsum=0;
@@ -1191,7 +1206,7 @@ function stepDay(dt){const h0=DAY.h;
   {const calmClear=LT.day<.3&&WX.cloud<.45&&WX.fog<.75&&WX.rain<.02&&WIND.s<.42&&WET<.35;
    if(calmClear)FROST=Math.min(1,FROST+dH*.32*(.15+.85*SE.cold));
    FROST=Math.max(0,FROST-dH*(.75*LT.sunUp*(1-WX.cloud*.5)+.12*WX.cloud*(1-LT.day))-gm*WX.rain/25)}
-  const want=clamp(Math.max((LT.murk-.12)/.3,(LT.dark-.18)/.25),0,1);LT.lamp+=(want-LT.lamp)*Math.min(1,dt*.8); // the lamp comes on at dusk and in murk
+  const want=R.foot?0:clamp(Math.max((LT.murk-.12)/.3,(LT.dark-.18)/.25),0,1);LT.lamp+=(want-LT.lamp)*Math.min(1,dt*(R.foot?3:.8)); // the lamp comes on at dusk and in murk
   computeLight();return gm}
 const partOfDay=h=>{const x=solarH(h);return x<4.8?'ночь':x<11?'утро':x<16.5?'день':x<21?'вечер':'ночь'};
 const clockText=()=>{const m=Math.floor(DAY.h*60)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
@@ -2025,8 +2040,9 @@ PF.person = ({ jacket = [60, 110, 80], trousers = [70, 70, 80], head = [190, 60,
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-3, -3, 3, 1]] } };
 // ---- a rental bike standing in the rack: life size, like the rider's (wheels 64 cm, 1.1 m between the axles) ----
-PF.bike = ({ c = [52, 108, 104] } = {}) => { const sp = t3sprite(() => { const M = T3(); TENT_ITEMS.bike(M, -5.5, 0, c); return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-8, -2, 8, 2]] } };
+PF.bike = ({ c = [52, 108, 104], rot } = {}) => { const sp = t3sprite(() => { const M = T3(); TENT_ITEMS.bike(M, -5.5, 0, c); if (rot !== undefined) t3rot(M, rot + 90); return M }, [0]);
+  const a = (rot ?? 90) * Math.PI / 180, hx = Math.abs(Math.sin(a)) * 7 + 2, hy = Math.abs(Math.cos(a)) * 6 + 1.5;
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-hx, -hy, hx, hy]] } };
 // ---- the transformer substation (КТП): a steel kiosk on a concrete plinth, three doors with louvres, the yellow
 // lightning signs, the 10 kV line coming down to three insulators on a frame above its roof, the 0.4 kV cable leaving
 // from a box on its side; a ground wire to an earth rod ----
@@ -2203,17 +2219,17 @@ function t3limb(M, a, b, r0, r1, col, o = {}) { const ax = v3n(v3sub(b, a)), up 
 function t3ball(M, c, rx, rn, rz, col, o = {}) { const U = o.seg || 8, V = 5, k0 = o.from ?? 0, P = (i, j) => { const a = i / U * TAU, e = -Math.PI / 2 + (k0 + (1 - k0) * j / V) * Math.PI; return [c[0] + Math.cos(a) * Math.cos(e) * rx, c[1] + Math.sin(a) * Math.cos(e) * rn, c[2] + Math.sin(e) * rz] };
   for (let i = 0; i < U; i++) for (let j = 0; j < V; j++) { const pts = [P(i, j), P(i + 1, j), P(i + 1, j + 1)]; if (j < V - 1) pts.push(P(i, j + 1)); if (j === 0 && k0 === 0) pts.splice(0, 1); t3face(M, pts, col, c, o) } }
 // a body: a band from the hips to the shoulders, eight-sided, its width and depth changing on the way up
-function t3torso(M, z0, z1, hw0, hd0, hw1, hd1, col, o = {}) { const seg = 8, ctr = [0, 1, (z0 + z1) / 2], P = (z, hw, hd, i) => { const a = i / seg * TAU; return [Math.cos(a) * hw, 1 + Math.sin(a) * hd, z] };
-  for (let i = 0; i < seg; i++) t3face(M, [P(z0, hw0, hd0, i), P(z0, hw0, hd0, i + 1), P(z1, hw1, hd1, i + 1), P(z1, hw1, hd1, i)], col, ctr, o);
-  const top = [], bot = []; for (let i = 0; i < seg; i++) { top.push(P(z1, hw1, hd1, i)); bot.push(P(z0, hw0, hd0, i)) } t3face(M, top, col, ctr, o); t3face(M, bot, col, ctr, o) }
+function t3torso(M, z0, z1, hw0, hd0, hw1, hd1, col, o = {}) { const seg = 8, d0 = o.dn0 || 0, d1 = o.dn1 || 0, ctr = [0, 1 + (d0 + d1) / 2, (z0 + z1) / 2], P = (z, hw, hd, i, dn) => { const a = i / seg * TAU; return [Math.cos(a) * hw, 1 + dn + Math.sin(a) * hd, z] };
+  for (let i = 0; i < seg; i++) t3face(M, [P(z0, hw0, hd0, i, d0), P(z0, hw0, hd0, i + 1, d0), P(z1, hw1, hd1, i + 1, d1), P(z1, hw1, hd1, i, d1)], col, ctr, o);
+  const top = [], bot = []; for (let i = 0; i < seg; i++) { top.push(P(z1, hw1, hd1, i, d1)); bot.push(P(z0, hw0, hd0, i, d0)) } t3face(M, top, col, ctr, o); t3face(M, bot, col, ctr, o) }
 const SKINS = [[226, 178, 144], [214, 164, 128], [234, 190, 160], [196, 146, 110]];
 // look: { h height (px = 10 cm), build (.85 slim .. 1.2 stout), sex 'm'|'f', skin 0..3, hair: [r,g,b], cut: 'short'|'long'|'tail'|'bald',
 //   beard: [r,g,b]|null, hat: 'cap'|'beanie'|'hood'|null, hatCol, top: [r,g,b] (jacket), topKind: 'jacket'|'vest'|'hoodie'|'fleece',
 //   shirt: [r,g,b] (under a vest), legs: [r,g,b], boots: [r,g,b], carry: 'bucket'|'towel'|'backpack'|'mug'|null, carryCol, age: 'young'|'old' }
 function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.build || 1, f = L.sex === 'f', skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
   const head = H / 4.5, legH = H * .42, shZ = H - head * 1.05 - .3, hipZ = legH + .2, shW = (f ? 2.25 : 2.7) * bd, hipW = (f ? 2.15 : 1.95) * bd, dep = (f ? 1.25 : 1.35) * bd, hz = H - head * .55;
-  const walk = pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
-  const lift = z => z + bob, sx = sway * .35;
+  const run = pose.run != null, walk = run ? pose.run : pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : run ? .3 + (1 - Math.abs(cw)) * 1.1 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
+  const lift = z => z + bob, sx = sway * .35, SA = run ? 1.45 : 1, LN = run ? 1.1 : 0; // (SA: the stride; LN: how far the shoulders lean forward)
   if (sit) { // sitting on the ground, knees up, forearms on them
     const sz = 1.2; for (const s of [-1, 1]) { const x = s * hipW * .45, hip = [x, 1, sz + .8], knee = [x * 1.2, -2.8, sz + 3.8], foot = [x * 1.2, -4.2, .6];
       t3limb(M, hip, knee, 1, .85, legs); t3limb(M, knee, foot, .85, .7, legs); t3box(M, foot[0] - .8, foot[1] - 1.4, 0, foot[0] + .8, foot[1] + .6, 1.2, boots) }
@@ -2222,22 +2238,25 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
     headModel(M, L, [0, 1.1, tz1 + head * .55 + .3], head, skin, 0); return M }
   // legs: a stride swings them from the hip (ph: how far forward); the leg swinging through (sg) lifts its knee forward and its boot off the
   // ground as it passes the other, the leg behind rises on its toes before it leaves, the leg in front reaches out nearly straight
-  for (const s of [-1, 1]) { const ph = s * sw, sg = Math.max(0, s * cw), x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = [x, 1 - ph * 1.3 - sg * .9, lift(legH * .52) + sg * .8 + Math.max(0, ph) * .2], foot = [x, 1 - ph * 2.3 + (ph < 0 ? .3 : 0) - sg * .3, .6 + sg * 1.1 + Math.max(0, -ph - .55) * 1.1];
+  for (const s of [-1, 1]) { const ph = s * sw, sg = Math.max(0, s * cw), x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = run ? [x, 1 - ph * 1.9 - sg * 1.6, lift(legH * .52) + sg * 2.4 + Math.max(0, ph) * .5] : [x, 1 - ph * 1.3 - sg * .9, lift(legH * .52) + sg * .8 + Math.max(0, ph) * .2],
+      foot = run ? [x, 1 - ph * 3.2 + Math.max(0, -ph) * 1.2 + sg * .6, bob + .6 + sg * 1.8 + Math.max(0, -ph - .2) * 3.4] : [x, 1 - ph * 2.3 + (ph < 0 ? .3 : 0) - sg * .3, .6 + sg * 1.1 + Math.max(0, -ph - .55) * 1.1];
     t3limb(M, hip, knee, 1.05 * bd, .85, legs); t3limb(M, knee, foot, .85, .65, legs); t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
   // the body: hips to waist to shoulders
-  const waistZ = lift(hipZ + (shZ - hipZ) * .38); t3torso(M, lift(hipZ - .3), waistZ, hipW, dep, hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: torsoTex(L, 0, 0) });
-  t3torso(M, waistZ, lift(shZ), hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: torsoTex(L, waistZ, lift(shZ)) });
+  const waistZ = lift(hipZ + (shZ - hipZ) * .38), LW = -LN * .38; t3torso(M, lift(hipZ - .3), waistZ, hipW, dep, hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: torsoTex(L, 0, 0), dn1: LW });
+  t3torso(M, waistZ, lift(shZ), hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: torsoTex(L, waistZ, lift(shZ)), dn0: LW, dn1: -LN });
   if (L.topKind === 'vest') for (const s of [-1, 1]) t3face(M, [[s * .3, -.5 + 1 - dep, waistZ], [s * hipW * .8, -.5 + 1 - dep, waistZ], [s * shW * .7, -.3 + 1 - dep, lift(shZ) - .2], [s * .6, -.3 + 1 - dep, lift(shZ) - .2]], L.shirt || [180, 60, 50], null, { both: true, zb: .2 });
   if (L.carry === 'backpack') t3box(M, -shW * .7, 1 + dep * .8, waistZ, shW * .7, 1 + dep * .8 + 2.2, lift(shZ) - .4, L.carryCol || [70, 90, 60]);
   // arms: from the shoulder, swinging opposite the legs, the elbow bending forward a little; hands
-  for (const s of [-1, 1]) { const carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, ph = -s * sw * (carrying ? .3 : 1), sh = [s * (shW - .15), 1, lift(shZ) - .5], el = [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = [s * (shW + .1 + (carrying ? .25 : 0)), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0) + Math.max(0, ph) * .5];
+  for (const s of [-1, 1]) { const carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, ph = -s * sw * (carrying ? .3 : 1), sh = [s * (shW - .15), 1 - LN, lift(shZ) - .5];
+    // (running: the upper arm swings from the shoulder, the forearm held forward and up, the hand loosely closed by the chest)
+    const el = run ? [s * (shW + .1), 1 - LN - ph * 1.7 + .5, lift(shZ) - H * .16] : [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = run ? [s * (shW - .25), el[1] - 1.9 - ph * .5, el[2] + 1.1 + Math.max(0, ph) * .6] : [s * (shW + .1 + (carrying ? .25 : 0)), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0) + Math.max(0, ph) * .5];
     const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve); t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
     if (carrying && L.carry === 'bucket') { t3cyl(M, hd[0], hd[1] - .4, 1.5, hd[2] - 4, hd[2] - 1.2, L.carryCol || [150, 156, 160], { topCol: [70, 110, 140] }); t3line(M, [hd[0] - 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]); t3line(M, [hd[0] + 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]) }
     if (carrying && L.carry === 'mug') t3cyl(M, hd[0], hd[1] - .6, .6, hd[2] - .2, hd[2] + 1, L.carryCol || [200, 60, 50]) }
   if (L.carry === 'towel') t3face(M, [[shW * .9, 1 - dep - .2, lift(shZ) + .2], [shW * .9 - 1.6, 1 - dep - .2, lift(shZ) + .2], [shW * .9 - 1.6, 1 - dep - .2, lift(shZ) - 4], [shW * .9, 1 - dep - .2, lift(shZ) - 4.5]], L.carryCol || [236, 236, 228], null, { both: true, zb: .3, tex: (x, n, z) => (Math.round(z) % 3 === 0 ? [214, 90, 70] : (L.carryCol || [236, 236, 228])) });
   // neck and head (turning a little when the person looks about)
-  t3limb(M, [sx, 1, lift(shZ) - .2], [sx, 1, lift(shZ) + .8], .65, .6, skin);
-  headModel(M, L, [sx, 1.05, lift(hz)], head, skin, look); return M }
+  t3limb(M, [sx, 1 - LN, lift(shZ) - .2], [sx, 1 - LN * 1.15, lift(shZ) + .8], .65, .6, skin);
+  headModel(M, L, [sx, 1.05 - LN * 1.25, lift(hz)], head, skin, look); return M }
 // the clothes' small marks: a zip down the front, a pocket, a hoodie's drawstrings, a fleece's darker yoke
 function torsoTex(L, z0, z1) { const c = L.top || [60, 110, 80]; return (x, n, z, col) => { if (n > 0) return col;
   if (L.topKind !== 'vest' && Math.abs(x) < .25 && z > z0 && z < z1 - .2) return cmul(c, .7);
@@ -2266,6 +2285,32 @@ const NPC_SPR = new Map(), NPC_WALKN = 8; // (frames in a walking cycle: two ste
 function npcSprite(look, kind, dir, frame) { const key = (look.id || JSON.stringify(look)) + kind + dir + '/' + frame; let r = NPC_SPR.get(key); if (r) return r;
   const pose = kind === 'guard' ? gpose(frame) : kind === 'walk' ? { walk: frame / NPC_WALKN } : kind === 'sit' ? { sit: true } : kind === 'look' ? { look: frame ? 1 : -1 } : { sway: frame ? 1 : -1 };
   let MM = null; const sp = t3sprite(() => { const M = (kind === 'guard' ? guardModel : personModel)(look, pose); t3rot(M, dir * 45); t3scale(M, NPC_K); MM = M; return M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; if (kind === 'guard') { const td = MM.dots.find(d => d[1][0] === 236 && d[1][1] === 110 && d[1][2] === 40); if (td) r.tip = t3p(td[0]); r.mouth = guardMarkMouth(MM.mouth, dir) }; NPC_SPR.set(key, r); return r }
+// ---- the hero: Рома or Даша, as the player chose. They came on a bus with nothing but what they wore to work: no bike, no
+// backpack; on foot first (walking, or running), the bike from the camp's rental. On foot they are drawn like the people of
+// the places (the same model and scale), in sixteen directions; on the bike the rider model wears their clothes (rc). ----
+const HEROES = {
+  roma: { id: 'roma', name: 'Рома', look: { id: 'hero-roma', sex: 'm', h: 18.2, build: 1, skin: 1, hair: [56, 40, 30], cut: 'short', top: [58, 66, 86], topKind: 'jacket', legs: [62, 74, 102], boots: [62, 50, 42] },
+    rc: { jacket: [58, 66, 86], jacketD: [40, 46, 62], jacketL: [84, 94, 118], pants: [62, 74, 102], pantsD: [44, 54, 76], boot: [62, 50, 42], glove: [204, 152, 120], hair: [56, 40, 30], hat: false, tail: false, pack: false, scarf: false } },
+  dasha: { id: 'dasha', name: 'Даша', look: { id: 'hero-dasha', sex: 'f', h: 16.8, build: .9, skin: 2, hair: [150, 92, 54], cut: 'tail', top: [176, 128, 82], topKind: 'jacket', legs: [50, 56, 80], boots: [92, 64, 48] },
+    rc: { jacket: [176, 128, 82], jacketD: [138, 96, 58], jacketL: [204, 160, 112], pants: [50, 56, 80], pantsD: [36, 40, 60], boot: [92, 64, 48], glove: [224, 174, 140], hair: [150, 92, 54], hat: false, tail: true, pack: false, scarf: [64, 104, 82], scarfS: [44, 76, 60], scarfD: [42, 70, 56] } } };
+const HERO0 = (() => { try { return localStorage.getItem('trail.hero') } catch (e) { return null } })(); let HERO = HEROES[HERO0] || HEROES.roma, HGEN = 0;
+// the hero changed: their pictures made again (on foot at once as needed; on the bike in the background, the old ones dropped)
+function setHero(id) { if (!HEROES[id]) return; try { localStorage.setItem('trail.hero', id) } catch (e) { } if (HERO.id === id) return; HERO = HEROES[id]; HGEN++; HSPR.clear();
+  RSETS.clear(); RPND.clear(); SPR_ST.clear(); SPND.clear(); SQ.length = 0; RORDER = null; STAND.k = 0; STAND.go = 0; STAND.cv = null; $('bHero').innerHTML = 'Герой: <b>' + HERO.name + '</b>' }
+// the choosing: the two of them standing side by side, large; a click (or a tap) on one
+function heroPortrait(id) { const L = HEROES[id].look, sp = t3sprite(() => { const M = personModel(L, { sway: id === 'roma' ? 1 : -1 }); t3rot(M, id === 'roma' ? 210 : 150); t3scale(M, NPC_K * 3.2); return M }, [0])[0]; return sp.s.canvas() }
+function heroPick(first) { const P = $('heroPick'); if (!P.dataset.made) { P.dataset.made = 1; for (const b of P.querySelectorAll('button[data-h]')) { const c = heroPortrait(b.dataset.h); c.className = 'por'; b.prepend(c); b.onclick = () => { setHero(b.dataset.h); P.hidden = true; paused = P.wasPaused } } }
+  P.wasPaused = first ? false : paused; paused = true; P.hidden = false }
+const HDIRS = 16, HSPR = new Map(), HERO_RUN = 24; // (HERO_RUN: px per running cycle of two steps; walking: 12.8)
+// one picture of the hero: kind walk | run (eight frames a cycle), idle (two: the weight on one foot or the other), look (two: to the left, to the right)
+function heroSprite(kind, d, f) { const key = HERO.id + kind + d + '/' + f; let r = HSPR.get(key); if (r) return r;
+  const pose = kind === 'walk' ? { walk: f / NPC_WALKN } : kind === 'run' ? { run: f / NPC_WALKN } : kind === 'look' ? { look: f ? 1 : -1 } : { sway: f ? 1 : -1 };
+  const sp = t3sprite(() => { const M = personModel(HERO.look, pose); t3rot(M, d * 360 / HDIRS); t3scale(M, NPC_K); return M }, [0])[0], cv = sp.s.canvas(), m = new Uint8Array(sp.s.w * sp.s.h);
+  for (let i = 0; i < m.length; i++) m[i] = sp.s.d[i * 4 + 3] ? 1 : 0; r = { cv, ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h, mask: m, sh: [] }; HSPR.set(key, r); return r }
+// the pictures made ahead, a few a frame when there is time: the present direction first, then the ones beside it, outward
+let HWARM = 0; function heroWarm(ms) { if (!R.foot) return; const t0 = performance.now(), d0 = R.hd16 || 0, kinds = ['walk', 'run', 'idle', 'look'];
+  for (let k = 0; k <= HDIRS / 2; k++) for (const d of k ? [(d0 + k) % HDIRS, (d0 - k + HDIRS) % HDIRS] : [d0]) for (const kind of kinds) for (let f = 0; f < (kind === 'walk' || kind === 'run' ? NPC_WALKN : 2); f++) {
+    if (HSPR.has(HERO.id + kind + d + '/' + f)) continue; heroSprite(kind, d, f); if (performance.now() - t0 > ms) return } }
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
   return { id: 'camper' + seed, sex: f ? 'f' : 'm', h: f ? 16.2 + r() * 1.4 : 17 + r() * 2, build: .9 + r() * .3, skin: Math.floor(r() * 4), hair: pick([[60, 42, 30], [120, 80, 40], [200, 170, 110], [40, 34, 30], [150, 70, 40]]),
@@ -4282,14 +4327,14 @@ function trkMark(x, y, dx, dy) { if (deckLift(x, y) > 0) return; const sk = TRKM
 function trkUpdate(key, C) { const dt = t - C.tu; if (dt < .25) return; C.tu = t; const A = C.a, M = C.m, d = C.img.data, rain = 1 + WX.rain, F = TRKC.map(q => q ? Math.exp(-q.k * dt * rain) : 1); let live = 0;
   for (let i = 0; i < A.length; i++) { let a = A[i]; if (!(a > 0)) { d[i * 4 + 3] = 0; continue } const q = TRKC[M[i]]; a *= F[M[i]]; if (a < .03) { a = 0; d[i * 4 + 3] = 0 } else { live++; d[i * 4] = q.c[0]; d[i * 4 + 1] = q.c[1]; d[i * 4 + 2] = q.c[2]; d[i * 4 + 3] = a * 255 } A[i] = a }
   if (!live) { TRK.delete(key); return } C.g.putImageData(C.img, 0, 0) }
-function stepTracks(dt) { TRKWET = INPUD ? 2.5 : Math.max(0, TRKWET - dt);
+function stepTracks(dt) { TRKWET = INPUD ? 2.5 : Math.max(0, TRKWET - dt); if (R.foot) { TRKP = null; trkTick(dt); return }
   // the contact points of the two tyres: the rear 6 px behind the bottom bracket, the front 12.4 px ahead of it, the tyres' bottoms 1.5 px below its point
   // (the model's 8 and 16.5, the sprite being drawn at three quarters of the model); the front wheel wanders a little about the rear's line
   const sx = Math.sin(R.psi), sy = -Math.cos(R.psi), rear = [R.x - sx * 6, R.y - sy * 6 + 1.5], wv = Math.sin(t * 1.9) * .55 + Math.sin(t * 4.7 + 1) * .3, front = [R.x + sx * 12.4 - sy * wv, R.y + sy * 12.4 + sx * wv + 1.5];
   if (Math.abs(R.v) > .6 && TRKP) { for (const [P, Q] of [[TRKP[0], rear], [TRKP[1], front]]) { const dx = Q[0] - P[0], dy = Q[1] - P[1], m = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))); if (m > 40) continue; for (let s = 1; s <= m; s++) trkMark(P[0] + dx * s / m, P[1] + dy * s / m, dx, dy) } }
-  TRKP = [rear, front];
-  // twice a second: the squares in view (and next to it) brought up to date, and two of the others that have waited longest; never more than a hundred kept
-  TRKT -= dt; if (TRKT > 0) return; TRKT = .5;
+  TRKP = [rear, front]; trkTick(dt) }
+// twice a second: the squares in view (and next to it) brought up to date, and two of the others that have waited longest; never more than a hundred kept
+function trkTick(dt) { TRKT -= dt; if (TRKT > 0) return; TRKT = .5;
   const ci0 = Math.floor(CAM.x / CK) - 1, ci1 = Math.floor((CAM.x + W) / CK) + 1, cj0 = Math.floor(CAM.y / CK) - 1, cj1 = Math.floor((CAM.y + H) / CK) + 1, far = [];
   for (const [key, C] of TRK) { if (C.ci >= ci0 && C.ci <= ci1 && C.cj >= cj0 && C.cj <= cj1) trkUpdate(key, C); else far.push([C.tu, key, C]) }
   far.sort((a, b) => a[0] - b[0]); for (let i = 0; i < Math.min(2, far.length); i++) trkUpdate(far[i][1], far[i][2]); for (let i = 0; i < far.length - 100; i++) TRK.delete(far[i][1]) }
@@ -5241,9 +5286,9 @@ function rStore(yi, li, f, d) { let a = RSETS.get(rk(yi, li)); if (!a) { a = new
   if (a.n === RIDER_N) { const m = new Uint8Array(RW * RH), dd = c.getContext('2d').getImageData(0, 0, RW, RH).data; for (let i = 0; i < m.length; i++) m[i] = dd[i * 4 + 3] ? 1 : 0; a.mask = m; a.sh = [] } }
 const rReady = (yi, li) => { const a = RSETS.get(rk(yi, li)); return !!a && a.n === RIDER_N };
 const RWORK = [];
-try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs,j.gk,j.gu);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
-  for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; if (m.sk !== undefined) { stStore(m.sk, m.d); return } RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); SPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
-function rJob(yi, li, f) { const yaw = yi * YSTEP; return { yi, li, f, yaw, lean: li * LEAN_DEG, steer: li * STEER_DEG } }
+try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs,j.gk,j.gu,j.hr);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,g:j.g,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
+  for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; if (m.g !== HGEN) return; if (m.sk !== undefined) { stStore(m.sk, m.d); return } RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); SPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
+function rJob(yi, li, f) { const yaw = yi * YSTEP; return { yi, li, f, yaw, lean: li * LEAN_DEG, steer: li * STEER_DEG, hr: HERO.rc, g: HGEN } }
 function rNext() { // the next sprite to make: the present heading and lean; then the upright headings, coarse ones first
   // (every 45°, then every 15°, then every 5°), nearest the present one first; then the leans the same way
   if (!RORDER || RORDER.yi !== R.yi || RORDER.li !== R.li) { const cy = R.yi, o = [[cy, R.li], [cy, 0]], seen = new Set(o.map(([y, l]) => rk(y, l)));
@@ -5253,21 +5298,22 @@ function rNext() { // the next sprite to make: the present heading and lean; the
 let RORDER = null;
 function rWarm() { if (RWORK.length) { let busy = RWORK.reduce((a, w) => a + w.busy, 0);
     // (the frames of a foot going down come first)
-    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi), gk: sp.gk, gu: sp.gu }) }
+    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi), gk: sp.gk, gu: sp.gu, hr: HERO.rc, g: HGEN }) }
     while (busy < RWORK.length * 6) { const j = rNext(); if (!j) return; RPND.add(rk(j[0], j[1]) * 32 + j[2]); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage(rJob(...j)) } return }
-  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi), sp.gk, sp.gu); stStore(k, r.d); return }
-  const j = rNext(); if (j) { const q = rJob(...j), r = riderLocal(q.f, q.yaw, q.lean, q.steer); rStore(j[0], j[1], j[2], r.d) } }
+  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi), sp.gk, sp.gu, HERO.rc); stStore(k, r.d); return }
+  const j = rNext(); if (j) { const q = rJob(...j), r = riderLocal(q.f, q.yaw, q.lean, q.steer, 0, 0, -1, 0, 0, q.hr); rStore(j[0], j[1], j[2], r.d) } }
 function rPick(yi, li) { if (rReady(yi, li)) return [yi, li]; let best = null, bd = 1e9; for (const [k, a] of RSETS) { if (a.n !== RIDER_N) continue; const yy = Math.floor(k / 3), ll = k % 3 - 1, dy = Math.min(Math.abs(yy - yi), NY - Math.abs(yy - yi)), d = dy + Math.abs(ll - li) * 1.5; if (d < bd) { bd = d; best = [yy, ll] } } return best }
 // where the lamps are on the sprite for a heading: the front lamp on the handlebar, the rear light on the rack
 const rProj = (yaw, f, h) => [ROXS + Math.sin(yaw * D2R) * (f - 8) * RS, ROYS - (Math.cos(yaw * D2R) * (f - 8) + RB * h) * RS];
 let REVHOLD = false;
-const R = { autoRev: 0, blockT: 0, forceTurn: 0, x: 0, y: 0, psi: 0, v: 0, steer: 0, crank: 0, f: 0, yi: 0, li: 0, surf: 'road', walk: false };
+const R = { autoRev: 0, blockT: 0, forceTurn: 0, x: 0, y: 0, psi: 0, v: 0, steer: 0, crank: 0, f: 0, yi: 0, li: 0, surf: 'road', walk: false,
+  foot: GAMEMODE, gp: 0, gf: 0, gk: 'idle', ia: 'idle', ib: 0, it: 1, hd16: 0, stepN: 0, settle: false }; // (foot: the hero on foot, without the bike; gp..settle: their steps and how they stand)
 { const [x, y] = toW(PL.spawn.x, PL.spawn.y); R.x = x; R.y = y; R.psi = (PL.spawn.heading || 0) * D2R; R.yi = Math.round(PL.spawn.heading / YSTEP) % NY }
 const BIKE_L = 14; // wheelbase, px
 // ---- input: the arrows or WASD say where to go (screen directions, north up); the bike steers there as a bicycle
 // does. On a touch screen a stick appears where the thumb lands. Space brakes. ----
 const KEYS = new Set(); const STICK = { on: false, id: -1, x0: 0, y0: 0, dx: 0, dy: 0 };
-addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); KEYS.add(e.code); if (e.code === 'KeyG' || e.code === 'F2') toggleDev(); if (e.code === 'KeyP') togglePause() });
+addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); KEYS.add(e.code); if (e.code === 'KeyE' || e.code === 'Enter') heroAct(); if (e.code === 'KeyG' || e.code === 'F2') toggleDev(); if (e.code === 'KeyP') togglePause() });
 addEventListener('keyup', e => KEYS.delete(e.code)); addEventListener('blur', () => KEYS.clear());
 function wantDir() { let x = 0, y = 0; if (KEYS.has('ArrowUp') || KEYS.has('KeyW')) y -= 1; if (KEYS.has('ArrowDown') || KEYS.has('KeyS')) y += 1; if (KEYS.has('ArrowLeft') || KEYS.has('KeyA')) x -= 1; if (KEYS.has('ArrowRight') || KEYS.has('KeyD')) x += 1;
   if (x || y) { const m = Math.hypot(x, y); return [x / m, y / m, 1] } if (STICK.on) { const m = Math.hypot(STICK.dx, STICK.dy); if (m > 6) return [STICK.dx / m, STICK.dy / m, Math.min(1, (m - 6) / 40)] } return null }
@@ -5295,7 +5341,7 @@ const OCC = [], OCCS = new Map();
 const FIGOBJ = [];
 function figKey(fy, x0, y0, w, h, out) { out.length = 0;
   for (const o of VIS) { if (!o.dn || o.flat || fy >= o.y) continue; const ox = o.x - o.ax, oy = o.y - o.ay; if (ox > x0 + w || ox + o.mw < x0 || oy > y0 + h || oy + o.mh < y0) continue; out.push(o) } return fy }
-function riderKey() { return figKey(R.y, R.x - ROXS, R.y - ROYS, RW, RH, OCC) }
+function riderKey() { if (R.foot) { const Hs = heroNow(); return figKey(R.y, Math.round(R.x) - Hs.ax, Math.round(R.y) - Hs.ay, Hs.w, Hs.h, OCC) } return figKey(R.y, R.x - ROXS, R.y - ROYS, RW, RH, OCC) }
 function figOver(o, F) { if (!F.img || !o._img || window.OCC_OFF) return; const w = F.w, h = F.h, key = w * 1000 + h; let C = OCCS.get(key);
   if (!C) { const a = document.createElement('canvas'), b = document.createElement('canvas'); a.width = b.width = w; a.height = b.height = h; C = { a, b, A: a.getContext('2d'), B: b.getContext('2d') }; OCCS.set(key, C) }
   const img = C.B.createImageData(w, h), md = img.data, nr = o.y - F.fy, ox = o._dx - F.rx, oy = o._dy - F.ry; let hit = false;
@@ -5427,6 +5473,50 @@ function stepRider(dt) {
   if (want && !revHeld && R.autoRev <= 0 && refused) { R.blockT = (R.blockT || 0) + dt; if (R.blockT > .4) { R.autoRev = .9; R.blockT = 0 } } else if (!refused) R.blockT = 0;
   R.psi = wrapA(R.psi); if (ds > 0) R.crank += ds / 55 * TAU; R.f = ((Math.floor(R.crank / TAU * RIDER_N) % RIDER_N) + RIDER_N) % RIDER_N;
   R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = R.v > 4 ? (R.steer > .16 ? 1 : R.steer < -.16 ? -1 : 0) : 0 }
+
+// ---- on foot: the hero walks or runs where the stick or the keys point (the keys run; with Shift held they walk; the stick
+// walks a little way out from its middle and runs further out). People turn quickly but not at once; they slow in a sharp
+// turn and stop to turn round; the ground slows them a little (the wood, the sand, the bog), a climb more. Things stop them
+// as they stop the bike (only nearer: a person is narrow), and they slide along what they brush. The feet keep pace with the
+// ground (a cycle of two steps to 1.28 m walking, 2.4 m running); a step is a footfall for the sound and the tracks. Standing,
+// they shift their weight and look about now and then. ----
+const FOOT = { walk: 13, run: 34, rad: 2.4 }, FOOT_SURF = { forest: .82, glade: .95, bog: .55, beach: .82, brook: .5, pond: .35, lake: .3, river: .3, rut: .9, hump: .85, dam: 1, bridge: 1 };
+function stepFoot(dt) { slopeStep(dt); R.surf = matAt(R.x, R.y); R.walk = false; R.li = 0; const want = wantDir(), fk = FOOT_SURF[R.surf] ?? 1;
+  let vt = 0, da = 0; if (want) { const tgt = Math.atan2(want[0], -want[1]); da = wrapA(tgt - R.psi);
+    const run = KEYS.size ? !(KEYS.has('ShiftLeft') || KEYS.has('ShiftRight')) : want[2] > .62;
+    vt = (run ? FOOT.run : FOOT.walk * clamp(want[2] / .5, .45, 1)) * fk * clamp(1 - 1.6 * SLOPE.f, .55, 1.15) * (Math.abs(da) > 2.2 ? 0 : Math.abs(da) > 1.2 ? .45 : 1);
+    R.psi = wrapA(R.psi + clamp(da, -(R.v < 3 ? 12 : 8) * dt, (R.v < 3 ? 12 : 8) * dt)) }
+  R.v += clamp(vt - R.v, -(vt < R.v - 10 ? 70 : 45) * dt, (R.v < FOOT.walk ? 40 : 26) * dt); if (R.v < .05 && !vt) R.v = 0;
+  const s = R.v * dt, nx = R.x + Math.sin(R.psi) * s + SLOPE.dx * dt * .3, ny = R.y - Math.cos(R.psi) * s + SLOPE.dy * dt * .3, rad = FOOT.rad;
+  const free = (x, y) => !blocked(x, y, rad), stuck = !free(R.x, R.y);
+  if (stuck || free(nx, ny)) { R.x = nx; R.y = ny } else if (free(nx, R.y)) { R.x = nx; R.v *= .85 } else if (free(R.x, ny)) { R.y = ny; R.v *= .85 } else R.v = Math.min(R.v, 2);
+  // the feet: walking or running, the frame by the way gone; a footfall at each step (frames 2 and 6 of the eight)
+  const running = R.v > (FOOT.walk + FOOT.run) / 2 - 4 || (R.gk === 'run' && R.v > FOOT.walk + 2), cyc = running ? HERO_RUN : 12.8;
+  R.hd16 = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY;
+  if (R.v > .4) { const g0 = Math.floor(R.gp), g1 = Math.floor(R.gp += s / cyc * NPC_WALKN); for (let g = g0 + 1; g <= g1; g++) if (g % 4 === 2) { R.stepN = (R.stepN || 0) + 1; footPrint(g % 8 === 2 ? 1 : -1) } R.gk = running ? 'run' : 'walk'; R.settle = Math.floor(R.gp) % 4 !== 0; R.it = .8 + Math.random() }
+  else if (R.settle) { const g0 = Math.floor(R.gp); R.gp += dt / .07; if (Math.floor(R.gp) > g0 && Math.floor(R.gp) % 4 === 0) { R.gp = Math.floor(R.gp); R.settle = false; R.stepN = (R.stepN || 0) + 1 } }
+  else { R.gk = R.ia === 'look' ? 'look' : 'idle'; R.it -= dt; if (R.it <= 0) { if (R.ia === 'look' || Math.random() < .6) { R.ia = 'idle'; R.ib = R.ib ? 0 : 1; R.it = 1.8 + Math.random() * 2.8 } else { R.ia = 'look'; R.ib = Math.random() < .5 ? 0 : 1; R.it = .9 + Math.random() * 1.4 } } }
+  R.gf = Math.floor(R.gp) % NPC_WALKN }
+// ---- getting a bike, getting off it and on again: the camp's rental lets one have a bike (one of those in its rack); off it,
+// the bike stands where it was left, the way it was going, and one gets on it there again ----
+let BIKE = null, ACTK = null, BIKEN = 0; // (BIKE: the bike left standing, a thing of the world)
+function heroActNow() { if (R.foot) { if (BIKE && Math.hypot(BIKE.x - R.x, BIKE.y - R.y) < 15) return { k: 'mount', t: 'Сесть на велосипед' };
+    let best = null, bd = 16; for (const o of OBJS) if (o.p === 'bike' && o !== BIKE && !o.gone) { const d = Math.hypot(o.x - R.x, o.y - R.y); if (d < bd) { bd = d; best = o } } return best ? { k: 'rent', t: 'Взять велосипед', o: best } : null }
+  return Math.abs(R.v) < 2 && !R.walk ? { k: 'off', t: 'Слезть с велосипеда' } : null }
+function heroAct() { const A = heroActNow(); if (!A) return;
+  if (A.k === 'rent' || A.k === 'mount') { const o = A.k === 'rent' ? A.o : BIKE, rot = o.params && o.params.rot; o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); if (o === BIKE) BIKE = null;
+    R.x = o.x; R.y = o.y + (A.k === 'rent' ? 4 : 0); R.psi = rot !== undefined ? rot * D2R : Math.PI; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.foot = false; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = 0; RORDER = null; R.bikeC = o.params && o.params.c }
+  else { const rot = ((Math.round(R.psi / D2R) % 360) + 360) % 360, b = addPrefab('bike-own-' + (++BIKEN), 'bike', R.x, R.y, { c: R.bikeC || [52, 108, 104], rot }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
+    // (stepping off to the right of the bike)
+    const sx = Math.cos(R.psi), sy = Math.sin(R.psi); let px = R.x, py = R.y; for (const d of [9, -9, 12, -12, 15, -15]) if (!blocked(R.x + sx * d, R.y + sy * d, FOOT.rad)) { px = R.x + sx * d; py = R.y + sy * d; break } R.x = px; R.y = py; R.v = 0; R.foot = true; R.gp = 0; R.settle = false; STAND.k = 0; STAND.go = 0; STAND.cv = null }
+  ACTK = null; heroActHud() }
+function heroActHud() { const A = heroActNow(), k = A ? A.k : null; if (k === ACTK) return; ACTK = k; const b = $('bAct'); b.hidden = !A; if (A) b.innerHTML = A.t + ' <b>E</b>'; $('bBack').hidden = R.foot }
+// the picture of the hero now: walking, running, or standing (the feet settled first)
+function heroNow() { const d = R.hd16 || 0; if (R.v > .4 || R.settle) return heroSprite(R.gk === 'run' ? 'run' : 'walk', d, R.gf || 0); return heroSprite(R.ia === 'look' ? 'look' : 'idle', d, R.ib || 0) }
+// a footprint: a small dark print where the foot came down (side: -1 left, 1 right), on what takes one (the tracks' own grounds)
+function footPrint(side) { if (typeof trkPut !== 'function' || deckLift(R.x, R.y) > 0) return; const sk = TRKM[matAt(R.x, R.y)]; if (sk === null) return; const S = TRKS[sk || 'grass'];
+  if (S === TRKS.hard) return; const fx = Math.sin(R.psi), fy = -Math.cos(R.psi), x = R.x - fy * side * 1.2, y = R.y + fx * side * 1.2 + .5, a = S.a * (S === TRKS.grass ? .55 : .8), m = TRKWET > 0 ? 7 : S.m;
+  trkPut(x, y, m, a); trkPut(x + fx, y + fy, m, a * .8); if (S.rim) trkPut(x - fx * .2 + 1, y + .2, S.rim, S.ra * .7) }
 
 // ================= people =================
 // Walkers go round their routes, each at their own pace (an old man slower than a young woman, slower still with a full
@@ -5624,17 +5714,18 @@ function drawWorld() {
   if (shLayer.width !== W + 4 || shLayer.height !== H + 4) { shLayer.width = W + 4; shLayer.height = H + 4 }
   for (const [v, a] of SHSET) { shCtx.clearRect(0, 0, shLayer.width, shLayer.height);
     for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  shCtx.drawImage(shadowChunk(ci, cj, v), ci * CK - cx0 + 2, cj * CK - cy0 + 2) }
-    const a2 = STAND.cv || RSETS.get(rk(...(rPick(R.yi, R.li) || [0, 0]))); if (a2 && a2.mask) { if (!a2.sh[v]) { const c = castShadowV(a2.mask, RW, RH, ROXS, ROYS, SUNV[v][0], SUNV[v][1]); a2.sh[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } const s = a2.sh[v]; shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y - RLIFT) + s.dy - cy0 + 2) }
+    if (R.foot) { const Hs = heroNow(); if (!Hs.sh[v]) { const c = castShadowV(Hs.mask, Hs.w, Hs.h, Hs.ax, Hs.ay, SUNV[v][0], SUNV[v][1]); Hs.sh[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } const s = Hs.sh[v]; shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y - RLIFT) + s.dy - cy0 + 2) }
+    const a2 = R.foot ? null : STAND.cv || RSETS.get(rk(...(rPick(R.yi, R.li) || [0, 0]))); if (a2 && a2.mask) { if (!a2.sh[v]) { const c = castShadowV(a2.mask, RW, RH, ROXS, ROYS, SUNV[v][0], SUNV[v][1]); a2.sh[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } const s = a2.sh[v]; shCtx.drawImage(s.cv, Math.round(R.x) + s.dx - cx0 + 2, Math.round(R.y - RLIFT) + s.dy - cy0 + 2) }
     ctx.globalAlpha = a; ctx.drawImage(shLayer, cx0 - 2, cy0 - 2); ctx.globalAlpha = 1 }
   drawFlecks(cx0, cy0); drawFrost(cx0, cy0); drawRings();
   drawWireShadows(cx0, cy0);
   // soft contact shadows under everything that stands
   ctx.fillStyle = 'rgba(10,14,8,.2)'; for (const o of VIS) { if (o.flat || o._wk === 3) continue; const tree = TREES.has(o.type), rx = tree ? clamp(o.mw * .12, 4, 9) : clamp(o.mw * .28, 2.5, 8), ry = Math.max(1.6, rx * .42); ctx.beginPath(); ctx.ellipse(o.x + .5, o.y + .5 - objLift(o), rx, ry, 0, 0, TAU); ctx.fill() }
-  ctx.beginPath(); ctx.ellipse(R.x + .5, R.y + .5 - RLIFT, 4.8, 2.1, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(R.x + .5, R.y + .5 - RLIFT, R.foot ? 3.6 : 4.8, R.foot ? 1.6 : 2.1, 0, 0, TAU); ctx.fill();
   drawLeaves(true);
   // everything standing, back to front, the rider among them; flat things (decks) first
   const rkey = riderKey(), list = VIS.map(o => [o.flat ? o.y - 1e4 : o.touchT !== undefined && t - o.touchT < .25 ? Math.min(o.y, rkey - .05) : o.y, o]); list.push([rkey, null]); // (undergrowth the bike is in is pressed under it)
-  for (const o of FIGOBJ) o._figs = null; FIGOBJ.length = 0; const RF = { fy: R.y, w: RW, h: RH, img: null }; for (const o of OCC) { (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(RF) }
+  for (const o of FIGOBJ) o._figs = null; FIGOBJ.length = 0; const HF = R.foot ? heroNow() : null, RF = { fy: R.y, w: HF ? HF.w : RW, h: HF ? HF.h : RH, img: null }; for (const o of OCC) { (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(RF) }
   for (const C of COWS) if (C.x > cx0 - 30 && C.x < cx0 + W + 30 && C.y > cy0 - 10 && C.y < cy0 + H + 40) list.push([C.y, { cow: C }]);
   for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.st === 'perch' && B.dk !== undefined ? B.dk : B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }
   for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);
@@ -5650,6 +5741,7 @@ function drawWorld() {
     if (o && o.bsh) { drawBirdShadow(o.bsh); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }
+    if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay; ctx.drawImage(HF.cv, x, y); RF.img = HF.cv; RF.rx = x; RF.ry = y; continue }
     if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS } continue }
     const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));
     // pushed by the bike: leaning away from it (the next sway pose over, and the sprite sheared about its foot)
@@ -5658,7 +5750,8 @@ function drawWorld() {
     else if (o.fcv) { const k = frameIdx(o); ctx.drawImage(o.fcv[k], x, y) } else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
   // the rider behind a crown: his shape shows faintly through it, so he is never lost in the wood
   { const rx = Math.round(R.x) - ROXS, ry = Math.round(R.y) - ROYS; if (VIS.some(o => o.nk && o.y > R.y && R.x > o.x - o.ax && R.x < o.x - o.ax + o.mw && R.y - 10 > o.y - o.ay && R.y - 10 < o.y - o.ay + o.mh && o.mask[Math.round(R.y - 10 - o.y + o.ay) * o.mw + Math.round(R.x - o.x + o.ax)])) {
-    const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])), c = STAND.cv || a[R.f] || a.find(Boolean); ctx.globalAlpha = .42; ctx.drawImage(c, rx, ry); ctx.globalAlpha = 1; GHOSTN++ } } }
+    if (HF) { ctx.globalAlpha = .42; ctx.drawImage(HF.cv, Math.round(R.x) - HF.ax, Math.round(R.y - RLIFT) - HF.ay); ctx.globalAlpha = 1; GHOSTN++ }
+    else { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])), c = STAND.cv || a[R.f] || a.find(Boolean); ctx.globalAlpha = .42; ctx.drawImage(c, rx, ry); ctx.globalAlpha = 1; GHOSTN++ } } } }
   drawDripsSplash();
   // the falling rain, its splashes (screen space)
   scrT();
@@ -5794,6 +5887,7 @@ function drawLight() {
     L.save(); L.setTransform(1, 0, 0, 1, 0, 0); L.drawImage(beamCv, 0, 0); L.restore();
     let g = L.createRadialGradient(R.x, R.y - 14, 0, R.x, R.y - 14, 22); g.addColorStop(0, `rgba(255,232,196,${.42 * lit})`); g.addColorStop(1, 'rgba(255,232,196,0)'); L.fillStyle = g; L.fillRect(R.x - 22, R.y - 36, 44, 44);
     const [gx, gy] = lp.r, p = .6 + .4 * Math.sin(t * 5.2); g = L.createRadialGradient(gx, gy + 6, 0, gx, gy + 6, 13); g.addColorStop(0, `rgba(255,70,50,${.32 * lit * p})`); g.addColorStop(1, 'rgba(255,70,50,0)'); L.fillStyle = g; L.fillRect(gx - 13, gy - 7, 26, 26) }
+  if (R.foot && dark > .1) { const k = clamp((dark - .1) / .45, 0, 1), g = L.createRadialGradient(R.x, R.y - 5, 0, R.x, R.y - 5, 38); g.addColorStop(0, `rgba(170,182,214,${.3 * k})`); g.addColorStop(.6, `rgba(150,162,196,${.12 * k})`); g.addColorStop(1, 'rgba(150,162,196,0)'); L.fillStyle = g; L.fillRect(R.x - 38, R.y - 43, 76, 76) }
   foxfire(L, dark);
   // windows, lanterns and campfires: lit from dusk
   const on = clamp((dark - .15) / .25, 0, 1);
@@ -5847,6 +5941,11 @@ function drawMurk() { const murk = clamp(Math.max(LT.murk, LT.dark * (.14 + .86 
 // ================= sound =================
 // The game's sound beds and one-shots, mixed for free riding: wind in the crowns, birds by the hour, rain, the tyres
 // on each surface, gravel crunching, leaves kicked up, and the spring's trickle as you come near it.
+// a footfall: a soft thud on a road or a path, a crunch on gravel and the dam, a rustle in the leaves and the grass, a slap in water
+function footStep(S) { const run = R.gk === 'run', m = R.surf, wet = m === 'brook' || m === 'pond' || INPUD;
+  if (wet && SND.buf.water) { shot(SND.buf.water, WSPL[Math.floor(Math.random() * WSPL.length)], .18, .05 + (run ? .04 : 0), { rate: 1.1 + Math.random() * .3, pan: rp(.1), fade: .02 }); return }
+  const gr = S === 'gravel', b = S === 'grass' ? SND.buf.leaves : SND.buf.gravel; if (!b) return; const d = (S === 'grass' ? .07 : .05) + Math.random() * .03;
+  shot(b, Math.random() * (b.duration - .15), d, (gr ? .07 : S === 'grass' ? .05 : .035) * (run ? 1.4 : 1) * (.8 + .4 * Math.random()), { rate: (S === 'road' ? .62 : .8) + Math.random() * .2, pan: rp(.12), lp: S === 'road' ? 1400 : 0, fade: .008, to: SND.crunchIn }) }
 let LKS = 0; function leafKick() { if (!SND.on || !SND.ready || !SND.buf.leaves || t - LKS < .07) return; LKS = t; const b = SND.buf.leaves; shot(b, Math.random() * (b.duration - .2), .05 + Math.random() * .07, .04 + .04 * Math.random(), { rate: 1 + Math.random() * .3, pan: rp(.25), fade: .008, to: SND.crunchIn }) }
 // ---- the camp's own sounds, placed where they come from: real recordings (snd/CREDITS.txt) of a campfire crackling, rain
 // drumming on a tent and on a car roof, the wind howling in a gale, crows, a dog barking far off in the village; and the
@@ -5894,7 +5993,7 @@ function sndCamp(dt) { if (!SX.ready) { sndExtraInit(); return } const live = !p
   // now and then: crows by day, a dog far off in the village toward evening and at night
   SX.T.crows -= step; if (SX.T.crows <= 0) { SX.T.crows = 35 + Math.random() * 70; if (LT.day > .5 && WX.rain < .3) { const h = SX.hits.crows; for (let k = 0; k < 1 + (Math.random() * 3 | 0); k++) { const o = h[Math.floor(Math.random() * h.length)] || 0; shot(SX.buf.crows, o, 1.1, .2 + Math.random() * .12, { rate: cents(40), pan: rp(.8), lp: 5000, wet: .25, at: k * (.6 + Math.random() * .8), fade: .05 }) } } }
   SX.T.dog -= step; if (SX.T.dog <= 0) { const eve = LT.day < .6; SX.T.dog = eve ? 30 + Math.random() * 60 : 90 + Math.random() * 120; if (Math.random() < (eve ? .8 : .35)) { const h = SX.hits.dog; for (let k = 0; k < 2 + (Math.random() * 3 | 0); k++) { const o = h[Math.floor(Math.random() * h.length)] || 0; shot(SX.buf.dog, o, .6, .07 + Math.random() * .04, { rate: cents(30), pan: .55 + rp(.15), lp: 1800, wet: .5, at: k * (.45 + Math.random() * .5), fade: .04 }) } } } }
-function sndUpdate(dt) { if (SND.on && SND.ctx && SND.ready) sndCamp(dt); if (!SND.on || !SND.ctx || !SND.ready) return; const T0 = nowA(), live = !paused && !document.hidden, sp = live ? R.v / 30 : 0;
+function sndUpdate(dt) { if (SND.on && SND.ctx && SND.ready) sndCamp(dt); if (!SND.on || !SND.ctx || !SND.ready) return; const T0 = nowA(), live = !paused && !document.hidden, sp = live && !R.foot ? R.v / 30 : 0;
   SND.pt = (SND.pt || 0) + dt; const doP = SND.pt >= .1; if (doP) SND.pt = 0;
   const sp_ = (p, v, tc) => { if (p._last !== undefined && Math.abs(v - p._last) < .0015 + .02 * Math.abs(v)) return; if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(T0); else p.cancelScheduledValues(T0); p.setTargetAtTime(v, T0, tc); p._last = v };
   const lvl = (L, v, tc = 1.5) => { if (!doP) return; const p = L.g.gain; if (v > .002 && !L.on) { L.g.connect(SND.master); if (L.w) L.g.connect(L.w); L.on = true; L.quiet = 0 }
@@ -5919,6 +6018,7 @@ function sndUpdate(dt) { if (SND.on && SND.ctx && SND.ready) sndCamp(dt); if (!S
   lvl(SND.slosh, 0, .5);
   if (doP) { const side = WINDX * clamp(Wd * 2, 0, 1) * .25; for (const L of [SND.windT, SND.windL, SND.rainLv, SND.rainLt, SND.rainHv, SND.stream]) { if (!L.on) continue; for (let i = 0; i < 2; i++) { const m = 1 + .3 * Math.sin(T0 * (i ? .0371 : .0233) + L.ph * (i + 1)) + .12 * Math.sin(T0 * (i ? .113 : .089) + L.ph * 3), sd = (L === SND.windT || L === SND.windL) ? (i ? 1 - side : 1 + side) : 1; sp_(L.parts[i].gain, .71 * m * sd, 2) } } }
   if (!live) return; const T = SND.T;
+  if (R.foot && live && R.stepN !== T.stepN) { T.stepN = R.stepN; footStep(S) }
   if (sp > .05) { T.crunch -= dt; const gr = S === 'gravel'; while (T.crunch <= 0) { T.crunch += 1 / ((gr ? 18 : S === 'road' ? 9 : 4) * sp * (1 - .55 * WET) + .01); const b = SND.buf.gravel, d = .025 + Math.random() * .05; shot(b, Math.random() * (b.duration - .15), d, (.03 + .035 * Math.random()) * (gr ? 1.8 : 1), { rate: .85 + Math.random() * .35, pan: rp(.15), fade: .006, to: SND.crunchIn }) }
     T.leaf -= dt; while (T.leaf <= 0) { T.leaf += 1 / ((S === 'grass' ? 2.4 : 1.1) * sp * (1 - .7 * WET) + .01); const b = SND.buf.leaves, d = .04 + Math.random() * .08; shot(b, Math.random() * (b.duration - .15), d, .035 + .04 * Math.random(), { rate: .9 + Math.random() * .25, pan: rp(.2), fade: .01, to: SND.crunchIn }) } }
   T.pecker -= dt; if (T.pecker <= 0) { T.pecker = 45 + Math.random() * 75; if (r < .15 && fog < .6 && Wd < .75 && LT.day > .6) woodpecker() }
@@ -5963,6 +6063,7 @@ function hintUpdate() { let best = null, bd = 1e9, bw = null; for (const W of PL
 const DEV = { on: false, pick: null, fps: 60 };
 function toggleDev() { DEV.on = !DEV.on; elDev.hidden = !DEV.on; bDev.innerHTML = 'Сетка: <b>' + (DEV.on ? 'вкл' : 'выкл') + '</b>'; if (!DEV.on) DEV.pick = null }
 bDev.onclick = toggleDev;
+$('bHero').innerHTML = 'Герой: <b>' + HERO.name + '</b>'; $('bHero').onclick = () => heroPick(false);
 if (GAMEMODE) $('bSeed').onclick = () => { try { localStorage.setItem('trail.seed', (Math.random() * 1e9) | 0) } catch (e) { } location.reload() };
 // ---- the map in the corner (the game): the ways, the water and the places about the rider, north up, 1:12 ----
 const MAPC = GAMEMODE ? $('map') : null, MAPX = MAPC ? MAPC.getContext('2d') : null; let mapT = -9;
@@ -6022,8 +6123,9 @@ async function startUp() { resize(); placeLights(); placeWires(); regionsAbout(R
   for (const o of near) { while (!stage2(o)); done++; if (done % 6 === 0) { elLoadT.textContent = `Строю место… ${Math.round(done / near.length * 100)} %`; await new Promise(r => setTimeout(r, 0)) } }
   { const t0 = performance.now(); while (near.some(o => o.nk && !o.ready) && performance.now() - t0 < 30000) { if (FBQ.length) { const t1 = performance.now(); while (FBQ.length && performance.now() - t1 < 40) libFallbackStep() } elLoadT.textContent = `Выращиваю деревья… ${near.filter(o => o.nk && o.ready).length} / ${near.filter(o => o.nk).length}`; await new Promise(r => setTimeout(r, 50)) } }
   { elLoadT.textContent = 'Земля…'; const cx0 = R.x - W / 2, cy0 = R.y - H / 2; for (let cj = Math.floor((cy0 - CK) / CK); cj <= Math.floor((cy0 + H + CK) / CK); cj++) for (let ci = Math.floor((cx0 - CK) / CK); ci <= Math.floor((cx0 + W + CK) / CK); ci++) { bakeChunk(ci, cj); await new Promise(r => setTimeout(r, 0)) } }
-  elLoadT.textContent = 'Велосипедист…'; const t0 = performance.now(); while (!rReady(R.yi, 0) && performance.now() - t0 < 6000) { rWarm(); await new Promise(r => setTimeout(r, 16)) }
-  elLoad.hidden = true; DAY.h = 10.2; WX.cur = 'clear'; WX.timer = wxLen('clear'); WX.rain = 0; WX.fog = 0; WX.cloud = STATES.clear.cloud; WET = 0; computeLight(); last = performance.now(); requestAnimationFrame(frame) }
+  if (R.foot) { elLoadT.textContent = HERO.name + '…'; R.hd16 = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; heroWarm(60) }
+  else { elLoadT.textContent = 'Велосипедист…'; const t0 = performance.now(); while (!rReady(R.yi, 0) && performance.now() - t0 < 6000) { rWarm(); await new Promise(r => setTimeout(r, 16)) } }
+  elLoad.hidden = true; if (GAMEMODE && !HERO0) heroPick(true); DAY.h = 10.2; WX.cur = 'clear'; WX.timer = wxLen('clear'); WX.rain = 0; WX.fog = 0; WX.cloud = STATES.clear.cloud; WET = 0; computeLight(); last = performance.now(); requestAnimationFrame(frame) }
 
 // ================= the loop =================
 let last = performance.now(), hudT = 0, FDT = 1 / 60; const PERF = { n: 0, t: 0, slow: 0 };
@@ -6044,8 +6146,8 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); stepStand(dt); stepRider(dt); stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
-  sndUpdate(dt); ft('звук'); rWarm(); ft('велосипедист'); buildSome(paused ? 8 : 4); ft('фоновая сборка');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? 8 : 2.5); ft('велосипедист'); buildSome(paused ? 8 : 4); ft('фоновая сборка');
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
   drawWorld(); ft('мир'); drawSmoke(); drawFog(); drawLight(); drawLife(); ft('свет'); drawGlare(); drawMurk();
   drawRays(Math.max(sunAmt() * .55, RAYS.a * (WX.fog > .25 ? 1.25 : .85)) * LT.sunUp, RAYS.a * LT.sunUp); drawPost(); ft('эффекты'); drawDev(); camShift();
@@ -6054,7 +6156,7 @@ function frame(now) {
   // and a device that was judged slow but then runs fast for a while gets the full picture back)
   bgCheck(); if (!paused && !document.hidden && !BGBUSY) { const gap = (now - (PERF.lt || now)) / 1000; PERF.lt = now; if (gap > .25) PERF.bad = true; PERF.n++; PERF.t += rdt;
     if (PERF.t > 2.5) { const fps = PERF.n / PERF.t; if (!PERF.bad) { if (!GFXLOW) { if (fps < 42) PERF.slow++; else PERF.slow = 0; if (PERF.slow >= 3) { GFXLOW = true; PERF.fast = 0 } } else { if (fps > 55) PERF.fast = (PERF.fast || 0) + 1; else PERF.fast = 0; if (PERF.fast >= 4) { GFXLOW = false; PERF.slow = 0 } } } PERF.n = PERF.t = 0; PERF.bad = false } } else PERF.lt = now;
-  drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
+  drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
 window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
