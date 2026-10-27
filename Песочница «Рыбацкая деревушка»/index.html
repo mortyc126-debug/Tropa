@@ -1415,7 +1415,7 @@ const pfMake = (w, h, ax, ay, draw, ol = [.36, .58], rim = true) => { const s = 
 const PFC = { LOG: [[70, 50, 36], [104, 78, 54], [134, 104, 72], [160, 130, 92]], END: [[180, 150, 104], [140, 108, 72]], ROOF: [[58, 50, 46], [84, 72, 64], [112, 98, 86], [138, 124, 108], [156, 142, 124]],
   WIN: [52, 66, 78], LIT: [250, 200, 110], FRAME: [226, 222, 206] };
 // tiny letters for signs (3×5, a few wider)
-const PF_FONT = { 'С': ['.##', '#..', '#..', '#..', '.##'], 'Т': ['###', '.#.', '.#.', '.#.', '.#.'], 'У': ['#.#', '#.#', '.##', '..#', '##.'], 'Д': ['.##.', '.#.#', '.#.#', '####', '#..#'], 'Е': ['###', '#..', '##.', '#..', '###'],
+const PF_FONT = { 'С': ['.##', '#..', '#..', '#..', '.##'], 'Т': ['###', '.#.', '.#.', '.#.', '.#.'], 'У': ['#.#', '#.#', '.##', '..#', '##.'], 'Д': ['.###', '.#.#', '.#.#', '####', '#..#'], 'Е': ['###', '#..', '##.', '#..', '###'],
   'Н': ['#.#', '#.#', '###', '#.#', '#.#'], 'Ы': ['#...#', '#...#', '##..#', '#.#.#', '##..#'], 'Й': ['#..#', '#.##', '##.#', '#..#', '#..#'], 'И': ['#..#', '#.##', '##.#', '#..#', '#..#'], 'К': ['#.#', '##.', '#..', '##.', '#.#'], 'Л': ['.##', '#.#', '#.#', '#.#', '#.#'],
   'Ю': ['#..#.', '#.#.#', '###.#', '#.#.#', '#..#.'], 'Ч': ['#.#', '#.#', '.##', '..#', '..#'], 'П': ['###', '#.#', '#.#', '#.#', '#.#'], 'Р': ['##.', '#.#', '##.', '#..', '#..'], 'О': ['.#.', '#.#', '#.#', '#.#', '.#.'],
   'А': ['.#.', '#.#', '###', '#.#', '#.#'], 'З': ['##.', '..#', '.#.', '..#', '##.'], 'Б': ['###', '#..', '##.', '#.#', '##.'], 'В': ['##.', '#.#', '##.', '#.#', '##.'], 'Г': ['###', '#..', '#..', '#..', '#..'], 'М': ['#...#', '##.##', '#.#.#', '#...#', '#...#'],
@@ -2308,8 +2308,10 @@ function handAt(where, s, B) { const { sh, c, r, H, shW, dep } = B, P = { mouth:
   let pole = [s, .25, where === 'up' ? .3 : -.9]; const k = v3dot(pole, u); pole = v3n([pole[0] - u[0] * k, pole[1] - u[1] * k, pole[2] - u[2] * k]); const y = Math.sqrt(Math.max(0, len * len - d * d / 4));
   return [p, [sh[0] + u[0] * d / 2 + pole[0] * y, sh[1] + u[1] * d / 2 + pole[1] * y, sh[2] + u[2] * d / 2 + pole[2] * y]] }
 // a thing in the hand (hd): a mug, a paper cup, a phone (lit: its screen on; at the ear held upright), a book or a newspaper (held in both
-// hands: made once, by the +x hand), papers or a folder carried, a takeaway box in the lap, chopsticks
+// hands: made once, by the +x hand), papers or a folder carried, a takeaway box in the lap, chopsticks, a mop (its head on the floor ahead)
 function handHold(M, what, hd, s, lit, ear) { const [x, n, z] = hd, dark = [26, 26, 30];
+  if (what === 'mop') { const f = [x * 1.2, n - 4.6, .5], d = v3n(v3sub([x, n, z], f)); t3line(M, f, [x + d[0] * 2.4, n + d[1] * 2.4, z + d[2] * 2.4], [176, 180, 186]);
+    t3box(M, f[0] - 1.7, f[1] - .5, 0, f[0] + 1.7, f[1] + .5, .7, [196, 192, 176], { tex: (X, N, Z, c) => (Math.floor(X * 2.5) % 2 ? cmul(c, .86) : c) }); return }
   if (what === 'mug') t3cyl(M, x, n - .5, .55, z - .7, z + .5, [236, 232, 222], { topCol: [90, 60, 40] });
   else if (what === 'cup') t3cyl(M, x, n - .4, .42, z - .6, z + .5, [240, 240, 236], { topCol: [200, 210, 220] });
   else if (what === 'phone') { if (ear) t3box(M, x - .15 * s, n - .6, z - .8, x + .1 * s, n + .4, z + .8, dark); else t3box(M, x - .45, n - .9, z - .05, x + .45, n + .2, z + .2, dark, { tex: (X, N, Z, c) => (Z > .15 + z && Math.abs(X - x) < .34 && N > n - .8 && N < n + .1 ? (lit ? [160, 200, 246] : [14, 16, 22]) : c) }) }
@@ -2470,9 +2472,6 @@ function cardChair(x, n, back, col = [52, 56, 66]) { const M = T3(), metal = [96
   for (let k = 0; k < 5; k++) { const a = k / 5 * TAU + .3, ex = x + Math.cos(a) * 2.4, en = n + Math.sin(a) * 2.4; t3box(M, Math.min(x, ex) - .2, Math.min(n, en) - .2, .5, Math.max(x, ex) + .2, Math.max(n, en) + .2, .9, metal); t3ball(M, [ex, en, .35], .35, .35, .35, [30, 30, 34]) }
   if (back) { const bn = n + back * 2.3; t3box(M, x - 2, bn - .25, 5.2, x + 2, bn + .25, 10.6, col); t3box(M, x - .2, bn - .2, 4.6, x + .2, bn + .2, 5.4, metal) }
   return M }
-// one at a desk: the chair, the person on it typing (frame f; 3: a hand on the mouse), facing north (dir 0) or south (4)
-function cardWorker(look, x, n, dir, f, o = {}) { const ex = o.pose || {}, P = personModel(look, Object.assign({ look: o.look || 0, fine: 1 }, ex, { chair: Object.assign({ seat: 4.8, desk: 7.4, type: f, lean: o.lean ?? .5, bow: o.bow || 0 }, ex.chair) })); t3rot(P, dir * 45);
-  t3shift(P, x, n, 0); return t3join(cardChair(x, n + (dir === 0 ? -.4 : .4), dir === 0 ? -1 : 1), P) }
 
 // ---- what the cards have in common: letters in the game's pixel font, rain, light, a cut to black, trees, people ----
 Object.assign(PF_FONT, { ':': ['.', '#', '.', '#', '.'], '-': ['...', '...', '###', '...', '...'], '?': ['##.', '..#', '.#.', '...', '.#.'], '!': ['#', '#', '#', '.', '#'] });
@@ -2536,13 +2535,14 @@ function cardActor(look, keys, o = {}) { const dirOf = (dx, dn) => (Math.round(M
     if (dr != null) for (let f = 0; f < 8; f++) add('w' + dr + '/' + f, Object.assign({ walk: f / 8 }, o.base), dr); segs.push({ u0, u1, x0, n0, x1, n1, d, dr, f0, acc }); acc += d }
   for (const k of keys) for (let f = 0; f < 2; f++) add('i' + k[3] + '/' + f, Object.assign({ sway: f ? 1 : -1 }, o.base), k[3]);
   for (const [key, pose, dir] of o.poses || []) add(key, Object.assign({}, o.base, pose), dir);
-  return { n: o.sortN ?? keys[0][2], frames: F.length, make: f => cardPerson(look, F[f][0], F[f][1], o.extra), at: (T, u) => { if (o.when && !o.when(T, u)) return null;
-    const w = o.clock ? o.clock(T, u) : u, first = keys[0], last = keys[keys.length - 1], id = Math.floor(T * 1.1 + first[1] * .1) % 2; if (o.enter && w < first[0]) return null; if (o.exit && w > last[0]) return null;
-    let x, n, f; if (w <= first[0]) { x = first[1]; n = first[2]; f = idx.get('i' + first[3] + '/' + id) } else if (w >= last[0]) { x = last[1]; n = last[2]; f = idx.get('i' + last[3] + '/' + id) }
-    else { const s = segs.find(q => w >= q.u0 && w <= q.u1), k = (w - s.u0) / (s.u1 - s.u0); x = s.x0 + (s.x1 - s.x0) * k; n = s.n0 + (s.n1 - s.n0) * k;
-      f = s.dr != null ? idx.get('w' + s.dr + '/' + Math.floor((s.acc + s.d * k) / 10.7 * 8) % 8) : idx.get('i' + s.f0 + '/' + id) }
+  const first = keys[0], last = keys[keys.length - 1], clk = (T, u) => (o.clock ? o.clock(T, u) : u),
+    spot = w => { if (w <= first[0]) return [first[1], first[2], null, 0, first[3]]; if (w >= last[0]) return [last[1], last[2], null, 0, last[3]];
+      const s = segs.find(q => w >= q.u0 && w <= q.u1), k = s.u1 > s.u0 ? (w - s.u0) / (s.u1 - s.u0) : 1; return [s.x0 + (s.x1 - s.x0) * k, s.n0 + (s.n1 - s.n0) * k, s, k, s.f0] };
+  return { n: o.sortN ?? keys[0][2], frames: F.length, make: f => cardPerson(look, F[f][0], F[f][1], o.extra), where: (T, u) => spot(clk(T, u)).slice(0, 2), at: (T, u) => { if (o.when && !o.when(T, u)) return null;
+    const w = clk(T, u), id = Math.floor(T * 1.1 + first[1] * .1) % 2; if (o.enter && w < first[0]) return null; if (o.exit && w > last[0]) return null;
+    const [x, n, s, k, face] = spot(w); let f = s && s.dr != null ? idx.get('w' + s.dr + '/' + Math.floor((s.acc + s.d * k) / 10.7 * 8) % 8) : idx.get('i' + face + '/' + id);
     const p = o.pose && o.pose(T, u); if (p != null && idx.has(p)) f = idx.get(p);
-    const fi = o.fadeIn ?? .03, fo = o.fadeOut ?? .03; return { x, n, f, a: Math.min(o.enter && fi > 0 ? (w - first[0]) / fi : 1, o.exit && fo > 0 ? (last[0] - w) / fo : 1), clip: o.clip && o.clip(T, u, x, n) } } } }
+    const fi = o.fadeIn ?? .03, fo = o.fadeOut ?? .03; return { x, n, s: o.sortN ?? n, f, a: Math.min(o.enter && fi > 0 ? (w - first[0]) / fi : 1, o.exit && fo > 0 ? (last[0] - w) / fo : 1), clip: o.clip && o.clip(T, u, x, n) } } } }
 // the townsfolk of the cards: at the bus stop, in the bus
 const CARD_FOLK = [
   { id: 'folk-1', sex: 'm', h: 17.8, build: 1.1, skin: 3, hair: [40, 36, 34], cut: 'short', hat: 'cap', hatCol: [54, 58, 64], top: [74, 78, 66], topKind: 'jacket', legs: [46, 48, 56], boots: [32, 30, 30] },
@@ -2553,93 +2553,322 @@ const CARD_FOLK = [
   { id: 'folk-6', sex: 'f', h: 16.4, build: 1, skin: 2, hair: [150, 60, 40], cut: 'tail', top: [96, 120, 92], topKind: 'fleece', legs: [56, 60, 80], boots: [60, 44, 36] }];
 const heroIn = where => () => HERO[where] || HERO.look;
 
-// ---- the office: an open floor high up, rain on the big windows; the hero at the far desk facing us, a colleague across the way with her
-// back to us, beside her a desk nobody sits at today. The clock goes from nine to half past seven: the papers pile up, the cups of coffee,
-// the boss comes by with one more folder; in the evening the colleague goes home, the lights go off over her side, and the hero is still
-// there, more bent over the keys, in the light of the screen ----
+// =====================================================================================================================
+// THE OFFICE, SHOT BY SHOT. Monday from the morning to the night in six shots, each a few minutes of the day seen near enough to follow,
+// each going on by itself to the next when it has been told (a tap goes on sooner):
+//   1 morning: Лена already at her desk; Олег and then the hero come in out of the rain by the door, hang up their things, go round to
+//     their desks and sit down; the hero's screen comes on
+//   2 the report, near: the screen and the keyboard, the hands typing, the lines of it growing; the boss's message popping up, the hands
+//     stopping, the mouse; a word unwritten and written again
+//   3 the meeting: the boss at the chart (the figures going down); notes, a yawn, someone nodding off, the hero doodling; «Отчёт с тебя»
+//   4 at the water cooler: the others on about their weekends; the hero makes a coffee; «А ты?» «…А я работаю»
+//   5 evening, nearer the hero's desk: the boss with the red folder, «Это к утру»; the hero looks at it, rubs the forehead
+//   6 night: Лена goes home, the lights go off over the empty desks, the cleaner comes in with her mop; the hero is still at it
+// The people come in and go out by the doors; each shot's clock goes at the pace of the minutes it shows. Times are in seconds.
+// =====================================================================================================================
 const OFFICE_BOSS = { id: 'boss', det: true, sex: 'm', h: 18.8, build: 1.28, skin: 0, hair: [126, 118, 110], cut: 'short', top: [74, 78, 86], topKind: 'blazer', shirt: [236, 236, 230], tie: [44, 58, 104], legs: [70, 74, 82], boots: [30, 28, 28], sole: [20, 20, 20] };
-const OFFICE_MATE = { id: 'colleague-1', sex: 'f', h: 16.6, build: .95, skin: 0, hair: [40, 34, 30], cut: 'long', top: [120, 128, 138], topKind: 'fleece', legs: [50, 50, 60], boots: [40, 36, 34] };
-const OFFICE_BOSS_AT = [.3, .42, .58, .72], OFFICE_HOME = .8; // (the boss: comes in, stands at the hero's desk, turns, is gone; the colleague goes home)
-const OFFICE_GUY = { id: 'office-guy', sex: 'm', h: 17.6, build: .95, skin: 2, hair: [60, 44, 34], cut: 'short', top: [176, 196, 214], topKind: 'jacket', legs: [52, 54, 62], boots: [34, 30, 28] };
-const OFFICE_GIRL = { id: 'office-girl', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [180, 140, 90], cut: 'tail', top: [96, 110, 90], topKind: 'fleece', legs: [44, 44, 52], boots: [40, 34, 32] };
-// the hero's moments: drinking the coffee, the stretch, the eyes rubbed late; looking up while the boss is there
-const OFFICE_SIP = [[.18, .23], [.56, .6]], OFFICE_MUGS = u => (u > .62 ? 3 : u > .26 ? 2 : 1) - (OFFICE_SIP.some(([a, b]) => u > a && u < b) ? 1 : 0);
-const CARD_OFFICE = {
-  O: [CARD.W / 2 - 14, CARD.H - 6], dur: 11, beats: [0, .44],
-  bg() { const M = T3(), wall = [178, 176, 166], side = [160, 158, 150], carpet = [92, 96, 106], WINS = [[-31, -13], [-8, 8], [13, 31]], WZ = [7, 21];
-    const inWin = (x, z) => WINS.some(([a, b]) => x > a && x < b) && z > WZ[0] && z < WZ[1];
-    t3face(M, [[-34, 0, 0], [34, 0, 0], [34, 34, 0], [-34, 34, 0]], carpet, [0, 17, -5], { tex: (x, n, z, c) => { const gx = ((x % 8) + 8) % 8, gn = ((n % 8) + 8) % 8; return gx < .35 || gn < .35 ? cmul(c, .86) : h2(Math.floor(x * 2), Math.floor(n * 2), 3) < .06 ? cmul(c, 1.06) : c } });
-    // the back wall with its windows: the city outside in the rain, grey towers, a crane
-    t3face(M, [[-34, 34, 0], [34, 34, 0], [34, 34, 24], [-34, 34, 24]], wall, [0, 44, 12], { tex: (x, n, z, c) => {
-      if (z < .8) return [96, 92, 86]; // (the skirting)
-      for (const [a, b] of WINS) if (x > a - .7 && x < b + .7 && z > WZ[0] - .7 && z < WZ[1] + .7) { if (!inWin(x, z) || Math.abs(x - (a + b) / 2) < .25) return [214, 214, 210];
-        const sky = cmix([150, 160, 172], [120, 132, 146], (z - WZ[0]) / (WZ[1] - WZ[0])), bh = 9 + 3.5 * Math.sin(x * .9) + 2.6 * Math.sin(x * .37 + 1) + (Math.floor((x + 50) / 3) % 3) * 1.3;
-        if (z < WZ[0] + bh * .6) { const far = Math.floor((x + 50) / 2.3) % 2; return ((Math.floor(z * 1.6) + Math.floor(x * 1.1)) % 3 === 0) ? [132, 140, 150] : far ? [104, 112, 124] : [96, 104, 116] } // (towers)
-        if (x > 22 && x < 22.4 && z > WZ[0] + 5) return [92, 96, 102]; if (z > 18 && z < 18.4 && x > 17 && x < 29) return [92, 96, 102]; // (a crane)
-        return sky }
-      return c } });
-    t3face(M, [[-34, 0, 0], [-34, 34, 0], [-34, 34, 24], [-34, 0, 24]], side, [-44, 17, 12], { tex: (x, n, z, c) => z < .8 ? [92, 88, 82] : c });
-    // a whiteboard on the side wall (the plan, its arrows), the water cooler in the corner, a plant, the bins under the desks
-    t3face(M, [[-33.8, 10, 8], [-33.8, 24, 8], [-33.8, 24, 18], [-33.8, 10, 18]], [236, 238, 236], [-44, 17, 12], { tex: (x, n, z) => { if (n < 10.3 || n > 23.7 || z < 8.3 || z > 17.7) return [150, 152, 156]; const r = h2(Math.floor(n * 2), Math.floor(z * 2), 9); return Math.abs(Math.sin(n * 1.7 + z * .4) * 2 - (z - 13.5)) < .25 && n < 19 ? [60, 90, 170] : Math.abs(n - 21 - Math.sin(z * 2) * .4) < .2 && z > 10 && z < 16 ? [200, 70, 56] : r < .015 ? [190, 60, 50] : [236, 238, 236] } });
-    t3box(M, -32, 28, 0, -28, 32, 9, [214, 214, 212]); t3cyl(M, -30, 30, 1.6, 9, 13, [150, 196, 230], { topCol: [120, 170, 214] });
-    t3cyl(M, 30, 30, 1.6, 0, 3, [150, 90, 60], { topCol: [70, 50, 36] }); for (let k = 0; k < 7; k++) { const a = k * 2.4; t3ball(M, [30 + Math.cos(a) * 1.4, 30 + Math.sin(a) * 1.2, 4.5 + (k % 3) * 1.4], 1.6, 1.4, 1.5, k % 2 ? [62, 104, 66] : [52, 90, 58]) }
-    for (const [x, n] of [[-17, 26], [-27, 13]]) t3cyl(M, x, n, 1.1, 0, 2.6, [80, 84, 90], { topCol: [40, 42, 46] });
-    return M },
-  units: [
-    // the hero at their desk: typing (in the evening more bent over it), looking up while the boss stands there
-    { n: 31, frames: 12, at: (T, u) => ({ f: u > OFFICE_BOSS_AT[1] + .02 && u < OFFICE_BOSS_AT[2] ? 8 : OFFICE_SIP.some(([a, b]) => u > a && u < b) ? 9 : u > .665 && u < .705 ? 10 : u > .88 && u < .95 ? 11 : (u > .7 ? 4 : 0) + Math.floor(T * 6) % 4 }),
-      make: f => { const extra = [{ chair: { bow: -.05 } }, { handR: 'mouth', holdR: 'mug', chair: { bow: 0, lean: .3 } }, { handR: 'up', handL: 'up', chair: { bow: -.15, lean: .1 } }, { handR: 'eyes', handL: 'eyes', chair: { bow: .3, lean: .4 } }][f - 8];
-        const M = t3join(cardDesk(-10, 22, 14, 28, { back: true }), cardMonitor(2, 23.6, 1), cardWorker(HERO.office || HERO.look, 2, 31, 4, f < 8 ? [0, 1, 0, 3][f % 4] : 0, { bow: f < 4 ? .25 : .55, pose: extra }));
-        t3box(M, -.3, 25.3, 7.4, 4.3, 26.6, 7.7, [52, 54, 60]); return M } }, // (the keyboard)
-    // the papers piling up (and at last the boss's red folder on them); the cups of coffee
-    { n: 24, frames: 4, at: (T, u) => ({ f: u > .465 ? 3 : u > .3 ? 2 : u > .14 ? 1 : 0 }), make: f => { const M = T3(), h = [5, 8, 11, 11][f];
-        for (let k = 0; k < h; k++) t3box(M, -8 + (k * 7 % 3) * .12, 23 + (k * 5 % 3) * .1, 7.4 + k * .18, -4.5 + (k * 7 % 3) * .12, 26 + (k * 5 % 3) * .1, 7.58 + k * .18, k % 2 ? [244, 244, 240] : [232, 230, 222]);
-        if (f === 3) { const z = 7.4 + h * .18; t3box(M, -8.3, 22.8, z, -4.1, 26.2, z + .8, [150, 46, 50], { tex: (x, n, zz, c) => (zz > z + .7 && Math.abs(x + 6.2) < 1 && Math.abs(n - 24.5) < .5 ? [236, 232, 220] : c) }) }
-        return M } },
-    { n: 24.5, frames: 4, at: (T, u) => ({ f: OFFICE_MUGS(u) }), make: f => { const M = T3(); for (let k = 0; k < f; k++) t3cyl(M, 9 + k * 1.7, 24.6 - (k % 2) * 1, .55, 7.4, 8.6, [236, 232, 222], { topCol: k < f - 1 ? [120, 96, 70] : [90, 60, 40] }); return M } },
-    // the colleague: at her desk, typing, until she gets up and goes home; her chair left empty
-    { n: 11, frames: 1, make: () => { const M = t3join(cardDesk(-22, 8, -2, 15), cardMonitor(-12, 12.5, -1)); t3box(M, -14.3, 8.7, 7.4, -9.7, 10, 7.7, [52, 54, 60]); t3cyl(M, -19, 11, .9, 7.4, 8.2, [150, 90, 60], { topCol: [60, 104, 64] }); return M },
-      post: (g, T, u) => officeScreen(g, T, u) }, // (her screen: drawn on her monitor, before she is)
-    // the colleague: typing; a sip of tea now and then; a call on her phone; then she gets up and goes home, her chair left empty
-    { n: 4, frames: 6, at: (T, u) => (u > OFFICE_HOME ? null : { f: (u > .1 && u < .14) || (u > .38 && u < .42) ? 4 : u > .52 && u < .66 ? 5 : Math.floor(T * 6 + 2) % 4 }),
-      make: f => cardWorker(OFFICE_MATE, -12, 4, 0, f < 4 && (f === 1 || f === 3) ? f : 0, { lean: f < 4 ? .6 : .35, pose: [{ handR: 'mouth', holdR: 'mug' }, { handL: 'ear', holdL: 'phone', look: -.4 }][f - 4] }) },
-    { n: 4, frames: 1, at: (T, u) => (u > OFFICE_HOME ? {} : null), make: () => cardChair(-12, 3.6, -1) },
-    cardActor(OFFICE_MATE, [[OFFICE_HOME, -12, 1.4, 6], [OFFICE_HOME + .03, -12, 1.4, 6], [.96, -52, 1.4, 6]], { enter: 1, exit: 1, fadeIn: 0, base: { handR: 'carry', holdR: 'bag' } }),
-    // someone going by along the passage with papers; someone at the water cooler with a cup
-    cardActor(OFFICE_GUY, [[.08, -52, 18.5, 2], [.27, 54, 18.5, 2]], { enter: 1, exit: 1, base: { handR: 'carry', holdR: 'papers' } }),
-    cardActor(OFFICE_GIRL, [[.42, -48, 25, 2], [.5, -26, 25, 6], [.62, -26, 25, 6], [.7, -50, 25, 6]], { enter: 1, exit: 1, base: { handR: 'carry', holdR: 'cup' },
-      poses: [['fill', { handR: 'out', holdR: 'cup' }, 6], ['sip', { handR: 'mouth', holdR: 'cup' }, 5]], pose: (T, u) => (u > .5 && u < .55 ? 'fill' : u > .56 && u < .61 ? 'sip' : null) }),
-    { n: 5, frames: 1, make: () => t3join(cardDesk(6, 8, 24, 15), cardMonitor(15, 12.5, -1, [40, 44, 52]), cardChair(15, 4.6, -1)) },
-    // the boss: in from the passage with the red folder, to the hero's desk; the folder put down, a finger pointed with the word, and away
-    cardActor(OFFICE_BOSS, [[OFFICE_BOSS_AT[0], 50, 18.5, 6], [OFFICE_BOSS_AT[1], 9, 18.5, 0], [.465, 9, 18.5, 0]], { enter: 1, exit: 1, fadeOut: 0, base: { handR: 'carry', holdR: 'folder' },
-      poses: [['put', { handR: 'out', holdR: 'folder' }, 0]], pose: (T, u) => (u > .44 ? 'put' : null) }),
-    cardActor(OFFICE_BOSS, [[.465, 9, 18.5, 0], [OFFICE_BOSS_AT[2], 9, 18.5, 0], [OFFICE_BOSS_AT[3], 52, 18.5, 2]], { enter: 1, exit: 1, fadeIn: 0, poses: [['point', { handR: 'point' }, 0]], pose: (T, u) => (u > .47 && u < .565 ? 'point' : null) })],
-  // over it: the rain on the glass, the evening coming on outside (the city's windows lighting), the clock and the calendar, the colleague's
-  // screen with its letters; the lights going off over her side when she has gone, the hero's screen the brightest thing left
-  under(g, T, u) { const O = this.O, P = (x, n, z) => cardP(O, x, n, z), day = clamp(1 - (u - .15) / .7, 0, 1);
-    for (const [a, b] of [[-31, -13], [-8, 8], [13, 31]]) { const q = [P(a, 34, 7), P(b, 34, 7), P(b, 34, 21), P(a, 34, 21)]; g.save(); g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip();
-      g.fillStyle = `rgba(28,36,60,${.65 * (1 - day)})`; g.fillRect(0, 0, CARD.W, CARD.H);
-      if (day < .8) for (let k = 0; k < 40; k++) { const r = h2(k, 7, 77), x = q[0][0] + r * (q[1][0] - q[0][0]), y = q[2][1] + h2(k, 8, 77) * (q[0][1] - q[2][1]) * .55 + (q[0][1] - q[2][1]) * .4; if (h2(k, 9, 77) < (1 - day) * .9) { g.fillStyle = 'rgba(255,214,140,.8)'; g.fillRect(Math.round(x), Math.round(y), 1, 1) } }
-      g.fillStyle = 'rgba(214,226,240,.5)'; for (let k = 0; k < 26; k++) { const x = q[0][0] + h2(k, 3, 5) * (q[1][0] - q[0][0]) + 4, y = q[2][1] + ((h2(k, 4, 5) * 60 + T * 70 * (.8 + h2(k, 6, 5) * .5)) % (q[0][1] - q[2][1] + 6)) - 3; g.fillRect(Math.round(x), Math.round(y), 1, 2); g.fillRect(Math.round(x - 1), Math.round(y + 2), 1, 1) }
-      g.restore() }
-    // the clock: from nine to half past seven; the tear-off calendar beside the windows: Monday the 13th
-    { const [cx, cy] = P(-10.5, 34, 17), h = 9 + 10.5 * clamp(u / .92, 0, 1), r = 4.2; g.fillStyle = '#f2f0ea'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); g.strokeStyle = '#3a3c42'; g.lineWidth = 1; g.stroke();
-      g.strokeStyle = '#24262c'; for (const [a, l] of [[(h % 12) / 12 * TAU, r * .55], [(h % 1) * TAU, r * .85]]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(a) * l, cy - Math.cos(a) * l); g.stroke() } }
-    { const [x, y] = P(9.4, 34, 19.6); g.fillStyle = '#f0ece2'; g.fillRect(Math.round(x), Math.round(y), 12, 14); g.fillStyle = '#c0453a'; g.fillRect(Math.round(x), Math.round(y), 12, 3); cardText(g, '13', x + 6 - cardTextW('13') / 2, y + 4, '#2a2a30'); cardText(g, 'ПН', x + 6 - cardTextW('ПН') / 2, y + 9, '#7a7a82') } },
-  over(g, T, u) { const O = this.O, P = (x, n, z) => cardP(O, x, n, z), day = clamp(1 - (u - .15) / .7, 0, 1), late = clamp((u - OFFICE_HOME - .04) / .1, 0, 1);
-    // the evening: the ceiling's light off over the front of the room once she has gone, the hero in their screen's light
-    g.fillStyle = `rgba(30,40,70,${.12 + .1 * (1 - day)})`; g.fillRect(0, 0, CARD.W, CARD.H);
-    if (late > 0) { const gr = g.createLinearGradient(0, CARD.H, 0, CARD.H * .35); gr.addColorStop(0, `rgba(10,14,30,${.5 * late})`); gr.addColorStop(1, `rgba(10,14,30,${.12 * late})`); g.fillStyle = gr; g.fillRect(0, 0, CARD.W, CARD.H) }
-    { const [sx, sy] = P(2, 26, 11.5); cardGlow(g, sx, sy, 14 + 8 * late, '90,120,170', .16 + .14 * late) }
-    { const [bx, by] = P(9, 18.5, 20.5), a = Math.min((u - .47) / .015, (.565 - u) / .015); cardSay(g, 'К УТРУ!', bx, by, a) } // (the boss's word)
-    { const [bx, by] = P(-12, 4, 18.5), a = Math.min((u - .54) / .015, (.64 - u) / .015); cardSay(g, Math.floor(T * 1.2) % 2 ? 'ДА...' : 'УГУ', bx - 4, by, a) } }, // (the colleague on the phone)
-  lines: h => [`${h.name}. Понедельник, девять утра.`, 'Отчёт. Совещание. Снова отчёт.'] };
-// the colleague's screen: a table, a cursor, the count of letters climbing (off when she has gone)
-function officeScreen(g, T, u) { const P = (x, n, z) => cardP(CARD_OFFICE.O, x, n, z);
-    { const a = P(-14.6, 12.25, 12.15), b = P(-9.4, 12.25, 9.15), x0 = Math.round(a[0]), y0 = Math.round(a[1]), w = Math.round(b[0] - a[0]), hh = Math.round(b[1] - a[1]);
-      if (u > OFFICE_HOME) { g.fillStyle = '#1c2028'; g.fillRect(x0, y0, w, hh) } else {
-      g.fillStyle = '#e8eef4'; g.fillRect(x0, y0, w, hh); g.fillStyle = '#4a78b8'; g.fillRect(x0, y0, w, 1); g.fillStyle = '#c4ccd6'; for (let yy = y0 + 2; yy < y0 + hh; yy += 2) g.fillRect(x0, yy, w, 1); for (let xx = x0 + 3; xx < x0 + w; xx += 4) g.fillRect(xx, y0 + 1, 1, hh - 1);
-      g.fillStyle = '#d04a3c'; const n = Math.floor(3 + u * 44); g.fillRect(x0 + w - 3, y0, 3, 1 + Math.min(3, n / 15 | 0)); if (Math.floor(T * 3) % 2) { g.fillStyle = '#20242c'; g.fillRect(x0 + 1 + (Math.floor(T * 5) % (w - 3)), y0 + 2 + (Math.floor(T) % Math.max(1, hh - 3)), 1, 1) } } } }
+const OF_LENA = { id: 'lena', sex: 'f', h: 16.6, build: .95, skin: 0, hair: [40, 34, 30], cut: 'long', top: [120, 128, 138], topKind: 'fleece', legs: [50, 50, 60], boots: [40, 36, 34] };
+const OF_LENA_OUT = Object.assign({}, OF_LENA, { id: 'lena-out', top: [112, 64, 80], topKind: 'jacket' }); // (in her coat)
+const OF_OLEG = { id: 'oleg', sex: 'm', h: 18, build: 1.08, skin: 2, hair: [196, 170, 120], cut: 'short', top: [86, 108, 84], topKind: 'fleece', legs: [56, 64, 86], boots: [44, 40, 38] };
+const OF_OLEG_OUT = Object.assign({}, OF_OLEG, { id: 'oleg-out', top: [58, 60, 68], topKind: 'jacket' });
+const OF_GUY = { id: 'office-guy', sex: 'm', h: 17.6, build: .95, skin: 2, hair: [60, 44, 34], cut: 'short', top: [176, 196, 214], topKind: 'jacket', legs: [52, 54, 62], boots: [34, 30, 28] };
+const OF_GIRL = { id: 'office-girl', sex: 'f', h: 16.4, build: .9, skin: 1, hair: [118, 62, 42], cut: 'tail', top: [192, 150, 74], topKind: 'fleece', legs: [44, 44, 52], boots: [40, 34, 32] };
+const OF_CLEANER = { id: 'cleaner', sex: 'f', h: 15.8, build: 1.18, skin: 0, hair: [150, 140, 130], cut: 'short', hat: 'beanie', hatCol: [190, 70, 84], top: [70, 112, 150], topKind: 'jacket', legs: [60, 60, 70], boots: [40, 40, 44], age: 'old' };
+const SEC = T => T; // (the actors of the office count in seconds)
+// someone sitting, turned to dir: the chair under them with its back behind, the person (pose: hands, look; pose.chair: the seat, the
+// lean, the bow, desk: a table's height for the hands, type: the typing hands' frame); or the chair left empty
+function cardSeat(look, x, n, dir, pose = {}) { const L = typeof look === 'function' ? look() : look, P = personModel(L, Object.assign({ fine: 1 }, pose, { chair: Object.assign({ seat: 4.8, lean: .4, bow: 0 }, pose.chair) }));
+  const M = t3join(cardChair(0, .6, 1), P); t3rot(M, dir * 45); return t3shift(M, x, n, 0) }
+const cardChairAt = (x, n, dir) => { const M = cardChair(0, .6, 1); t3rot(M, dir * 45); return t3shift(M, x, n, 0) };
+// a seated unit: frames by name (a pose each, null: the chair empty), the one shown now by pick(T)
+function cardSitter(look, x, n, dir, poses, pick) { const names = Object.keys(poses);
+  return { n, frames: names.length, at: (T, u) => ({ f: Math.max(0, names.indexOf(pick(T, u))) }), make: f => (poses[names[f]] ? cardSeat(look, x, n, dir, poses[names[f]]) : cardChairAt(x, n, dir)) } }
+const atDesk = (type, lean, bow, extra = {}) => Object.assign({}, extra, { chair: Object.assign({ desk: 7.4, type, lean, bow }, extra.chair) });
+const TYPING = (lean, bow) => ({ t0: atDesk(0, lean, bow), t1: atDesk(1, lean, bow), t2: atDesk(0, lean, bow), t3: atDesk(3, lean, bow) }); // (the typing hands' four frames)
+const typeF = (T, fps = 6) => 't' + ((Math.floor(T * fps) % 4) + 4) % 4;
+// a shot whose happenings all come d seconds later: the room seen quiet first, the words under it told meanwhile
+const ofLater = (C, d) => Object.assign({}, C, { dur: C.dur + d, units: C.units.map(U => (U.at ? Object.assign({}, U, { at: (T, u) => U.at(T - d, u) }) : U)),
+  under: (g, T, u) => C.under.call(C, g, T - d, u), over: (g, T, u) => C.over.call(C, g, T - d, u) });
+// where someone said something: a bubble over their head for the moments a..b (seconds)
+const saidBy = (g, P, t, x, n, h, T, a, b) => cardSay(g, t, ...P(x, n, h + 2.2), Math.min((T - a) / .15, (b - T) / .15));
+
+// ---- the open floor ----
+// the carpet; the back wall with its three windows (the town and the sky in them drawn under the people, by the hour); the side wall with
+// the door from the corridor (its doorway dark: the door itself is a unit, shut or open), a light switch, a fire extinguisher, the
+// whiteboard; the water cooler in the corner, a plant, the printer
+const OF_WINS = [[-31, -13], [-8, 8], [13, 31]], OF_DOOR = [-34, 3.5, 11.5]; // (the door: in the wall x = -34, from n 3.5 to 11.5)
+function officeSet() { const M = T3(), wall = [178, 176, 166], side = [160, 158, 150], carpet = [92, 96, 106], WZ = [7, 21], [, d0, d1] = OF_DOOR;
+  const inWin = (x, z) => OF_WINS.some(([a, b]) => x > a && x < b) && z > WZ[0] && z < WZ[1];
+  t3face(M, [[-34, -8, 0], [34, -8, 0], [34, 34, 0], [-34, 34, 0]], carpet, [0, 17, -5], { tex: (x, n, z, c) => { const gx = ((x % 8) + 8) % 8, gn = ((n % 8) + 8) % 8; return gx < .35 || gn < .35 ? cmul(c, .86) : h2(Math.floor(x * 2), Math.floor(n * 2), 3) < .06 ? cmul(c, 1.06) : c } });
+  t3face(M, [[-34, 34, 0], [34, 34, 0], [34, 34, 24], [-34, 34, 24]], wall, [0, 44, 12], { tex: (x, n, z, c) => {
+    if (z < .8) return [96, 92, 86];
+    for (const [a, b] of OF_WINS) if (x > a - .7 && x < b + .7 && z > WZ[0] - .7 && z < WZ[1] + .7) { if (!inWin(x, z) || Math.abs(x - (a + b) / 2) < .25) return [214, 214, 210];
+      const sky = cmix([150, 160, 172], [120, 132, 146], (z - WZ[0]) / (WZ[1] - WZ[0])), bh = 9 + 3.5 * Math.sin(x * .9) + 2.6 * Math.sin(x * .37 + 1) + (Math.floor((x + 50) / 3) % 3) * 1.3;
+      if (z < WZ[0] + bh * .6) { const far = Math.floor((x + 50) / 2.3) % 2; return ((Math.floor(z * 1.6) + Math.floor(x * 1.1)) % 3 === 0) ? [132, 140, 150] : far ? [104, 112, 124] : [96, 104, 116] }
+      if (x > 22 && x < 22.4 && z > WZ[0] + 5) return [92, 96, 102]; if (z > 18 && z < 18.4 && x > 17 && x < 29) return [92, 96, 102];
+      return sky }
+    return c } });
+  t3face(M, [[-34, -8, 0], [-34, 34, 0], [-34, 34, 24], [-34, -8, 24]], side, [-44, 17, 12], { tex: (x, n, z, c) => {
+    if (n > d0 - .7 && n < d1 + .7 && z < 21.7) return n < d0 || n > d1 || z > 21 ? [126, 112, 94] : [34, 32, 30]; // (the doorway and its frame)
+    if (Math.abs(n - (d1 + 1.4)) < .4 && Math.abs(z - 9.5) < .6) return [226, 224, 218]; // (the light switch)
+    if (n > 19 && n < 27 && z > 8 && z < 18) { if (n < 19.3 || n > 26.7 || z < 8.3 || z > 17.7) return [150, 152, 156]; const r = h2(Math.floor(n * 2), Math.floor(z * 2), 9);
+      return Math.abs(Math.sin(n * 1.7 + z * .4) * 2 - (z - 13.5)) < .25 && n < 24 ? [60, 90, 170] : Math.abs(n - 25.2 - Math.sin(z * 2) * .4) < .2 && z > 10 && z < 16 ? [200, 70, 56] : r < .015 ? [190, 60, 50] : [236, 238, 236] } // (the whiteboard)
+    return z < .8 ? [92, 88, 82] : c } });
+  t3cyl(M, -32.8, 14, .55, 0, 3.6, [190, 40, 36], { topCol: [40, 40, 44] }); // (the fire extinguisher)
+  t3box(M, -32, 29, 0, -28, 33, 9, [214, 214, 212]); t3cyl(M, -30, 31, 1.6, 9, 13, [150, 196, 230], { topCol: [120, 170, 214] }); // (the water cooler)
+  t3cyl(M, 30, 30, 1.6, 0, 3, [150, 90, 60], { topCol: [70, 50, 36] }); for (let k = 0; k < 7; k++) { const a = k * 2.4; t3ball(M, [30 + Math.cos(a) * 1.4, 30 + Math.sin(a) * 1.2, 4.5 + (k % 3) * 1.4], 1.6, 1.4, 1.5, k % 2 ? [62, 104, 66] : [52, 90, 58]) }
+  t3box(M, 21, 29.5, 0, 27, 33, 6, [120, 124, 130]); t3box(M, 21.6, 30, 6, 26.4, 32.6, 8.6, [206, 208, 210], { tex: (x, n, z, c) => (z > 8.4 && n < 31 ? [70, 72, 78] : c) }); // (the printer on its cabinet)
+  for (const [x, n] of [[-24, 9], [26, 9], [16.6, 25]]) t3cyl(M, x, n, 1, 0, 2.4, [80, 84, 90], { topCol: [40, 42, 46] }); // (bins)
+  return M }
+// the windows' town by the hour (dusk 0 the day .. 1 the night: the sky, the lit windows), the rain on the glass; the clock (h: the hour,
+// with its minutes) and the tear-off calendar on the back wall
+function officeUnder(g, O, S, T, dusk, h) { const P = (x, n, z) => cardP(O, x, n, z, S), k = S / 3;
+  for (const [a, b] of OF_WINS) { const q = [P(a, 34, 7), P(b, 34, 7), P(b, 34, 21), P(a, 34, 21)]; g.save(); g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip();
+    g.fillStyle = `rgba(28,36,60,${.68 * dusk})`; g.fillRect(0, 0, CARD.W, CARD.H);
+    if (dusk > .2) for (let i = 0; i < 40; i++) { const r = h2(i, 7, 77), x = q[0][0] + r * (q[1][0] - q[0][0]), y = q[2][1] + h2(i, 8, 77) * (q[0][1] - q[2][1]) * .55 + (q[0][1] - q[2][1]) * .4; if (h2(i, 9, 77) < dusk * .9) { g.fillStyle = 'rgba(255,214,140,.8)'; g.fillRect(Math.round(x), Math.round(y), Math.ceil(k), Math.ceil(k)) } }
+    g.fillStyle = 'rgba(214,226,240,.5)'; for (let i = 0; i < 26; i++) { const x = q[0][0] + h2(i, 3, 5) * (q[1][0] - q[0][0]) + 4, y = q[2][1] + ((h2(i, 4, 5) * 60 * k + T * 70 * k * (.8 + h2(i, 6, 5) * .5)) % (q[0][1] - q[2][1] + 6)) - 3; g.fillRect(Math.round(x), Math.round(y), 1, Math.round(2 * k)); g.fillRect(Math.round(x - 1), Math.round(y + 2 * k), 1, 1) }
+    g.restore() }
+  { const [cx, cy] = P(-10.5, 34, 17), r = 4.2 * k; g.fillStyle = '#f2f0ea'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); g.strokeStyle = '#3a3c42'; g.lineWidth = 1; g.stroke();
+    g.strokeStyle = '#24262c'; for (const [a, l] of [[(h % 12) / 12 * TAU, r * .55], [(h % 1) * TAU, r * .85]]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(a) * l, cy - Math.cos(a) * l); g.stroke() } }
+  { const [x, y] = P(9.4, 34, 19.6), w = Math.round(12 * k), hh = Math.round(14 * k); g.fillStyle = '#f0ece2'; g.fillRect(Math.round(x), Math.round(y), w, hh); g.fillStyle = '#c0453a'; g.fillRect(Math.round(x), Math.round(y), w, Math.round(3 * k)); cardText(g, '13', x + w / 2 - cardTextW('13') / 2, y + 4 * k, '#2a2a30'); cardText(g, 'ПН', x + w / 2 - cardTextW('ПН') / 2, y + 9 * k, '#7a7a82') } }
+// the door: shut, or open out into the corridor (the corridor's light in the doorway, the leaf's edge by its hinge) over the moments given;
+// a part of the wall, so drawn before anyone in the room. The doorway on the card (one beyond the wall is seen only in it)
+function ofDoor(opens) { const [wx, d0, d1] = OF_DOOR, col = [150, 128, 100];
+  return { n: 40, frames: 2, at: T => ({ f: opens.some(([a, b]) => T > a && T < b) ? 1 : 0 }), make: f => { const M = T3();
+    if (!f) t3box(M, wx, d0 + .1, 0, wx + .3, d1 - .1, 21, col, { tex: (x, n, z, c) => (Math.abs(n - (d1 - 1.1)) < .35 && Math.abs(z - 10) < .35 ? [210, 196, 150] : Math.abs(n - (d0 + d1) / 2) < 3 && z > 2 && z < 19 && (Math.abs(n - (d0 + d1) / 2) > 2.7 || z < 2.3 || z > 18.7) ? cmul(c, .82) : c) });
+    else t3face(M, [[wx + .05, d0 + .1, 0], [wx + .05, d1 - .1, 0], [wx + .05, d1 - .1, 21], [wx + .05, d0 + .1, 21]], [184, 178, 162], [wx - 10, (d0 + d1) / 2, 10],
+      { tex: (x, n, z, c) => (n < d0 + .9 ? cmul(col, .8) : z < 1.6 ? [124, 118, 108] : z > 20 && Math.abs(n - (d0 + d1) / 2) < 2.2 ? [250, 244, 220] : z < 2 ? [100, 96, 88] : c) });
+    return M } } }
+const ofDoorway = (O, S) => { const [wx, d0, d1] = OF_DOOR; return [[d0 + .1, 0], [d1 - .1, 0], [d1 - .1, 21], [d0 + .1, 21]].map(([n, z]) => cardP(O, wx, n, z, S)) };
+const ofThrough = (O, S) => (T, u, x) => (x < OF_DOOR[0] + .4 ? ofDoorway(O, S) : null); // (seen only in the doorway while still beyond the wall)
+// the coat stand by the door, and whose things hang on it now: has(T) → [Лена's coat, Олег's jacket, the hero's coat]
+function ofRack(has) { const x = -31.6, n = 16.4;
+  return { n, frames: 8, at: T => { const h = has(T); return { f: (h[0] ? 1 : 0) + (h[1] ? 2 : 0) + (h[2] ? 4 : 0) } }, make: f => { const M = T3(), dark = [44, 44, 48];
+    t3cyl(M, x, n, 1.5, 0, .5, dark); t3cyl(M, x, n, .28, .5, 20, dark); for (const a of [0, 1.6, 3.2, 4.8]) t3line(M, [x, n, 19.4], [x + Math.cos(a) * 1.5, n + Math.sin(a) * 1.2, 20.4], dark);
+    const hang = (dx, dn, col, long, scarf) => { const C = T3(); t3torso(C, long ? 7.5 : 11, 19, 1.6, .6, 1.8, .55, col); for (const s of [-1, 1]) t3limb(C, [s * 1.8, 1, 18.4], [s * 2, 1.1, (long ? 7.5 : 11) + 2.4], .48, .44, cmul(col, .94));
+      if (scarf) t3limb(C, [-.5, .3, 19.4], [-.6, 0, 12.6], .42, .38, scarf); t3join(M, t3shift(C, x + .6 + dx, n - 1 + dn, 0)) };
+    if (f & 1) hang(0, -1.2, OF_LENA_OUT.top, 1); if (f & 2) hang(.3, .2, OF_OLEG_OUT.top, 0); const L = heroIn('look')(); if (f & 4 && L.topKind === 'coat') hang(.1, 1.4, L.top, 1, L.scarf && L.scarf[0]);
+    return M } } }
+// the desks: Лена's on the left and Олег's on the right, each turned to its sitter (their screens' backs to us), and the hero's at the back
+const ofDeskL = { n: 7.5, frames: 1, make: () => { const M = t3join(cardDesk(-22, 4, -2, 11, { back: true }), cardMonitor(-12, 6.6, 1)); t3box(M, -14.3, 8.9, 7.4, -9.7, 10.2, 7.7, [52, 54, 60]);
+  t3cyl(M, -19, 7, .9, 7.4, 8.2, [150, 90, 60], { topCol: [60, 104, 64] }); t3cyl(M, -5, 8.4, .55, 7.4, 8.6, [200, 80, 90], { topCol: [140, 90, 60] }); return M } };
+const ofDeskR = { n: 7.5, frames: 1, make: () => { const M = t3join(cardDesk(6, 4, 24, 11, { back: true }), cardMonitor(15, 6.6, 1)); t3box(M, 12.7, 8.9, 7.4, 17.3, 10.2, 7.7, [52, 54, 60]);
+  t3box(M, 20, 6, 7.4, 22.4, 8.2, 9.6, [44, 44, 48]); t3box(M, 7.5, 6.5, 7.4, 10.5, 9.5, 7.9, [236, 236, 230]); return M } }; // (a speaker, papers)
+// the hero's desk with the hero at it (poses by name; null: the chair empty), the papers piling up and the cups by the hour
+function ofHeroDesk(poses, pick) { const names = Object.keys(poses);
+  return { n: 25, frames: names.length, at: (T, u) => ({ f: Math.max(0, names.indexOf(pick(T, u))) }), make: f => { const M = t3join(cardDesk(-10, 22, 14, 28, { back: true }), cardMonitor(2, 23.6, 1));
+    t3box(M, -.3, 25.3, 7.4, 4.3, 26.6, 7.7, [52, 54, 60]); return t3join(M, poses[names[f]] ? cardSeat(heroIn('office'), 2, 30.6, 4, poses[names[f]]) : cardChairAt(2, 30.6, 4)) } } }
+const ofPapers = (pick, folder) => ({ n: 24, frames: 4, at: T => ({ f: pick(T) }), make: f => { const M = T3(), h = [4, 7, 10, 10][f];
+  for (let k = 0; k < h; k++) t3box(M, -8 + (k * 7 % 3) * .12, 23 + (k * 5 % 3) * .1, 7.4 + k * .18, -4.5 + (k * 7 % 3) * .12, 26 + (k * 5 % 3) * .1, 7.58 + k * .18, k % 2 ? [244, 244, 240] : [232, 230, 222]);
+  if (f === 3) { const z = 7.4 + h * .18; t3box(M, -8.3, 22.8, z, -4.1, 26.2, z + .8, [150, 46, 50], { tex: (x, n, zz, c) => (zz > z + .7 && Math.abs(x + 6.2) < 1 && Math.abs(n - 24.5) < .5 ? [236, 232, 220] : c) }) } return M } });
+const ofMugs = pick => ({ n: 24.5, frames: 4, at: T => ({ f: pick(T) }), make: f => { const M = T3(); for (let k = 0; k < f; k++) t3cyl(M, 9 + k * 1.7, 24.6 - (k % 2) * 1, .55, 7.4, 8.6, [236, 232, 222], { topCol: k < f - 1 ? [120, 96, 70] : [90, 60, 40] }); return M } });
+// a screen's light on its sitter's face (the screens turned away from us): x, n of the screen, how bright
+const ofGlow = (g, P, x, n, a = 1) => { const [sx, sy] = P(x, n, 10.6); cardGlow(g, sx, sy, 14, '90,120,170', .18 * a) };
+// the heroes' seated poses at their desk
+const OF_HERO_SIT = Object.assign({ empty: null, sit: atDesk(0, .3, .1) }, TYPING(.5, .25),
+  { w0: atDesk(0, .55, .5), w1: atDesk(1, .55, .5), w2: atDesk(0, .55, .5), w3: atDesk(3, .55, .5), up: atDesk(0, .3, -.05), folder: atDesk(0, .5, .6), brow: Object.assign(atDesk(0, .45, .3), { handR: 'eyes' }),
+    eyes: Object.assign(atDesk(0, .45, .3), { handR: 'eyes', handL: 'eyes' }), stretch: Object.assign(atDesk(0, .1, -.15), { handR: 'up', handL: 'up' }), wave: Object.assign(atDesk(0, .3, 0), { handR: 'up', look: -1 }) });
+
+// ---- 1. the morning ----
+const OF_O = [CARD.W / 2 - 14, CARD.H - 6];
+const OF1_OLEG = cardActor(OF_OLEG_OUT, [[.4, -40, 7.5, 2], [1.5, -29, 7.5, 2], [2.3, -28.6, 15.6, 6], [3.2, -28.6, 15.6, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, clip: ofThrough(OF_O, 3),
+  poses: [['hang', { handR: 'out' }, 6]], pose: T => (T > 2.4 && T < 3.1 ? 'hang' : null) });
+const OF1_OLEG2 = cardActor(OF_OLEG, [[3.2, -28.6, 15.6, 6], [3.5, -28.6, 15.6, 4], [3.8, -28.6, 18.2, 2], [7.5, 13, 18.2, 2], [8.1, 15, 16.2, 4], [8.4, 15, 16.2, 4]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0 });
+const OF1_HERO = cardActor(heroIn('look'), [[3.9, -40, 7.5, 2], [5, -29, 7.5, 2], [5.8, -28.6, 15.6, 6], [7.3, -28.6, 15.6, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, clip: ofThrough(OF_O, 3),
+  poses: [['hang', { handR: 'out' }, 6], ['wipe', { handR: 'eyes' }, 6]], pose: T => (T > 5.9 && T < 7.2 ? (heroIn('look')().topKind === 'coat' ? 'hang' : 'wipe') : null) });
+const OF1_HERO2 = cardActor(heroIn('office'), [[7.3, -28.6, 15.6, 6], [7.6, -28.6, 15.6, 4], [7.9, -28.6, 18.2, 2], [9.3, -14, 18.2, 0], [10.6, -14, 31, 2], [11.8, -.8, 31, 2], [12.4, -.8, 31, 2]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0 });
+const SHOT_MORNING = ofLater({
+  O: OF_O, dur: 15.5, auto: 1, live: 1, beats: [.02],
+  bg: officeSet,
+  under(g, T) { officeUnder(g, this.O, 3, T, 0, 8 + 56 / 60 + T / this.dur * 5 / 60) },
+  units: [ofDoor([[.2, 1.9], [3.6, 5.4]]), ofRack(T => [1, T > 3.1, T > 7]), ofDeskL, ofDeskR, ofPapers(() => 0), ofMugs(T => (T > 12.4 ? 1 : 0)),
+    ofHeroDesk(OF_HERO_SIT, T => (T < 12.4 ? 'empty' : T < 13.4 ? 'sit' : typeF(T))),
+    cardSitter(OF_LENA, -12, 13.6, 4, Object.assign({ look: atDesk(0, .3, 0, { look: -1 }) }, TYPING(.5, .2)), T => ((T > 1 && T < 2.6) || (T > 4.8 && T < 7.8) ? 'look' : typeF(T + .3))),
+    cardSitter(OF_OLEG, 15, 13.6, 4, Object.assign({ empty: null }, TYPING(.55, .15)), T => (T < 8.4 ? 'empty' : typeF(T, 5))),
+    OF1_OLEG, OF1_OLEG2, OF1_HERO, OF1_HERO2],
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z); cardShade(g, 'rgba(60,76,110,.14)'); ofGlow(g, P, -12, 12.6); if (T > 8.4) ofGlow(g, P, 15, 12.6); if (T > 13) ofGlow(g, P, 2, 29.6, Math.min(1, (T - 13) / .4));
+    saidBy(g, P, 'ПРИВЕТ!', -12, 13.6, 13, T, 1.2, 2.4); { const [x, n] = OF1_OLEG.where(T); saidBy(g, P, 'ЗДОРОВО.', x, n, 18, T, 2.4, 3.4) }
+    saidBy(g, P, 'МОКРО ТАМ?', -12, 13.6, 13, T, 5.4, 6.8); { const [x, n] = OF1_HERO.where(T); saidBy(g, P, 'УГУ. ЛЬЕТ.', x, n, 18, T, 6.8, 8) } },
+  lines: h => [`${h.name}. Понедельник, девять утра.`] }, 3);
+
+// ---- 2. the report, near: as if from the chair, over the hero's hands (the desk turned to us), the partition beyond with its notes ----
+const REP_O = [35, 488], REP_S = 12;
+// the report as it was left, then what is written now: the keys and how fast (a second each, or a pause); '|' a new line, '<' a key back
+// (the last word taken back and written otherwise). The boss's message comes up in the pause after the third line
+const REP_PRE = 'ВЫРУЧКА ЗА КВАРТАЛ|ПЛАН: 14,0 МЛН|', REP_PLAY = [.5, ['ФАКТ: 12,4 МЛН|ОТСТАВАНИЕ: 1,6', 9], 2.3, ['|ПРИЧИНЫ: СЕЗОН,|ВНЕШНИЕ ФАКТОРЫ', 9], 1, ['<<<<<<<', 11], .5, ['УСЛОВИЯ', 7]];
+const REP_KEYS = REP_PLAY.filter(s => typeof s !== 'number').map(s => s[0]).join(''), REP_POP = [4, 5.9], REP_MOUSE = [5, 6.1];
+// by T: how many of the keys are pressed, and whether the hands are at them
+function repAt(T) { let t = 0, c = 0; for (const s of REP_PLAY) { if (typeof s === 'number') { if (T < t + s) return [c, 0]; t += s; continue }
+    const d = s[0].length / s[1]; if (T < t + d) return [c + Math.floor((T - t) * s[1]), 1]; t += d; c += s[0].length } return [c, 0] }
+function repText(c) { let s = REP_PRE; for (const ch of REP_KEYS.slice(0, c)) s = ch === '<' ? s.slice(0, -1) : s + ch; return s.split('|') }
+function reportSet() { const M = T3(), top = [196, 188, 172], dark = [36, 36, 42], felt = [112, 122, 138];
+  t3box(M, -16, 14, 6.8, 16, 29, 7.4, top, { tex: (x, n, z, c) => (h2(Math.floor(x * 3), Math.floor(n * 3), 31) < .04 ? cmul(c, .94) : c) });
+  // the partition beyond the desk: its felt, its rim, and the room above it, far and pale
+  t3face(M, [[-16, 29, 7.4], [16, 29, 7.4], [16, 29, 40], [-16, 29, 40]], felt, [0, 40, 15], { tex: (x, n, z, c) => (z > 12.6 ? (z < 13 ? [176, 178, 184] : z > 15.5 && Math.abs(((x + 40) % 9) - 4.5) < 2.2 && z < 16 ? [236, 236, 226] : [150, 150, 146]) : h2(Math.floor(x * 4), Math.floor(z * 4), 5) < .1 ? cmul(c, .92) : c) });
+  // pinned to it: a calendar (Monday the 13th ringed), two notes
+  t3box(M, -11, 28.8, 7.9, -6.8, 29, 12.2, [240, 238, 230], { tex: (x, n, z, c) => (z > 11.3 ? [192, 70, 58] : Math.abs(((x + 11) % .7)) < .12 || Math.abs(((z - 7.9) % .7)) < .1 ? [196, 196, 192] : Math.hypot(x + 9.3, z - 9.6) < .5 && Math.hypot(x + 9.3, z - 9.6) > .3 ? [200, 50, 40] : c) });
+  const scrawl = (x0, z1, ink) => (x, n, z, c) => (x > x0 + .3 && x < x0 + 1.5 + h2(Math.floor((z1 - z) / .45), 3, 7) * .3 && (z1 - z) > .35 && ((z1 - z) % .45) < .12 ? ink : c);
+  t3box(M, 5.5, 28.8, 7.8, 7.5, 29, 9.6, [236, 150, 170], { tex: scrawl(5.5, 9.6, [150, 70, 100]) }); t3box(M, 7.6, 28.8, 10.2, 9.6, 29, 12.2, [240, 220, 110], { tex: scrawl(7.6, 12.2, [120, 100, 50]) });
+  // the screen, big: its foot, its neck, the frame with the glass (the picture on it is drawn over)
+  t3box(M, -1.8, 25.8, 7.4, 1.8, 27.4, 7.7, dark); t3box(M, -.35, 26.6, 7.7, .35, 27, 9.4, dark);
+  t3box(M, -4.2, 25.8, 9.2, 4.2, 26.4, 14.4, dark, { tex: (x, n, z, c) => (n < 25.85 && Math.abs(x) < 3.95 && z > 9.45 && z < 14.15 ? [210, 220, 230] : c) });
+  // the keyboard and its keys, the mouse, the mug, a photo of the sea in its frame, papers and a pen
+  t3box(M, -3.3, 20.1, 7.4, 3.3, 22.5, 7.8, [58, 60, 66], { tex: (x, n, z, c) => (z > 7.75 && ((x + 3.3) * 2.2) % 1 > .22 && ((n - 20.1) * 2.2) % 1 > .25 && x > -3.1 && x < 3.1 && n > 20.3 && n < 22.3 ? [196, 198, 204] : c) });
+  t3box(M, 3.9, 19.8, 7.4, 8.4, 23.4, 7.46, [70, 90, 120]); t3ball(M, [5.2, 21.4, 7.75], .5, .75, .38, [214, 214, 218]);
+  t3cyl(M, -6.4, 21.6, .95, 7.4, 9.2, [236, 232, 222], { topCol: [90, 60, 40] }); t3line(M, [-5.45, 21.4, 8.9], [-5.1, 21.4, 8.1], [236, 232, 222]);
+  t3box(M, -9.4, 24.6, 7.4, -6.8, 25, 10, [92, 66, 44], { tex: (x, n, z, c) => (n < 24.65 && x > -9.15 && x < -7.05 && z > 7.65 && z < 9.75 ? (z < 8.4 ? [214, 196, 150] : z < 9.1 ? [80, 140, 186] : [170, 200, 226]) : c) });
+  for (let k = 0; k < 3; k++) t3box(M, 6.6 + k * .2, 23.4 - k * .3, 7.4 + k * .06, 11 + k * .2, 27.4 - k * .3, 7.46 + k * .06, k % 2 ? [244, 244, 240] : [236, 234, 226]); t3line(M, [7.4, 22.8, 7.62], [10, 24.2, 7.62], [40, 60, 140]);
+  return M }
+// the hero's forearms and hands from below, typing (four frames), resting, or the right hand on the mouse
+function reportHands(f) { const M = T3(), L = heroIn('office')(), sl = L.top, skin = SKINS[L.skin || 0], cuff = L.topKind === 'blazer' ? L.shirt : cmul(sl, .82);
+  for (const s of [-1, 1]) { const mouse = f === 5 && s > 0, rest = f === 4, up = !rest && !mouse && (f % 2 ? s > 0 : s < 0) ? .35 : 0,
+      w = mouse ? [4.8, 20.2, 7.9] : [s * 1.5 + (f === 1 ? .2 : f === 3 ? -.2 : 0), 19.9 - (rest ? .5 : 0), 7.95 + up - (rest ? .25 : 0)], e = [s * 3.9 + (mouse ? 1 : 0), 15, 6.2];
+    t3limb(M, e, [w[0] + (e[0] - w[0]) * .12, w[1] - 1.1, w[2] - .15], .62, .55, sl, { seg: 8 }); t3limb(M, [w[0] + (e[0] - w[0]) * .12, w[1] - 1.1, w[2] - .15], [w[0], w[1] - .45, w[2]], .5, .48, cuff, { seg: 8 });
+    t3ball(M, [w[0], w[1] + .35, w[2] + .1], .62, .78, .36, skin, { seg: 8 }); for (let k = 0; k < 4; k++) t3ball(M, [w[0] + (k - 1.5) * .3, w[1] + 1.05 - Math.abs(k - 1.5) * .1, w[2] - .02 - (up && k === 1 ? .1 : 0)], .14, .32, .14, skin, { seg: 6 }) }
+  return M }
+function reportScreen(g, P, T) { const a = P(-3.95, 25.8, 14.15), b = P(3.95, 25.8, 9.45), x0 = Math.round(a[0]), y0 = Math.round(a[1]), w = Math.round(b[0] - a[0]), h = Math.round(b[1] - a[1]), [c, typing] = repAt(T);
+  g.fillStyle = '#eef2f6'; g.fillRect(x0, y0, w, h); g.fillStyle = '#466ea8'; g.fillRect(x0, y0, w, 7); cardText(g, 'ОТЧЕТ ЗА КВАРТАЛ', x0 + 3, y0 + 1, '#ffffff');
+  const L = repText(c); L.forEach((t, i) => cardText(g, t, x0 + 3, y0 + 10 + i * 7, '#30343c'));
+  if (Math.floor(T * 2.4) % 2 || typing) { const t = L[L.length - 1] || ''; g.fillStyle = '#30343c'; g.fillRect(x0 + 3 + (t ? cardTextW(t) + 1 : 0), y0 + 9 + (L.length - 1) * 7, 1, 7) } // (the cursor)
+  cardText(g, T < 7.5 ? '10:42' : '10:43', x0 + w - cardTextW('10:42') - 2, y0 + h - 6, '#8a90a0');
+  if (T > REP_POP[0] && T < REP_POP[1]) { const e = Math.min(1, (T - REP_POP[0]) / .25), bw = 46, bh = 17, bx = x0 + w - bw - 2, by = y0 + h - 2 - bh * e; // (the boss's message coming up)
+    g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip(); g.fillStyle = '#2c3240'; g.fillRect(bx, by, bw, bh); g.fillStyle = '#d0403a'; g.fillRect(bx + 2, by + 2, 4, 4);
+    cardText(g, 'НАЧАЛЬНИК', bx + 8, by + 2, '#ffffff'); cardText(g, 'КАК ОТЧЕТ?', bx + 3, by + 10, '#c8d0e0');
+    if (T > REP_MOUSE[0] + .3) { const px = bx + bw - 5, py = by + 3; g.fillStyle = '#ffffff'; g.fillRect(px, py, 1, 5); g.fillRect(px + 1, py + 1, 1, 3); g.fillRect(px + 2, py + 2, 1, 2) } // (the pointer going to close it)
+    g.restore() } }
+const SHOT_REPORT = {
+  O: REP_O, S: REP_S, dur: 13.6, auto: 1, cross: 1, beats: [.05],
+  bg: reportSet,
+  units: [{ n: 15, frames: 6, at: T => ({ f: T > REP_MOUSE[0] && T < REP_MOUSE[1] ? 5 : !repAt(T)[1] ? 4 : Math.floor(T * 8) % 4 }), make: reportHands }],
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z, REP_S); reportScreen(g, P, T);
+    { const [gx, gy] = P(3.95, 25.75, 14.15), x = Math.round(gx) - 12, y = Math.round(gy) - 5; g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x + 1, y + 1, 24, 15); g.fillStyle = '#f0dc6e'; g.fillRect(x, y, 24, 15); cardText(g, 'СДАТЬ', x + 2, y + 2, '#5a4a20'); cardText(g, '18:00', x + 3, y + 8, '#a03a2a') } // (a note stuck on its corner)
+    g.fillStyle = 'rgba(236,236,240,.35)'; for (let k = 0; k < 5; k++) { const ph = (T * .5 + k / 5) % 1, [sx, sy] = P(-6.4 + Math.sin(ph * 6 + k) * .4, 21.6, 9.4 + ph * 3.2); g.globalAlpha = 1 - ph; g.fillRect(Math.round(sx), Math.round(sy), 1, 2); g.globalAlpha = 1 } // (the coffee's steam)
+    { const [sx, sy] = P(0, 24, 9); cardGlow(g, sx, sy, 60, '200,220,255', .1) } cardShade(g, 'rgba(60,76,110,.1)') },
+  lines: h => ['Квартальный отчёт. Сдать к шести.'] };
+
+// ---- 3. the meeting: the long table running back to the screen on the far wall, the people down both sides of it (seen side on), the
+// boss standing by the screen at its head; the rain in the window beside it ----
+const MEET_O = [93, 176], MEET_S = 3.4, MEET_SCR = [-2, 18, 8, 20], MEET_WIN = [22, 38, 7, 21], MEET_AT = [-11.5, 25]; // (the screen and the window on the back wall n = 30: from x, to x, from z, to z; where the boss stands)
+function meetingSet() { const M = T3(), wall = [176, 172, 160], side = [160, 156, 146], carpet = [88, 92, 104], wood = [150, 116, 84], dark = [40, 42, 48];
+  t3face(M, [[-30, -8, 0], [46, -8, 0], [46, 30, 0], [-30, 30, 0]], carpet, [0, 12, -5], { tex: (x, n, z, c) => (h2(Math.floor(x * 2), Math.floor(n * 2), 3) < .06 ? cmul(c, 1.06) : c) });
+  t3face(M, [[-30, 30, 0], [46, 30, 0], [46, 30, 24], [-30, 30, 24]], wall, [0, 40, 12], { tex: (x, n, z, c) => { const [s0, s1, z0, z1] = MEET_SCR, [w0, w1, v0, v1] = MEET_WIN;
+    if (x > s0 - .6 && x < s1 + .6 && z > z0 - .6 && z < z1 + 1.2) return z > z1 + .5 ? [70, 72, 78] : x < s0 || x > s1 || z < z0 || z > z1 ? [214, 214, 210] : [240, 242, 244]; // (the screen let down, its roller)
+    if (x > w0 - .6 && x < w1 + .6 && z > v0 - .6 && z < v1 + .6) return x < w0 || x > w1 || z < v0 || z > v1 || Math.abs(x - (w0 + w1) / 2) < .25 ? [214, 214, 210] : [150, 162, 176];
+    return z < .8 ? [96, 92, 86] : c } });
+  t3face(M, [[-30, -8, 0], [-30, 30, 0], [-30, 30, 24], [-30, -8, 24]], side, [-40, 12, 12], { tex: (x, n, z, c) => (z < .8 ? [92, 88, 82] : c) });
+  // the table, its legs; before each place a notebook and a glass of water; the projector at its far end, the jug
+  t3box(M, -5.5, 1, 7, 5.5, 22, 7.6, wood, { tex: (x, n, z, c) => (Math.floor(n * .8) % 7 === 0 ? cmul(c, .94) : c) }); for (const [x, n] of [[-5, 1.5], [5, 1.5], [-5, 21.5], [5, 21.5]]) t3box(M, x - .4, n - .4, 0, x + .4, n + .4, 7, [80, 70, 60]);
+  for (const [x, n, s] of [[-3.6, 6, 1], [-3.6, 13, 1], [3.6, 6, -1], [3.6, 13, -1], [3.6, 20, -1]]) { t3box(M, x - 1, n - 1.5, 7.6, x + 1, n + 1.5, 7.8, [236, 236, 230]); t3cyl(M, x + s * .6, n + 2.4, .45, 7.6, 9, [180, 210, 230], { topCol: [210, 230, 240] }) }
+  t3box(M, -1.4, 18.4, 7.6, 1.4, 20.6, 8.8, [214, 214, 218], { tex: (x, n, z, c) => (n > 20.5 && Math.hypot(x, z - 8.2) < .45 ? [60, 70, 90] : c) }); // (the projector, its lens to the screen)
+  t3cyl(M, -1.4, 9.5, .8, 7.6, 10, [190, 214, 230], { topCol: [214, 230, 240] });
+  t3cyl(M, -26, 26, 1.6, 0, 3, [150, 90, 60], { topCol: [70, 50, 36] }); for (let k = 0; k < 7; k++) { const a = k * 2.4; t3ball(M, [-26 + Math.cos(a) * 1.4, 26 + Math.sin(a) * 1.2, 4.5 + (k % 3) * 1.4], 1.6, 1.4, 1.5, k % 2 ? [62, 104, 66] : [52, 90, 58]) }
+  return M }
+// the projector's light to the screen, the chart on it (bars going down, a red line falling), the rain in the window, the clock
+function meetingUnder(g, O, T) { const P = (x, z) => cardP(O, x, 30, z, MEET_S), poly = pts => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath() };
+  const [s0, s1, z0, z1] = MEET_SCR; g.fillStyle = 'rgba(236,240,255,.07)'; poly([cardP(O, 0, 20.6, 8.2, MEET_S), P(s0, z1), P(s1, z1), P(s1, z0)]); g.fill(); // (the beam)
+  g.fillStyle = '#466ea8'; poly([P(s0, z1), P(s1, z1), P(s1, z1 - 1.6), P(s0, z1 - 1.6)]); g.fill(); { const [x, y] = P(s0 + .8, z1 - .2); cardText(g, 'ВЫРУЧКА', x, y, '#ffffff') }
+  [8.4, 7.6, 6.4, 5, 3.4].forEach((hh, i) => { const x = s0 + 2 + i * 3.4; g.fillStyle = i > 2 ? '#c85a4a' : '#5a8ac8'; poly([P(x, z0 + 1), P(x + 2, z0 + 1), P(x + 2, z0 + 1 + hh), P(x, z0 + 1 + hh)]); g.fill() });
+  if (Math.floor(T * 2) % 2) { g.strokeStyle = '#d03a2a'; g.lineWidth = 1; g.beginPath(); [[s0 + 2.5, z0 + 9.8], [s0 + 7, z0 + 8.8], [s0 + 12, z0 + 6.2], [s1 - 1.4, z0 + 3.2]].forEach(([x, z], i) => { const [px, py] = P(x, z); i ? g.lineTo(px, py) : g.moveTo(px, py) }); g.stroke() }
+  const [w0, w1, v0, v1] = MEET_WIN, a = P(w0, v1), b = P(w1, v0); g.save(); g.beginPath(); g.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.clip(); g.fillStyle = 'rgba(214,226,240,.55)';
+  for (let k = 0; k < 14; k++) { const x = a[0] + h2(k, 3, 5) * (b[0] - a[0]), y = a[1] + ((h2(k, 4, 5) * 60 + T * 70) % (b[1] - a[1] + 6)) - 3; g.fillRect(Math.round(x), Math.round(y), 1, 2) } g.restore();
+  { const [cx, cy] = P(-20, 18), r = 4.6, h = 12 + 4 / 60 + T / 14 * 4 / 60; g.fillStyle = '#f2f0ea'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); g.strokeStyle = '#3a3c42'; g.lineWidth = 1; g.stroke();
+    g.strokeStyle = '#24262c'; for (const [a, l] of [[(h % 12) / 12 * TAU, r * .55], [(h % 1) * TAU, r * .85]]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(a) * l, cy - Math.cos(a) * l); g.stroke() } } }
+const MEET_SAY = [['ИТАК, КОЛЛЕГИ.', .5, 2.3], ['СМОТРИМ НА ГРАФИК.', 2.6, 4.8], ['ВЫРУЧКА ПАДАЕТ.', 5, 7.2], ['НАДО УСКОРИТЬСЯ.', 7.5, 9.6], ['ОТЧЕТ С ТЕБЯ.', 10.2, 12.4]];
+const MEET_BOSS = cardActor(OFFICE_BOSS, [[0, ...MEET_AT, 3]], { clock: SEC, poses: [['talk', { handR: 'out' }, 3], ['chart', { handR: 'point' }, 2], ['you', { handR: 'point' }, 4]],
+  pose: T => (T > 2.6 && T < 7.2 ? 'chart' : T > 10.2 && T < 12.4 ? 'you' : (T > .5 && T < 2.3) || (T > 7.5 && T < 9.6) ? 'talk' : null) });
+const MS = (type, lean, bow, extra) => atDesk(type, lean, bow, Object.assign({}, extra, { chair: Object.assign({ desk: 7.6 }, extra && extra.chair) }));
+const SHOT_MEETING = {
+  O: MEET_O, S: MEET_S, dur: 14.4, auto: 1, live: 1, cross: 1, beats: [.03],
+  bg: meetingSet,
+  under(g, T) { meetingUnder(g, this.O, T) },
+  units: [MEET_BOSS,
+    cardSitter(heroIn('office'), -9.2, 6, 2, { d0: MS(0, .5, .55), d1: MS(1, .5, .55), up: MS(0, .3, -.05, { look: .7 }), nod: MS(0, .35, .3, { look: .5 }) },
+      T => (T > 12.6 && T < 13.3 ? 'nod' : T > 10 ? 'up' : Math.floor(T * 1.6) % 2 ? 'd0' : 'd1')), // (doodling, until it is said to them)
+    cardSitter(OF_LENA, -9.2, 13, 2, { a: MS(0, .55, .45), b: MS(1, .55, .45), up: MS(0, .35, 0, { look: .5 }) }, T => (T > 2.6 && T < 4 ? 'up' : Math.floor(T * 2.5) % 2 ? 'a' : 'b')), // (writing it down)
+    cardSitter(OF_OLEG, 9.2, 6, 6, { idle: MS(0, .4, .1), yawn: MS(0, .2, -.15, { handR: 'mouth' }), arms: MS(0, .3, 0, { handR: 'hug', handL: 'hug' }) }, T => (T > 5.4 && T < 7 ? 'yawn' : T > 8 ? 'arms' : 'idle')),
+    cardSitter(OF_GUY, 9.2, 13, 6, { b0: MS(0, .4, .1), b1: MS(0, .45, .35), b2: MS(0, .5, .6), b3: MS(0, .55, .85) },
+      T => (T > 9.8 ? 'b0' : T > 8.2 ? 'b3' : T > 6.2 ? 'b2' : T > 3.8 ? 'b1' : 'b0')), // (nodding off, until the boss raises his voice)
+    cardSitter(OF_GIRL, 9.2, 20, 6, { l: MS(0, .4, 0, { look: -.6 }), w: MS(1, .5, .4) }, T => (T > 7.5 && T < 9 ? 'w' : 'l'))],
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z, MEET_S); cardShade(g, 'rgba(70,84,110,.12)');
+    for (const [t, a, b] of MEET_SAY) saidBy(g, P, t, ...MEET_AT, 18.8, T, a, b); saidBy(g, P, 'ХОРОШО.', -9.2, 6, 13.5, T, 12.7, 14) },
+  lines: h => ['Полдень. Совещание.'] };
+
+// ---- 4. at the water cooler: the corner by the kitchen counter ----
+const COOL_O = [104, 192], COOL_S = 4;
+function coolerSet() { const M = T3(), wall = [182, 178, 168], side = [164, 160, 152], floor = [150, 146, 138], cab = [196, 190, 176], dark = [40, 40, 44];
+  t3face(M, [[-26, -10, 0], [46, -10, 0], [46, 26, 0], [-26, 26, 0]], floor, [0, 8, -5], { tex: (x, n, z, c) => (((x % 6) + 6) % 6 < .25 || ((n % 6) + 6) % 6 < .25 ? cmul(c, .88) : c) });
+  t3face(M, [[-26, 26, 0], [46, 26, 0], [46, 26, 24], [-26, 26, 24]], wall, [0, 36, 12], { tex: (x, n, z, c) => { if (z < .8) return [100, 96, 90];
+    if (x > 27 && x < 43 && z > 8 && z < 21) return x < 27.7 || x > 42.3 || z < 8.7 || z > 20.3 || Math.abs(x - 35) < .25 ? [214, 214, 210] : [150, 162, 176];
+    if (x > -24 && x < -12 && z > 14 && z < 21.5) return x < -23.6 || x > -12.4 || z < 14.4 || z > 21.1 ? [60, 90, 150] : [236, 238, 240]; return c } }); // (a window; the poster)
+  t3face(M, [[-26, -10, 0], [-26, 26, 0], [-26, 26, 24], [-26, -10, 24]], side, [-36, 8, 12], { tex: (x, n, z, c) => (z < .8 ? [92, 88, 82] : c) });
+  t3box(M, -24, 20.5, 0, -20, 24.5, 9, [214, 214, 212]); t3cyl(M, -22, 22.5, 1.6, 9, 13, [150, 196, 230], { topCol: [120, 170, 214] }); // (the water cooler)
+  t3box(M, -10, 21.5, 0, 14, 26, 9, cab, { tex: (x, n, z, c) => (n < 21.6 && (Math.abs(((x + 10) % 6) - 3) < .12 || z > 8.6) ? cmul(c, .8) : n < 21.6 && Math.abs(((x + 10) % 6) - 5) < .2 && Math.abs(z - 6.5) < .6 ? [150, 150, 150] : c) });
+  t3box(M, -10.2, 21.3, 9, 14.2, 26, 9.4, [120, 116, 108]); // (the counter, its top)
+  t3box(M, -4, 23, 9.4, 0, 25.8, 14.6, dark, { tex: (x, n, z, c) => (n < 23.05 && x > -3.4 && x < -.6 && z > 12.6 && z < 14 ? [70, 80, 90] : n < 23.05 && Math.abs(x + 2) < .3 && Math.abs(z - 11.6) < .3 ? [220, 60, 50] : c) }); t3box(M, -2.6, 22.4, 11.8, -1.4, 23, 12.6, dark); // (the coffee machine, its spout)
+  t3box(M, 4, 22.4, 9.4, 11, 25.8, 13.6, [226, 226, 222], { tex: (x, n, z, c) => (n < 22.45 && x > 4.6 && x < 9 && z > 10 && z < 13 ? [44, 46, 52] : c) }); // (the microwave)
+  t3box(M, -10, 24.4, 16.6, 14, 26, 17, [150, 120, 90]); for (let k = 0; k < 6; k++) t3cyl(M, -8 + k * 3.6, 25.2, .55, 17, 18.2, [[200, 70, 60], [236, 236, 230], [70, 120, 180], [236, 200, 90], [236, 236, 230], [90, 150, 100]][k], { topCol: [60, 50, 44] }); // (the shelf, its mugs)
+  t3box(M, 16, 20, 0, 23, 26, 19, [232, 232, 228], { tex: (x, n, z, c) => (n < 20.05 && Math.abs(z - 12.4) < .15 ? cmul(c, .8) : n < 20.05 && Math.abs(x - 22) < .2 && z > 8 && z < 11 ? [150, 150, 150] : c) }); // (the fridge)
+  return M }
+function coolerUnder(g, O, T) { const P = (x, n, z) => cardP(O, x, n, z, COOL_S); { const a = P(27.7, 26, 20.3), b = P(42.3, 26, 8.7); g.save(); g.beginPath(); g.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.clip();
+    g.fillStyle = 'rgba(214,226,240,.55)'; for (let k = 0; k < 20; k++) { const x = a[0] + h2(k, 3, 5) * (b[0] - a[0]), y = a[1] + ((h2(k, 4, 5) * 80 + T * 90) % (b[1] - a[1] + 8)) - 4; g.fillRect(Math.round(x), Math.round(y), 1, 3) } g.restore() }
+  { const [x, y] = P(-18, 26, 20.4); cardText(g, 'МЫ', x - cardTextW('МЫ') / 2, y, '#3a5a9a'); cardText(g, 'КОМАНДА!', x - cardTextW('КОМАНДА!') / 2, y + 9, '#c0453a') } }
+const COOL_SAY = [['КУДА НА ВЫХОДНЫЕ?', 'g', .6, 2.6], ['НА ДАЧУ. ШАШЛЫКИ!', 'o', 2.8, 4.8], ['А МЫ В ГОРЫ.', 'g', 5, 6.8], ['ЗДОРОВО.', 'o', 6.9, 8], ['А ТЫ?', 'g', 8.4, 9.8], ['...А Я РАБОТАЮ.', 'h', 10, 12], ['ЭХ.', 'o', 12.2, 13.4]];
+const COOL_HERO = [cardActor(heroIn('office'), [[2.4, 48, 7, 6], [6.6, 2, 18.6, 0], [6.9, 2, 18.6, 0]], { clock: SEC, enter: 1, exit: 1, fadeOut: 0, base: { handR: 'carry', holdR: 'mug' } }),
+  cardActor(heroIn('office'), [[6.9, 2, 18.6, 0], [9.8, 2, 18.6, 0], [10, 2, 18.6, 6], [12.2, 2, 18.6, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, poses: [['press', { handR: 'out' }, 0]], pose: T => (T < 7.5 ? 'press' : null) }),
+  cardActor(heroIn('office'), [[12.2, 2, 18.6, 6], [12.4, 2, 18.6, 4], [16, 48, 5, 2]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, base: { handR: 'carry', holdR: 'mug' } })];
+const SHOT_COOLER = {
+  O: COOL_O, S: COOL_S, dur: 15.5, auto: 1, live: 1, cross: 1, beats: [.03],
+  bg: coolerSet,
+  under(g, T) { coolerUnder(g, this.O, T) },
+  units: [...COOL_HERO, { n: 23, frames: 1, at: T => (T > 6.9 && T < 12.2 ? {} : null), make: () => { const M = T3(); t3cyl(M, -2, 23.2, .55, 9.4, 10.6, [236, 232, 222], { topCol: [90, 60, 40] }); return M } }, // (the mug under the spout)
+    cardActor(OF_OLEG, [[0, -19, 12, 2]], { clock: SEC, base: { handR: 'lap', holdR: 'cup' }, poses: [['sip', { handR: 'mouth', holdR: 'cup' }, 2], ['talk', { handR: 'out', holdR: 'cup' }, 2]], pose: T => (T > 3 && T < 4.6 ? 'talk' : T > 9 && T < 10.4 ? 'sip' : null) }),
+    cardActor(OF_GIRL, [[0, -10, 12.5, 6], [8.2, -10, 12.5, 6], [8.3, -10, 12.5, 2], [12.3, -10, 12.5, 2], [12.4, -10, 12.5, 6]], { clock: SEC, base: { handR: 'lap', holdR: 'cup' }, poses: [['sip', { handR: 'mouth', holdR: 'cup' }, 6], ['talk', { handR: 'out', holdR: 'cup' }, 6]], pose: T => (T > 1 && T < 2.4 ? 'talk' : T > 5.2 && T < 6.6 ? 'sip' : null) })],
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z, COOL_S); cardShade(g, 'rgba(70,84,110,.1)');
+    if (T > 7.4 && T < 10) { const [x0, y0] = P(-2, 22.7, 11.8), [, y1] = P(-2, 23.2, 10.6); g.fillStyle = '#5a3a24'; g.fillRect(Math.round(x0), Math.round(y0), 1, Math.round(y1 - y0)) } // (the coffee running)
+    if (T > 8 && T < 12.2) { g.fillStyle = 'rgba(236,236,240,.35)'; for (let k = 0; k < 4; k++) { const ph = (T * .6 + k / 4) % 1, [sx, sy] = P(-2 + Math.sin(ph * 6 + k) * .3, 23.2, 10.8 + ph * 3); g.globalAlpha = 1 - ph; g.fillRect(Math.round(sx), Math.round(sy), 1, 2); g.globalAlpha = 1 } }
+    for (const [t, who, a, b] of COOL_SAY) { const [x, n, h] = who === 'g' ? [-10, 12.5, 16.4] : who === 'o' ? [-19, 12, 18] : [2, 18.6, 17]; saidBy(g, P, t, x, n, h, T, a, b) } },
+  lines: h => ['Перерыв. У кулера — про выходные.'] };
+
+// ---- 5. evening, nearer the hero's desk: the boss and the red folder ----
+const OF5_O = [90, 210];
+const OF5_AT = [-12.6, 25]; // (where the boss stands: by the end of the hero's desk, the pile within reach)
+const OF5_BOSS = [cardActor(OFFICE_BOSS, [[1.2, -40, 18.2, 2], [3.9, -14.6, 18.2, 2], [5, OF5_AT[0], OF5_AT[1], 2], [5.9, OF5_AT[0], OF5_AT[1], 2]], { clock: SEC, enter: 1, exit: 1, fadeOut: 0, base: { handR: 'carry', holdR: 'folder' },
+    poses: [['put', { handR: 'out', holdR: 'folder' }, 2]], pose: T => (T > 5.2 ? 'put' : null) }),
+  cardActor(OFFICE_BOSS, [[5.9, OF5_AT[0], OF5_AT[1], 2], [9.4, OF5_AT[0], OF5_AT[1], 2], [10.3, -14.6, 18.2, 6], [12.9, -40, 18.2, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, poses: [['point', { handR: 'point' }, 2]], pose: T => (T > 6.3 && T < 8.4 ? 'point' : null) })];
+const SHOT_FOLDER = {
+  O: OF5_O, S: 4, dur: 13, auto: 1, live: 1, cross: 1, beats: [5.8 / 13],
+  bg: officeSet,
+  under(g, T) { officeUnder(g, this.O, 4, T, .45, 17 + 42 / 60 + T / this.dur * 3 / 60) },
+  units: [ofDeskL, ofDeskR, ofPapers(T => (T > 5.9 ? 3 : 2)), ofMugs(() => 3),
+    ofHeroDesk(OF_HERO_SIT, T => (T > 4.6 && T < 8.6 ? 'up' : T > 8.6 && T < 9.9 ? 'folder' : T > 10 && T < 11.3 ? 'brow' : 'w' + Math.floor(T * 5) % 4)),
+    cardSitter(OF_LENA, -12, 13.6, 4, TYPING(.5, .3), T => typeF(T + .3, 5)), cardSitter(OF_OLEG, 15, 13.6, 4, TYPING(.55, .25), T => typeF(T, 4)), ...OF5_BOSS],
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z, 4); cardShade(g, 'rgba(40,52,84,.2)'); ofGlow(g, P, -12, 12.6); ofGlow(g, P, 15, 12.6); ofGlow(g, P, 2, 29.6, 1.2);
+    saidBy(g, P, 'ЭТО К УТРУ.', ...OF5_AT, 18.8, T, 6.1, 8.6) },
+  lines: h => ['Без двадцати шесть. Ещё одна папка.'] };
+
+// ---- 6. the night: Лена goes home, the lights go off over the empty desks, the cleaner comes in; the hero is still at it ----
+const OF6_LENA = [cardActor(OF_LENA, [[1.4, -12, 16, 0], [1.8, -12, 18.2, 6], [3.3, -28.6, 18.2, 6], [3.8, -28.6, 15.6, 6], [5.1, -28.6, 15.6, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, poses: [['take', { handR: 'out' }, 6]], pose: T => (T > 4 ? 'take' : null) }),
+  cardActor(OF_LENA_OUT, [[5.1, -28.6, 15.6, 2], [7.4, -28.6, 15.6, 2], [7.6, -28.6, 15.6, 6], [8.1, -29.4, 12.9, 6], [8.7, -29.4, 12.9, 6], [9.2, -29.4, 7.5, 6], [10.3, -40, 7.5, 6]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, clip: ofThrough(OF_O, 3),
+    base: { handR: 'carry', holdR: 'bag' }, poses: [['bye', { handL: 'up', handR: 'carry', holdR: 'bag' }, 2], ['switch', { handL: 'out', handR: 'carry', holdR: 'bag' }, 6]], pose: T => (T > 5.4 && T < 7.4 ? 'bye' : T > 8.2 && T < 8.6 ? 'switch' : null) })];
+const OF6_DARK = 8.4; // (the lights put out)
+const OF6_CLEANER = cardActor(OF_CLEANER, [[11.4, -40, 7.5, 2], [12.5, -29, 7.5, 2], [13.4, -25, 1.5, 3], [16.5, -19, 1.5, 2]], { clock: SEC, enter: 1, fadeIn: 0, clip: ofThrough(OF_O, 3), base: { handR: 'carry', holdR: 'mop' },
+  poses: [['m0', { handR: [1.4, -2.4, 9], handL: [.6, -1.6, 11.2], holdR: 'mop' }, 3], ['m1', { handR: [-.8, -2.4, 9], handL: [-1.4, -1.6, 11.2], holdR: 'mop' }, 3]], pose: T => (T > 13.4 ? (Math.floor(T * 1.8) % 2 ? 'm0' : 'm1') : null) });
+const SHOT_NIGHT = {
+  O: OF_O, dur: 16, auto: 1, live: 1, cross: 1, beats: [.03],
+  bg: officeSet,
+  under(g, T) { officeUnder(g, this.O, 3, T, 1, 19 + 55 / 60 + T / this.dur * 5 / 60) },
+  units: [ofDoor([[8.9, 10.6], [11.2, 12.9]]), ofRack(T => [T < 4.6, 0, 1]), ofDeskL, ofDeskR, ofPapers(() => 3), ofMugs(() => 3),
+    ofHeroDesk(OF_HERO_SIT, T => (T > 7.4 && T < 8.5 ? 'wave' : T > 12 && T < 13.4 ? 'eyes' : T > 14 && T < 15 ? 'stretch' : 'w' + Math.floor(T * 5) % 4)),
+    cardSitter(OF_LENA, -12, 13.6, 4, Object.assign({ empty: null }, TYPING(.5, .3)), T => (T > 1.4 ? 'empty' : typeF(T, 5))), { n: 13.6, frames: 1, make: () => cardChairAt(15, 13.6, 4) },
+    ...OF6_LENA, OF6_CLEANER, { n: 1, frames: 1, at: T => (T > 13.4 ? {} : null), make: () => { const M = T3(); t3cyl(M, -21.5, -1, 1.5, 0, 3, [190, 70, 60], { topCol: [120, 150, 170] }); t3line(M, [-23, -1, 3], [-20, -1, 3.8], [60, 60, 64]); return M } }], // (her bucket)
+  over(g, T) { const P = (x, n, z) => cardP(this.O, x, n, z); cardShade(g, 'rgba(30,40,70,.24)');
+    const dark = T > OF6_DARK ? 1 : 0, door = (T > 8.9 && T < 10.6) || (T > 11.2 && T < 12.9); // (the lights out over the room: only the hero's screen left, and the corridor's light while the door is open)
+    if (dark) cardShade(g, 'rgba(6,8,20,.5)');
+    if (T < 1.6) ofGlow(g, P, -12, 12.6); { const [sx, sy] = P(2, 29.6, 11); cardGlow(g, sx, sy, 20 + 10 * dark, '90,120,170', .2 + .2 * dark) }
+    if (dark && door) { const [sx, sy] = P(-31, 7.5, 1); cardGlow(g, sx, sy, 26, '255,226,170', .22) }
+    { const [x, n] = OF6_LENA[1].where(T); saidBy(g, P, 'ПОКА! НЕ СИДИ ДОЛГО.', x, n, 16.6, T, 5.4, 7.4) } saidBy(g, P, 'ПОКА.', 2, 30.6, 13.5, T, 7.5, 8.5) },
+  lines: h => ['Восемь вечера. Офис пустеет.'] };
+const OFFICE_SHOTS = [SHOT_MORNING, SHOT_REPORT, SHOT_MEETING, SHOT_COOLER, SHOT_FOLDER, SHOT_NIGHT];
 
 // the hero at home, sitting on the sofa: eating (the chopsticks up, then down to the box), the phone (two frames), a look at the TV, the
 // stretch, the alarm being set (the phone up), asleep
@@ -2958,12 +3187,14 @@ const CARD_END = {
     for (let i = 0; i < 12; i++) { const x = (h2(i, 1, 97) * 300 - T * (8 + h2(i, 2, 97) * 8)) % 280, y = (h2(i, 3, 97) * 200 + T * (12 + h2(i, 4, 97) * 10)) % 190 - 10, sw = Math.sin(T * 3 + i) * 2;
       g.fillStyle = ['#d2782e', '#e0b040', '#a8442c'][i % 3]; g.fillRect(Math.round((x + 280) % 280 + sw), Math.round(y), 2, 1 + (Math.floor(T * 4 + i) % 2)) } }, // (leaves falling)
   beats: [0, .58], lines: h => ['Конечная. Турбаза «Студёный ключ».', 'Ни телефона, ни планов. Только осень.'] };
-const INTRO_CARDS = [CARD_OFFICE, CARD_HOME, CARD_WEEK, CARD_STOP, CARD_RIDE, CARD_PHONE, CARD_END];
+const INTRO_CARDS = [...OFFICE_SHOTS, CARD_HOME, CARD_WEEK, CARD_STOP, CARD_RIDE, CARD_PHONE, CARD_END];
 
 // ---- showing them ----
 // A card is made in steps (its still picture, then each frame of each unit), so the next card is made a little each frame while the
 // present one is looked at. A unit: { n (how far back it stands: the farther drawn first), frames, make(f), fps, at(T, u): where it is
-// now ({ x, n } model units from where it was made, f its frame, a how clearly seen) or null while not there, paint(g, P, f): letters }
+// now ({ x, n } model units from where it was made, f its frame, a how clearly seen, clip: a rect [x, y, w, h] or a polygon [[x, y], ..] it is
+// seen only within, s: how far back it is now, in a C.live card) or null while not there, paint(g, P, f): letters }. C.auto: the card goes on
+// by itself C.hold seconds after its time and its words are done; C.cross: it comes up out of the card before (not out of the dark)
 const INTRO = { on: false, k: 0, T: 0, ch: 0, line: 0, made: null, next: null };
 const cardPx = (d, S) => (x, n, z) => [d.ax + (x + n * T3S) * S, d.ay - (n + z * T3K) * S];
 function introBuild(C) { const S = C.S || CARD.S, R = { C, bg: null, units: [], steps: [] };
@@ -2975,6 +3206,7 @@ function introWork(R, ms) { const t0 = performance.now(); while (R.steps.length 
 function introStart(done) { const D = $('intro'); INTRO.on = true; INTRO.k = 0; INTRO.done = done; D.hidden = false; INTRO.wasPaused = paused; paused = true;
   const cv = $('introCv'); cv.width = CARD.W; cv.height = CARD.H; introCard(0); requestAnimationFrame(introTick) }
 function introCard(k) { INTRO.k = k; INTRO.T = 0; INTRO.ch = 0; INTRO.line = 0; const C = INTRO_CARDS[k]; $('introTxt').textContent = ''; INTRO.made = null;
+  if (C.cross) { const cv = INTRO.prev || (INTRO.prev = document.createElement('canvas')); cv.width = CARD.W; cv.height = CARD.H; cv.getContext('2d').drawImage($('introCv'), 0, 0); INTRO.cross = 1 } else INTRO.cross = 0;
   const R = INTRO.next && INTRO.next.C === C ? INTRO.next : introBuild(C); INTRO.next = null;
   // (finished a moment later, so the plate is up first; then the card after it begun)
   setTimeout(() => { if (!INTRO.on || INTRO.k !== k) return; introWork(R, -1); INTRO.made = R; INTRO.T = 0; const N = INTRO_CARDS[k + 1]; INTRO.next = N ? introBuild(N) : null }, 30) }
@@ -2987,15 +3219,19 @@ let INTRO_LAST = 0;
 function introTick(now) { if (!INTRO.on) return; const dt = Math.min(.05, (now - (INTRO_LAST || now)) / 1000); INTRO_LAST = now; requestAnimationFrame(introTick);
   const C = INTRO_CARDS[INTRO.k], M = INTRO.made, g = $('introCv').getContext('2d'); if (!M) return; INTRO.T += dt; const u = clamp(INTRO.T / C.dur, 0, 1), S = C.S || CARD.S, O = C.O, [sx, sy] = C.shake ? C.shake(INTRO.T) : [0, 0];
   g.fillStyle = '#15110e'; g.fillRect(0, 0, CARD.W, CARD.H); g.drawImage(M.bg.cv, Math.round(O[0] - M.bg.ax + sx), Math.round(O[1] - M.bg.ay + sy)); if (C.under) C.under(g, INTRO.T, u);
-  for (const U of M.units) { const st = U.at ? U.at(INTRO.T, u) : {}; if (!st || st.a <= 0) continue; const f = U.frames[(st.f ?? Math.floor(INTRO.T * (U.fps || 6) + U.n)) % U.frames.length], dx = ((st.x || 0) + (st.n || 0) * T3S) * S, dy = -((st.n || 0) + (st.z || 0) * T3K) * S;
-    if (st.clip) { g.save(); g.beginPath(); g.rect(...st.clip); g.clip() } if (st.a != null) g.globalAlpha = Math.min(1, st.a); g.drawImage(f.cv, Math.round(O[0] - f.ax + dx + sx), Math.round(O[1] - f.ay + dy + sy)); g.globalAlpha = 1; if (st.clip) g.restore();
+  const seen = []; for (const U of M.units) { const st = U.at ? U.at(INTRO.T, u) : {}; if (st && !(st.a <= 0)) seen.push([U, st, C.live ? st.s ?? U.n : U.n]) } if (C.live) seen.sort((a, b) => b[2] - a[2]); // (the farther drawn first)
+  for (const [U, st] of seen) { const f = U.frames[(st.f ?? Math.floor(INTRO.T * (U.fps || 6) + U.n)) % U.frames.length], dx = ((st.x || 0) + (st.n || 0) * T3S) * S, dy = -((st.n || 0) + (st.z || 0) * T3K) * S;
+    if (st.clip) { g.save(); g.beginPath(); if (Array.isArray(st.clip[0])) st.clip.forEach(([x, y], i) => (i ? g.lineTo(x + sx, y + sy) : g.moveTo(x + sx, y + sy))); else g.rect(...st.clip); g.clip() }
+    if (st.a != null) g.globalAlpha = Math.min(1, st.a); g.drawImage(f.cv, Math.round(O[0] - f.ax + dx + sx), Math.round(O[1] - f.ay + dy + sy)); g.globalAlpha = 1; if (st.clip) g.restore();
     if (U.post) U.post(g, INTRO.T, u) }
   C.over(g, INTRO.T, u);
-  if (INTRO.T < .5) cardShade(g, `rgba(12,10,8,${1 - INTRO.T / .5})`); // (each card comes up out of the dark)
+  if (INTRO.cross && INTRO.T < .8) { g.globalAlpha = 1 - INTRO.T / .8; g.drawImage(INTRO.prev, 0, 0); g.globalAlpha = 1 } // (melting out of the shot before)
+  else if (!INTRO.cross && INTRO.T < .5) cardShade(g, `rgba(12,10,8,${1 - INTRO.T / .5})`); // (each card comes up out of the dark)
   if (INTRO.next && INTRO.next.steps.length) introWork(INTRO.next, 5);
   // the words, a letter at a time, each line from its moment in the card; when all is told a mark that a tap goes on
   const { full, ends } = introWords(C), bt = C.beats || []; let lim = 0; ends.forEach((e, i) => { if (u >= (bt[i] || 0)) lim = e }); if (INTRO.ch < lim) INTRO.ch = Math.min(lim, INTRO.ch + dt * 26);
-  const txt = full.slice(0, Math.floor(INTRO.ch)) + (INTRO.ch >= full.length && INTRO.T > 1.5 && Math.floor(INTRO.T * 1.6) % 2 ? ' ▸' : ''); if (txt !== INTRO.txt) { INTRO.txt = txt; $('introTxt').textContent = txt } }
+  const txt = full.slice(0, Math.floor(INTRO.ch)) + (INTRO.ch >= full.length && INTRO.T > 1.5 && Math.floor(INTRO.T * 1.6) % 2 ? ' ▸' : ''); if (txt !== INTRO.txt) { INTRO.txt = txt; $('introTxt').textContent = txt }
+  if (C.auto && INTRO.ch >= full.length && INTRO.T > C.dur + (C.hold ?? .6)) introNext() }
 // campers by their fires: each pitch's own people, made up from its seed
 function camperLook(seed) { const r = mulberry(seed), f = r() < .45, pick = a => a[Math.floor(r() * a.length)];
   return { id: 'camper' + seed, sex: f ? 'f' : 'm', h: f ? 16.2 + r() * 1.4 : 17 + r() * 2, build: .9 + r() * .3, skin: Math.floor(r() * 4), hair: pick([[60, 42, 30], [120, 80, 40], [200, 170, 110], [40, 34, 30], [150, 70, 40]]),
