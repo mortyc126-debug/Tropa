@@ -3810,18 +3810,32 @@ function bctx(x, y) { const m = matAt(x, y), c = { v: 0, g: 0, h: 0, s: 0, w: 0,
   let vd = 1e9; for (const b of BLDS) vd = Math.min(vd, Math.hypot(b[0] - x, b[1] - y) - b[2]); c.v = clamp(1 - vd / 70, 0, 1); c.s = clamp(1 - bayDist(x, y) / 45, 0, 1) * .8;
   if (m === 'forest') { const id = standAt(x, y).id; c[id === 'bor' ? 'fb' : id === 'spruce' ? 'fs' : id === 'hazel' ? 'fh' : 'fm'] = 1 } else if (m === 'glade') c.g = 1; else if (m === 'beach') c.g = .3; else c.h = 1; return c }
 function bKindAt(c, per) { let tot = 0; const w = []; for (const id in BKIND) { const K = BKIND[id]; let s = 0; for (const k in K.hab) s += K.hab[k] * (c[k] || 0); if (id === 'goose' || id === 'mallardF' || id === 'crossbillF') s = 0; s /= 1 + 1.6 * ((per && per[id]) || 0) / Math.max(1, K.flock[1]); w.push([id, s]); tot += s } if (tot <= 0) return null; let r = Math.random() * tot; for (const [id, s] of w) { r -= s; if (r <= 0) return id } return null }
-// where a bird can sit on a thing: the points along the top edge of its picture where the edge is flat or a peak (found from the object's own mask)
-function bPerches(o) { let L = BNODES.get(o); if (L) return L; L = []; BNODES.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w) return L; const top = new Int16Array(w).fill(-1);
-  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) if (m[y * w + x]) { top[x] = y; break }
-  const tree = BTREE.has(o.t); for (let x = 2; x < w - 2; x++) { const t = top[x]; if (t < 0 || (tree && t > h * .62)) continue; let ok = true, flat = 0; for (let d = -2; d <= 2; d++) { const q = top[x + d]; if (q >= 0 && q < t - 1) ok = false; if (q >= 0 && q <= t + 3) flat++ } if (ok && flat >= 4) L.push([x, t]) }
+// where a bird can sit on a thing (found from the object's own mask), each place [x, y, room above it]. On the works of men: the points along the top edge of the
+// picture where the edge is flat or a peak. In a tree or a bush: every flat stretch of an upper edge with room above it: the tops of the branches all through
+// the crown, the edges of the gaps in it, the twigs at its rim, and its outline at the top; not down by the foot, where the trunk is
+function bPerches(o) { let L = BNODES.get(o); if (L) return L; L = []; BNODES.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w) return L;
+  if (o.kind === 'gen' && (BTREE.has(o.t) || BBUSH.has(o.t))) { const yMax = Math.min(h - 1, Math.round(o.ay) - (BBUSH.has(o.t) ? 3 : 12));
+    for (let y = 2; y < yMax; y++) for (let x = 2; x < w - 2; x++) { const i = y * w + x; if (!m[i] || m[i - w] || !(m[i - 1] || m[i + 1])) continue; // (an upper edge with a pixel of wood or leaf beside it to take the feet)
+      let c = 0; while (c < 9 && y - 1 - c >= 0) { const r = (y - 1 - c) * w + x; if (m[r] || m[r - 1] || m[r + 1]) break; c++ } if (c >= 4) L.push([x, y, c]) }
+    return L }
+  const top = new Int16Array(w).fill(-1); for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) if (m[y * w + x]) { top[x] = y; break }
+  for (let x = 2; x < w - 2; x++) { const t = top[x]; if (t < 0) continue; let ok = true, flat = 0; for (let d = -2; d <= 2; d++) { const q = top[x + d]; if (q >= 0 && q < t - 1) ok = false; if (q >= 0 && q <= t + 3) flat++ } if (ok && flat >= 4) L.push([x, t, 9]) }
   return L }
+// how much room a bird needs over its branch
+const bNeed = K => ({ T: 5, M: 6, C: 8, D: 8 }[K.cls] || 6);
 const bPerchable = (o, tree, prop, bush) => o.ready && o.mask && ((tree && o.kind === 'gen' && BTREE.has(o.t)) || (bush && o.kind === 'gen' && BBUSH.has(o.t)) || (prop && o.kind === 'prefab' && BPROP.has(o.p) && !(o.p === 'pole' && o.params && o.params.bird)));
 // a free sitting place on a thing: one of its perches nobody holds and the rider is not right by
-function bNodeOn(o, px0) { const L = bPerches(o); if (!L.length) return null; const ox = Math.round(o.x - o.ax), oy = Math.round(o.y - o.ay), C = px0 === undefined ? L : L.slice().sort((a, b) => Math.abs(ox + a[0] - px0) - Math.abs(ox + b[0] - px0)).slice(0, 6);
-  for (let n = 0; n < 5; n++) { const p = bPick(C), key = (o.id || o.x + ',' + o.y) + ':' + p[0]; if (BOCC.has(key)) continue; const px = ox + p[0] + .5, py = oy + p[1]; if (Math.hypot(px - R.x, py - R.y) < 24) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o } } return null }
+function bNodeOn(o, px0, need = 5) { const L0 = bPerches(o), L = need > 4 ? L0.filter(p => p[2] >= need) : L0; if (!L.length) return null; const ox = Math.round(o.x - o.ax), oy = Math.round(o.y - o.ay), C = px0 === undefined ? L : L.slice().sort((a, b) => Math.abs(ox + a[0] - px0) - Math.abs(ox + b[0] - px0)).slice(0, 6);
+  for (let n = 0; n < 5; n++) { const p = bPick(C), key = (o.id || o.x + ',' + o.y) + ':' + p[0] + '/' + p[1]; if (BOCC.has(key)) continue; const px = ox + p[0] + .5, py = oy + p[1]; if (Math.hypot(px - R.x, o.y - R.y) < 24) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o, px: p[0], py: p[1] } } return null }
+// a bird on a branch of a crown that sways in the wind: its feet go with the branch in the picture of the moment (the nearest upper edge within two pixels
+// of the place it sat at rest), so it is not left hanging in the air beside it. (The pictures' masks are made once each, as they are needed.)
+const BFM = new WeakMap();
+function bFrameMask(cv) { let m = BFM.get(cv); if (m) return m; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; m = new Uint8Array(cv.width * cv.height); for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] > 0 ? 1 : 0; BFM.set(cv, m); return m }
+function bOnBranch(B) { const nd = B.node; B.sx = 0; B.sy = 0; if (!nd || nd.px === undefined || !nd.o.fcv || nd.o.fi === undefined) return; const cv = nd.o.fcv[nd.o.fi]; if (!cv || cv.width !== nd.o.mw) return;
+  const m = bFrameMask(cv), w = cv.width, h = cv.height; let bd = 99; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = nd.px + dx, y = nd.py + dy; if (x < 1 || y < 1 || x >= w - 1 || y >= h) continue; const i = y * w + x; if (m[i] && !m[i - w]) { const d = dx * dx + dy * dy * 1.2; if (d < bd) { bd = d; B.sx = dx; B.sy = dy } } } }
 // a free sitting place on some thing near (x, y), of the kind the bird likes: trees, bushes or the works of men
-function bNodeNear(x, y, r, wantTree, wantProp, wantBush) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (bPerchable(o, wantTree, wantProp, wantBush) && Math.hypot(o.x - x, o.y - y) < r) cand.push(o);
-  for (let n = 0; n < 6 && cand.length; n++) { const nd = bNodeOn(bPick(cand)); if (nd) return nd } return null }
+function bNodeNear(x, y, r, wantTree, wantProp, wantBush, need) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (bPerchable(o, wantTree, wantProp, wantBush) && Math.hypot(o.x - x, o.y - y) < r) cand.push(o);
+  for (let n = 0; n < 6 && cand.length; n++) { const nd = bNodeOn(bPick(cand), undefined, need); if (nd) return nd } return null }
 // where a bird can cling to a tree: the trunk, found as the rows above the foot where the picture is only a few pixels wide
 function bTrunks(o) { let L = BTRUNK.get(o); if (L) return L; L = []; BTRUNK.set(o, L); const m = o.mask, w = o.mw, h = o.mh; if (!m || !w || !BTREE.has(o.t)) return L; const cx = Math.round(o.ax);
   for (let y = Math.round(o.ay) - 7; y > Math.max(2, Math.round(o.ay) - 40); y -= 2) { if (!m[y * w + cx]) continue; let x0 = cx, x1 = cx; while (x0 > 0 && m[y * w + x0 - 1]) x0--; while (x1 < w - 1 && m[y * w + x1 + 1]) x1++; const wd = x1 - x0 + 1; if (wd >= 2 && wd <= 6) L.push([(x0 + x1) / 2 + .5, y, wd / 2]) }
@@ -3862,7 +3876,7 @@ function bSpot(F, x, y, obj, taken, pref) { const K = F.K, mode = F.mode;
   if (mode === 'trunk') { const nd = (obj && bTrunkOn(obj)) || bTrunkNear(x, y, 50); return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
   if (mode === 'wire') { const Wr = F.wire; if (!Wr) return null; const len = bWireLen(Wr), u0 = clamp((F.uc ?? .5) + (pref ? ((pref.x - x) * (Wr.gb[0] - Wr.ga[0]) + (pref.y - y) * (Wr.gb[1] - Wr.ga[1])) / (len * len) : 0), .12, .88), sp = bWireSp(K) / len;
     for (let k = 0; k < 12; k++) { const nd = bWireNode(Wr, u0 + (k ? (k % 2 ? 1 : -1) * Math.ceil(k / 2) * sp : 0) + (Math.random() - .5) * sp * .3, K); if (nd) return { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } } return null }
-  const tree = mode === 'tree' || mode === 'roof', prop = mode === 'roof', bush = mode === 'tree' && K.cls === 'T'; let nd = obj && bPerchable(obj, tree, prop, bush) ? bNodeOn(obj, pref ? pref.x : undefined) : null; if (!nd) nd = bNodeNear(x, y, 40, tree, prop, bush);
+  const tree = mode === 'tree' || mode === 'roof', prop = mode === 'roof', bush = mode === 'tree' && K.cls === 'T'; let nd = obj && bPerchable(obj, tree, prop, bush) ? bNodeOn(obj, pref ? pref.x : undefined, bNeed(K)) : null; if (!nd) nd = bNodeNear(x, y, 40, tree, prop, bush, bNeed(K));
   return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
 // a flock of one kind put at its place; `fromAir`: it comes flying in to it from the edge of the view
 function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + Math.floor(Math.random() * (K.flock[1] - K.flock[0] + 1)), F = { id: BFID++, kind: id, K, n, members: [], home: { x, y }, mode: bModeAt(K, x, y, false), obj: null, rest: 0, calm: 0, dx: 0, dy: 0 };
@@ -3947,8 +3961,8 @@ function stepBirds(dt) { if (!BSTART) bInit(); const act = bAct(), rv = Math.abs
       const nd = B.node, [X, Y] = bWireAt(nd.wire, nd.u); B.x = X; B.z = B.y - Y + .5; B.dk = nd.wire.key + .05; if (B.hop > 0) B.hop -= dt;
       if (B.t <= 0) { B.t = bRand(2, 7); const r = Math.random(); if (r < .3) B.f = -B.f; else if (r < .45) { const n2 = bWireNode(nd.wire, nd.u + (Math.random() < .5 ? 1 : -1) * bWireSp(K) / bWireLen(nd.wire), K); if (n2) { BOCC.delete(nd.key); BOCC.add(n2.key); B.node = n2; B.hop = .16 } } } }
     else if (B.st === 'perch') { // on a branch or a roof: turns, shifts its feet; the small birds of the trees flit to a twig near by now and then
-      if (B.hop > 0) B.hop -= dt; if (B.t <= 0) { const treeBird = K.feet === 'tree'; B.t = treeBird ? bRand(1.5, 5) : bRand(2, 7); const r = Math.random();
-        if (treeBird && r < .32 && !B.alert && B.node) { const nd = bNodeNear(B.x, B.y, 22, true, false, K.cls === 'T'); if (nd && nd.key !== B.node.key && Math.hypot(nd.x - B.x, nd.z - B.z) > 2) { bFlit(B, nd); continue } }
+      if (B.hop > 0) B.hop -= dt; bOnBranch(B); if (B.t <= 0) { const treeBird = K.feet === 'tree'; B.t = treeBird ? bRand(1.5, 5) : bRand(2, 7); const r = Math.random();
+        if (treeBird && r < .32 && !B.alert && B.node) { const nd = Math.random() < .7 && B.node.o ? bNodeOn(B.node.o, B.x + bRand(-14, 14), bNeed(K)) : bNodeNear(B.x, B.y, 22, true, false, K.cls === 'T', bNeed(K)); if (nd && nd.key !== B.node.key && Math.hypot(nd.x - B.x, nd.z - B.z) > 2 && Math.hypot(nd.x - B.x, nd.z - B.z) < 30) { bFlit(B, nd); continue } }
         if (r < .7) B.f = -B.f; else if (r < .85) B.hop = .16 } }
     else if (B.st === 'ground') { // feeding: pecks, hops a step or two, turns; keeps near the flock's feeding place; looks at the rider when he is near
       if (B.pk > 0) B.pk -= dt; if (B.hop > 0) B.hop -= dt;
@@ -3996,8 +4010,8 @@ function drawBirdShadow(B) { const z = B.z; if (z < 1.5) return; ctx.fillStyle =
 function bPose(B) { const K = B.K; if (B.st === 'up') return 'fup';
   if (B.st === 'fly' || B.st === 'flit') { if (B.gl) return K.bound ? 'fold' : 'fmid'; const p = B.wp % 1; return p < .25 ? 'fup' : p < .5 ? 'fmid' : p < .75 ? 'fdn' : 'fmid' }
   if (B.st === 'swim') return B.pk > 0 ? 'dabble' : 'swim'; if (B.st === 'perch') return B.cling ? (B.pk > 0 ? 'hammer' : 'cling') : B.hop > 0 ? 'hop' : 'stand'; if (B.pk > 0) return 'peck'; if (B.hop > 0) return 'hop'; return 'stand' }
-function drawBird(B) { const S = bsprite(B.kind, bPose(B), B.f < 0), gz = B.z + (B.boff || 0); if (B.st === 'ground') { ctx.fillStyle = 'rgba(8,14,8,.16)'; ctx.fillRect(Math.round(B.x) - 1, Math.round(B.y), 3, 1) } else if (B.st === 'swim') { ctx.fillStyle = 'rgba(210,225,232,.16)'; ctx.fillRect(Math.round(B.x) - 4, Math.round(B.y), 8, 1) }
-  ctx.drawImage(S.cv, Math.round(B.x) - S.ax, Math.round(B.y - gz) - S.ay) }
+function drawBird(B) { const S = bsprite(B.kind, bPose(B), B.f < 0), sw = B.st === 'perch' && !B.cling, gz = B.z + (B.boff || 0) - (sw ? B.sy || 0 : 0); if (B.st === 'ground') { ctx.fillStyle = 'rgba(8,14,8,.16)'; ctx.fillRect(Math.round(B.x) - 1, Math.round(B.y), 3, 1) } else if (B.st === 'swim') { ctx.fillStyle = 'rgba(210,225,232,.16)'; ctx.fillRect(Math.round(B.x) - 4, Math.round(B.y), 8, 1) }
+  ctx.drawImage(S.cv, Math.round(B.x + (sw ? B.sx || 0 : 0)) - S.ax, Math.round(B.y - gz) - S.ay) }
 // over everything: the birds that fly over the roofs, and the geese and the crows high up
 function drawBirdsHigh() { for (const B of BIRDS) if ((B.st === 'fly' || B.st === 'flit') && B.z >= BHIGH && B.x > CAM.x - 24 && B.x < CAM.x + W + 24 && B.y - B.z > CAM.y - 30 && B.y - B.z < CAM.y + H + 30) drawBird(B);
   for (const G of BSKY) { const goose = G.kind === 'goose', haze = goose ? .78 : .86; ctx.globalAlpha = haze * (1 - .5 * WX.fog); for (const m of G.m) { const x = G.x + m[0], y = G.y + m[1] - G.z + m[2]; if (x < CAM.x - 16 || x > CAM.x + W + 16 || y < CAM.y - 16 || y > CAM.y + H + 16) continue;
