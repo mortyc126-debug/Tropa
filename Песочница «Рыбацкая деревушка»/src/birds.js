@@ -55,27 +55,45 @@ function bTrunkOn(o, near) { const L = bTrunks(o); if (!L.length) return null; c
     const px = ox + p[0], py = oy + p[1]; if (Math.hypot(px - R.x, py - R.y) < 26) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o, cling: 1, hw: p[2], L, ox, oy, row: p[1] } } return null }
 function bTrunkNear(x, y, r) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t) && Math.hypot(o.x - x, o.y - y) < r) cand.push(o);
   for (let n = 0; n < 6 && cand.length; n++) { const nd = bTrunkOn(bPick(cand)); if (nd) return nd } return null }
+// ---- the wires of the power line: sparrows (or jackdaws, pigeons, a crow or two) sit along a span in a row, spaced along it, and sway with it. Where a
+// bird sits is found the way drawWire draws the cable (the same sag, the same sway, the same pixels), so its feet are on the wire and not beside it ----
+const bWireLen = Wr => Math.hypot(Wr.b[0] - Wr.a[0], Wr.b[1] - Wr.a[1]);
+const bWireOK = Wr => !Wr.thin && bWireLen(Wr) > 40;
+function bWireAt(Wr, u) { const [ax, ay] = Wr.a, [bx, by] = Wr.b, len = bWireLen(Wr), g = gustNow(), sway = (WINDX * WIND.s * (.5 + g) * 1.6 + Math.sin(t * 1.3 + Wr.ph) * .35 * (.3 + WIND.s)) * Math.min(1, len / 80), n = Math.max(6, Math.round(len / 5));
+  const P = i => { const v = i / n, q = 4 * v * (1 - v); return [Math.round(ax + (bx - ax) * v + sway * q), Math.round(ay + (by - ay) * v + Wr.sag * q)] }, f = u * n, i = Math.min(n - 1, Math.floor(f)), p0 = P(i), p1 = P(i + 1);
+  const X = Math.round(p0[0] + (p1[0] - p0[0]) * (f - i)), Y = p1[0] !== p0[0] && Math.abs(p1[0] - p0[0]) >= Math.abs(p1[1] - p0[1]) ? Math.round(p0[1] + (p1[1] - p0[1]) * (X - p0[0]) / (p1[0] - p0[0])) : Math.round(p0[1] + (p1[1] - p0[1]) * (f - i));
+  return [X, Y, Wr.ga[1] + (Wr.gb[1] - Wr.ga[1]) * u] }
+const bWireSp = K => ({ T: 3.4, M: 5.2, C: 7.5 }[K.cls] || 5);
+function bWireNode(Wr, u, K) { if (Wr._i === undefined) Wr._i = WIRES.indexOf(Wr); const len = bWireLen(Wr), sp = bWireSp(K), slot = Math.round(clamp(u, .1, .9) * len / sp), key = 'w' + Wr._i + ':' + slot; if (BOCC.has(key)) return null;
+  const uu = slot * sp / len, [X, Y, gy] = bWireAt(Wr, uu), y = gy + .4; if (Math.hypot(X - R.x, gy - R.y) < 20) return null; return { x: X, y, z: y - Y + .5, key, wire: Wr, u: uu, slot } }
+// the span of the line nearest a point, within r (along its ground), and where along it
+function bWireNear(x, y, r) { let best = null, bd = r; for (const Wr of WIRES) { if (!bWireOK(Wr)) continue; const [x0, y0] = Wr.ga, [x1, y1] = Wr.gb, dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1, u = clamp(((x - x0) * dx + (y - y0) * dy) / l2, .15, .85), d = Math.hypot(x - x0 - dx * u, y - y0 - dy * u); if (d < bd) { bd = d; best = { Wr, u, d, gx: x0 + dx * u, gy: y0 + dy * u } } } return best }
 // the bird takes its place on a trunk: on the side the sprite's body hangs to
 function bCling(B, nd) { B.node = nd; B.cling = 1; B.x = nd.x + (B.f > 0 ? -nd.hw : nd.hw); B.y = nd.y; B.z = nd.z }
-function bFree(B) { if (B.node) { BOCC.delete(B.node.key); B.node = null } if (B.tnode) { BOCC.delete(B.tnode.key); B.tnode = null } } // (the place it sits on, and the one it is flying to)
+function bFree(B) { B.dk = undefined; if (B.node) { BOCC.delete(B.node.key); B.node = null } if (B.tnode) { BOCC.delete(B.tnode.key); B.tnode = null } } // (the place it sits on, and the one it is flying to)
 function bMake(id, x, y, z) { const K = BKIND[id], B = { id: BID++, kind: id, K, x, y, z: z || 0, vx: 0, vy: 0, vz: 0, st: 'ground', f: Math.random() < .5 ? 1 : -1, t: bRand(1, 4), ph: Math.random() * 6, wp: Math.random(), bnd: Math.random(), boff: 0, spd: bRand(.9, 1.1), pk: 0, hop: 0,
     call: bRand(4, 20), fl: null, node: null, tnode: null, T: null, delay: 0, zc: bRand(-2, 4), alert: 0, gl: false }; BIRDS.push(B); return B }
 const bRest = F => F.mode === 'ground' ? bRand(80, 220) : F.mode === 'water' ? bRand(120, 300) : F.mode === 'trunk' ? bRand(50, 140) : bRand(60, 180); // (how long a flock stays before it moves on by itself)
 // the way a flock of a kind sits at a place: on the ground (or, the crows, the jackdaws, the pigeons and the sparrows of the village, on the roofs), in the trees, on a trunk, on the water
-function bModeAt(K, x, y, fleeing) { if (K.feet !== 'ground') return K.feet; if (fleeing) return Math.random() < (K.cls === 'T' ? .45 : K.roof || .35) ? (K.cls === 'T' ? 'tree' : 'roof') : 'ground';
-  return bctx(x, y).v > .3 && Math.random() < (K.roof || 0) ? 'roof' : 'ground' }
+function bModeAt(K, x, y, fleeing) { if (K.feet !== 'ground') return K.feet; const wire = () => K.wire && Math.random() < K.wire && bWireNear(x, y, fleeing ? 170 : 70);
+  if (fleeing) { if (Math.random() < (K.cls === 'T' ? .55 : K.roof || .35)) return wire() ? 'wire' : K.cls === 'T' ? 'tree' : 'roof'; return 'ground' }
+  if (K.wire && Math.random() < K.wire * .6 && bWireNear(x, y, 60)) return 'wire'; // (the line runs along the street: where it is near, a good many sit on it)
+  return bctx(x, y).v > .3 && Math.random() < (K.roof || 0) ? (wire() ? 'wire' : 'roof') : 'ground' }
 // one member's place in its flock's spot: a ground place spaced from the others, a perch on the flock's tree or roof (or one near), a trunk, a patch of water
 function bSpot(F, x, y, obj, taken, pref) { const K = F.K, mode = F.mode;
   if (mode === 'water') { for (let k = 0; k < 10; k++) { const a = Math.random() * TAU, r = Math.random() * (pref && k < 5 ? 5 : 20), px = (pref && k < 5 ? pref.x : x) + Math.cos(a) * r, py = (pref && k < 5 ? pref.y : y) + Math.sin(a) * r * .6; if (bWater(px, py) && !taken.some(q => Math.hypot(q.x - px, q.y - py) < 6)) return { x: px, y: py, z: 0, kind: 'water' } } return null }
   if (mode === 'ground') { const sep = { T: 5, M: 7.5, C: 9, D: 12 }[K.cls] || 7, rr = sep * (1.4 + 1.1 * Math.sqrt(F.n || 3)); for (let k = 0; k < 16; k++) { const near = pref && k < 6, a = Math.random() * TAU, r = near ? Math.random() * sep * .8 : Math.sqrt(Math.random()) * rr, px = (near ? pref.x : x) + Math.cos(a) * r, py = (near ? pref.y : y) + Math.sin(a) * r * .7; if (taken.some(q => Math.hypot(q.x - px, (q.y - py) * 1.4) < sep)) continue; if (bGround(px, py)) return { x: px, y: py, z: 0, kind: 'ground' } } return null }
   if (mode === 'trunk') { const nd = (obj && bTrunkOn(obj)) || bTrunkNear(x, y, 50); return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
+  if (mode === 'wire') { const Wr = F.wire; if (!Wr) return null; const len = bWireLen(Wr), u0 = clamp((F.uc ?? .5) + (pref ? ((pref.x - x) * (Wr.gb[0] - Wr.ga[0]) + (pref.y - y) * (Wr.gb[1] - Wr.ga[1])) / (len * len) : 0), .12, .88), sp = bWireSp(K) / len;
+    for (let k = 0; k < 12; k++) { const nd = bWireNode(Wr, u0 + (k ? (k % 2 ? 1 : -1) * Math.ceil(k / 2) * sp : 0) + (Math.random() - .5) * sp * .3, K); if (nd) return { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } } return null }
   const tree = mode === 'tree' || mode === 'roof', prop = mode === 'roof', bush = mode === 'tree' && K.cls === 'T'; let nd = obj && bPerchable(obj, tree, prop, bush) ? bNodeOn(obj, pref ? pref.x : undefined) : null; if (!nd) nd = bNodeNear(x, y, 40, tree, prop, bush);
   return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
 // a flock of one kind put at its place; `fromAir`: it comes flying in to it from the edge of the view
 function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + Math.floor(Math.random() * (K.flock[1] - K.flock[0] + 1)), F = { id: BFID++, kind: id, K, n, members: [], home: { x, y }, mode: bModeAt(K, x, y, false), obj: null, rest: 0, calm: 0, dx: 0, dy: 0 };
+  if (F.mode === 'wire') { const W0 = bWireNear(x, y, 70); if (W0) { F.wire = W0.Wr; F.uc = W0.u; x = W0.gx; y = W0.gy } else F.mode = 'roof' }
   if (F.mode === 'trunk' || F.mode === 'tree' || F.mode === 'roof') { const r = 70, cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (F.mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, F.mode === 'roof', F.mode === 'tree' && K.cls === 'T')) cand.push(o); if (!cand.length) { if (K.feet !== 'ground') return null; F.mode = 'ground' } else F.obj = bPick(cand) }
   const taken = [];
-  for (let i = 0; i < n; i++) { const sp = bSpot(F, F.obj ? F.obj.x : x, F.obj ? F.obj.y : y, F.obj, taken); if (!sp) continue; taken.push(sp); const B = bMake(K.mate && i > 0 && Math.random() < (K.matep || .5) ? K.mate : id, sp.x, sp.y, sp.z); B.fl = F; F.members.push(B);
+  for (let i = 0; i < n; i++) { const sp = bSpot(F, F.obj ? F.obj.x : x, F.obj ? F.obj.y : y, F.obj, taken, F.mode === 'wire' ? { x: x + (i - (n - 1) / 2) * bWireSp(K) * (F.wire.gb[0] - F.wire.ga[0]) / bWireLen(F.wire), y: y + (i - (n - 1) / 2) * bWireSp(K) * (F.wire.gb[1] - F.wire.ga[1]) / bWireLen(F.wire) } : undefined); if (!sp) continue; taken.push(sp); const B = bMake(K.mate && i > 0 && Math.random() < (K.matep || .5) ? K.mate : id, sp.x, sp.y, sp.z); B.fl = F; F.members.push(B);
     if (sp.kind === 'water') { B.st = 'swim'; B.hd = Math.random() * TAU } else if (sp.node) { B.st = 'perch'; BOCC.add(sp.node.key); if (sp.node.cling) bCling(B, sp.node); else B.node = sp.node } else B.st = 'ground' }
   if (!F.members.length) return null; F.rest = bRest(F); BFL.push(F);
   if (fromAir) { const cx = CAM.x + W / 2, cy = CAM.y + H / 2, a = Math.atan2(F.home.y - cy, F.home.x - cx) + bRand(-.6, .6), ex = cx + Math.cos(a) * (W * .5 + 40), ey = cy + Math.sin(a) * (H * .5 + 40);
@@ -84,16 +102,17 @@ function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + 
 // where a flock goes: a place of its kind a little way off, away from `from` (the rider) and from the way he is going. null: nowhere to go near
 function bPlan(F, from, dmin, dmax) { const K = F.K; let cx = 0, cy = 0, n = 0; for (const B of F.members) { cx += B.x; cy += B.y; n++ } if (!n) return null; cx /= n; cy /= n;
   const sp = Math.abs(R.v), path = [[R.x, R.y], [R.x + Math.sin(R.psi) * sp * 2.5, R.y - Math.cos(R.psi) * sp * 2.5]], away = from ? Math.atan2(cy - from[1], cx - from[0]) : Math.random() * TAU, spread = from ? 1.2 : Math.PI;
-  const score = (x, y) => Math.min(Math.hypot(x - R.x, y - R.y), segD(path, x, y) * 1.3) + (bInZone(x, y) ? 0 : -300) + Math.random() * 16, mode = bModeAt(K, cx, cy, !!from);
+  const score = (x, y) => Math.min(Math.hypot(x - R.x, y - R.y), segD(path, x, y) * 1.3) + (bInZone(x, y) ? 0 : -300) + Math.random() * 16; let mode = bModeAt(K, cx, cy, !!from);
   let best = null, bs = -1e9;
-  if (mode !== 'ground' && mode !== 'water') { for (const o of objsIn(cx - dmax, cy - dmax, cx + dmax, cy + dmax)) { if (o === F.obj) continue; const ok = mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, mode === 'roof', mode === 'tree' && K.cls === 'T'); if (!ok) continue;
+  if (mode === 'wire') { for (const Wr of WIRES) { if (!bWireOK(Wr)) continue; for (const u of [.2, .35, .5, .65, .8]) { const gx = Wr.ga[0] + (Wr.gb[0] - Wr.ga[0]) * u, gy = Wr.ga[1] + (Wr.gb[1] - Wr.ga[1]) * u, d = Math.hypot(gx - cx, gy - cy); if (d < dmin || d > dmax || (Wr === F.wire && Math.abs(u - F.uc) < .2)) continue; if (from && Math.cos(Math.atan2(gy - cy, gx - cx) - away) < -.15) continue; const s = score(gx, gy); if (s > bs) { bs = s; best = { x: gx, y: gy, mode, obj: null, wire: Wr, uc: u } } } } if (!best) mode = 'roof' }
+  if (!best && mode !== 'ground' && mode !== 'water') { for (const o of objsIn(cx - dmax, cy - dmax, cx + dmax, cy + dmax)) { if (o === F.obj) continue; const ok = mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, mode === 'roof', mode === 'tree' && K.cls === 'T'); if (!ok) continue;
       const d = Math.hypot(o.x - cx, o.y - cy); if (d < dmin || d > dmax) continue; if (from && Math.cos(Math.atan2(o.y - cy, o.x - cx) - away) < -.15) continue; const s = score(o.x, o.y); if (s > bs) { bs = s; best = { x: o.x, y: o.y, mode, obj: o } } } }
   if (!best) { const m2 = mode === 'water' ? 'water' : K.feet === 'ground' ? 'ground' : null; if (!m2) return null;
     for (let k = 0; k < 18; k++) { const a = away + (Math.random() - .5) * 2 * spread, d = bRand(dmin, dmax), x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * .8; if (m2 === 'water' ? !bWater(x, y) : !bGround(x, y)) continue; const s = score(x, y); if (s > bs) { bs = s; best = { x, y, mode: m2, obj: null } } } }
   return best }
 const bInZone = (x, y) => x > CAM.x - 150 && x < CAM.x + W + 150 && y > CAM.y - 120 && y < CAM.y + H + 150;
 // the flock goes up for `D`: all together, the one nearest the fright first (`from`: what scared them; none: they move on by themselves, one after another)
-function bGo(F, D, from) { F.mode = D.mode; F.obj = D.obj; F.home = { x: D.x, y: D.y }; F.rest = bRest(F); F.calm = 6; F.taken = []; F.D = D;
+function bGo(F, D, from) { F.mode = D.mode; F.obj = D.obj; F.wire = D.wire || null; F.uc = D.uc; F.home = { x: D.x, y: D.y }; F.rest = bRest(F); F.calm = 6; F.taken = []; F.D = D;
   let cx = 0, cy = 0; for (const m of F.members) { cx += m.x / F.members.length; cy += m.y / F.members.length } for (const m of F.members) m.off = [(m.x - cx) * .8, (m.y - cy) * .8];
   const list = F.members.slice().sort((a, b) => from ? Math.hypot(a.x - from[0], a.y - from[1]) - Math.hypot(b.x - from[0], b.y - from[1]) : 0);
   list.forEach((m, i) => { bFree(m); m.mv = false; m.from = from || [m.x - (D.x - m.x), m.y - (D.y - m.y)]; m.alert = 1; if (m.st === 'fly' || m.st === 'flit') { bTakeoff(m, true); return } m.st = 'up'; m.upT = from ? i * bRand(.03, .1) : .15 + i * bRand(.15, .45) });
@@ -148,6 +167,9 @@ function stepBirds(dt) { if (!BSTART) bInit(); const act = bAct(), rv = Math.abs
       if (B.hop > 0) B.hop -= dt; if (B.pk > 0) B.pk -= dt; if (B.t <= 0) { B.t = bRand(.6, 2); const r = Math.random(), nd = B.node;
         if (r < .5 && nd && nd.L) { const q = bPick(nd.L.filter(p => p[1] !== nd.row && Math.abs(p[1] - nd.row) <= 6)); if (q) { const key = (nd.o.id || nd.o.x + ',' + nd.o.y) + ':t' + q[1]; if (!BOCC.has(key)) { BOCC.delete(nd.key); const n2 = { x: nd.ox + q[0], y: nd.y, z: nd.o.y + .6 - (nd.oy + q[1]), key, o: nd.o, cling: 1, hw: q[2], L: nd.L, ox: nd.ox, oy: nd.oy, row: q[1] }; BOCC.add(key); bCling(B, n2); B.hop = .16 } } }
         else if (r < .75 && K.drum) { B.pk = bRand(.5, 1.1); B.t = B.pk + bRand(.6, 1.6); if (d < 260) bVoice('drum', B.x, B.y - B.z) } else if (r < .85 && nd) { B.f = -B.f; bCling(B, nd) } } }
+    else if (B.st === 'perch' && B.node && B.node.wire) { // on a wire: sways with it, turns, shuffles a step along it now and then
+      const nd = B.node, [X, Y] = bWireAt(nd.wire, nd.u); B.x = X; B.z = B.y - Y + .5; B.dk = nd.wire.key + .05; if (B.hop > 0) B.hop -= dt;
+      if (B.t <= 0) { B.t = bRand(2, 7); const r = Math.random(); if (r < .3) B.f = -B.f; else if (r < .45) { const n2 = bWireNode(nd.wire, nd.u + (Math.random() < .5 ? 1 : -1) * bWireSp(K) / bWireLen(nd.wire), K); if (n2) { BOCC.delete(nd.key); BOCC.add(n2.key); B.node = n2; B.hop = .16 } } } }
     else if (B.st === 'perch') { // on a branch or a roof: turns, shifts its feet; the small birds of the trees flit to a twig near by now and then
       if (B.hop > 0) B.hop -= dt; if (B.t <= 0) { const treeBird = K.feet === 'tree'; B.t = treeBird ? bRand(1.5, 5) : bRand(2, 7); const r = Math.random();
         if (treeBird && r < .32 && !B.alert && B.node) { const nd = bNodeNear(B.x, B.y, 22, true, false, K.cls === 'T'); if (nd && nd.key !== B.node.key && Math.hypot(nd.x - B.x, nd.z - B.z) > 2) { bFlit(B, nd); continue } }

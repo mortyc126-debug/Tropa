@@ -11,7 +11,7 @@ SRC = os.path.join(HERE, '..', '..', 'Осенняя тропа (2)', 'index.htm
 out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..')
 
 s = open(SRC, encoding='utf-8').read()
-PF = ''.join(open(os.path.join(HERE, f), encoding='utf-8').read() + '\n' for f in ('pf.js', 'terrain.js', 'water.js', 'extras.js', 'guard.js', 'birds_art.js', 'birds_kinds.js', 'birds.js', 'flora.js', 'night.js', 'gulls.js'))
+PF = ''.join(open(os.path.join(HERE, f), encoding='utf-8').read() + '\n' for f in ('pf.js', 'terrain.js', 'water.js', 'extras.js', 'guard.js', 'birds_art.js', 'birds_kinds.js', 'birds.js', 'flora.js', 'night.js', 'gulls.js', 'tracks.js'))
 PLACE = open(os.path.join(HERE, 'place.js'), encoding='utf-8').read()
 
 
@@ -140,12 +140,14 @@ rep(FLYOLD, "// (the birds of the place: birds.js)")
 rep("  scrT(); ctx.fillStyle = 'rgba(38,30,28,.9)'; for (const f of FLY) { const x = Math.round(f.x), y = Math.round(f.y), up = Math.sin(f.ph) > 0; ctx.fillRect(x, y, 1, 1);\n    if (up) { ctx.fillRect(x - 1, y - 1, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1); ctx.fillRect(x - 2, y - 1, 1, 1); ctx.fillRect(x + 2, y - 1, 1, 1) } else { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x - 2, y + 1, 1, 1); ctx.fillRect(x + 2, y + 1, 1, 1) } } }",
     "  drawBirdsHigh(); }")
 # birds in the draw list among the people (the flying ones over everything: drawBirdsHigh)
-rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
+rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.st === 'perch' && B.dk !== undefined ? B.dk : B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
 rep("    if (o && o.cow) { drawCow(o.cow); continue }", "    if (o && o.cow) { drawCow(o.cow); continue }\n    if (o && o.bird) { drawBird(o.bird); continue }\n    if (o && o.bsh) { drawBirdShadow(o.bsh); continue }")
 
 # ---- the gulls: stepped with the rest of the life of the place, drawn among the things by their place on the ground ----
 rep("const SITS = []; cowsInit();", "const SITS = []; cowsInit(); gullsInit();")
-rep("function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt) }", "function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt) }")
+rep("function stepLife(dt) { stepMoths(dt); stepFlyers(dt); stepRings(dt) }", "function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt); stepTracks(dt) }")
+# ---- the bike's tracks on the ground (tracks.js): over the ground, under the water's wash, the puddles and the shadows ----
+rep("  drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);", "  drawTracks(cx0, cy0); drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);")
 rep("  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20", "  for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);\n  for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20")
 rep("    if (o && o.cow) { drawCow(o.cow); continue }", "    if (o && o.cow) { drawCow(o.cow); continue }\n    if (o && o.gull) { drawGull(o.gull); continue }")
 
@@ -162,7 +164,7 @@ rep("ctx.fillStyle = 'rgba(10,14,8,.2)'; for (const o of VIS) { if (o.flat) cont
 rep("const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0));", "const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));")
 
 # ---- the game clock and the pause, for the debug hooks (a still frame at a given moment of the waves) ----
-rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY:')
+rep('window.__SB = { WLAY:', 'window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY:')
 
 # ---- the prefabs and the place ----
 banner = "// =====================================================================================================================\n// PLACE: Турбаза «Студёный ключ» — the start of the game and the player's base."

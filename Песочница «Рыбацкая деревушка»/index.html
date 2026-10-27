@@ -3729,18 +3729,18 @@ function birdArt(kind, pose, flip) {
 
 // =====================================================================================================================
 // BIRDS, THE KINDS: what is seen at the end of October in the middle belt, by habitat, and how each is drawn (class, size, colours).
-// roof: how likely a flock of the village is to sit on the roofs (or the poles, the trees) rather than on the ground. habitat weights: v the village (yards, roofs, poles), g the glade (open ground, bushes), s the shore (sand, wrack), f* the forests (b pine bor, s spruce, m mixed/birch/aspen, h hazel/undergrowth),
+// roof: how likely a flock of the village is to sit up high (on the roofs, the poles, the trees) rather than on the ground, wire: and of those on the wires of the line; (or the poles, the trees) rather than on the ground. habitat weights: v the village (yards, roofs, poles), g the glade (open ground, bushes), s the shore (sand, wrack), f* the forests (b pine bor, s spruce, m mixed/birch/aspen, h hazel/undergrowth),
 // w the open water, a the air. The numbers are how likely the kind is to be the one met there (relative).
 // =====================================================================================================================
 const B_K = [0, 0, 0];
 const BKIND = {
-  crow: { name: 'серая ворона', cls: 'C', k: 1, flock: [1, 3], feet: 'ground', roof: .5, roost: 1, flee: 34, speed: 52, call: 'caw', hab: { v: 2, h: 2.5, g: 1.2, s: 2.5, fb: .4, fm: .5, fs: .3, fh: .3 },
+  crow: { name: 'серая ворона', cls: 'C', k: 1, flock: [1, 3], feet: 'ground', roof: .5, wire: .35, roost: 1, flee: 34, speed: 52, call: 'caw', hab: { v: 2, h: 2.5, g: 1.2, s: 2.5, fb: .4, fm: .5, fs: .3, fh: .3 },
     pal: { crown: [28, 28, 32], face: [28, 28, 32], throat: [28, 28, 32], back: [150, 150, 154], back2: [152, 152, 156], breast: [160, 160, 164], belly: [150, 150, 154], wing: [30, 30, 34], wing2: [22, 22, 26], tail: [26, 26, 30], bill: [32, 32, 34], leg: [34, 32, 32], eye: [210, 200, 160] } },
-  jackdaw: { name: 'галка', cls: 'M', k: 1.08, flock: [3, 6], feet: 'ground', roof: .6, roost: 1, flee: 30, speed: 50, call: 'jack', hab: { v: 3, h: 1.2, g: .8, s: .4, fm: .2 },
+  jackdaw: { name: 'галка', cls: 'M', k: 1.08, flock: [3, 6], feet: 'ground', roof: .6, wire: .4, roost: 1, flee: 30, speed: 50, call: 'jack', hab: { v: 3, h: 1.2, g: .8, s: .4, fm: .2 },
     pal: { crown: [34, 34, 38], face: [36, 36, 40], cheek: [122, 126, 134], throat: [34, 34, 38], back: [46, 46, 52], back2: [58, 58, 64], breast: [70, 70, 76], belly: [62, 62, 68], wing: [30, 30, 36], wing2: [22, 22, 28], tail: [24, 24, 30], bill: [30, 30, 34], leg: [30, 30, 30], eye: [225, 235, 245] } },
-  magpie: { name: 'сорока', cls: 'C', k: .95, longtail: true, tailk: .9, flock: [1, 2], feet: 'ground', roof: .3, flee: 30, speed: 46, call: 'rattle', hab: { v: 2.5, h: 1.2, g: 1.2, s: .5, fm: .7, fb: .2, fh: .6 },
+  magpie: { name: 'сорока', cls: 'C', k: .95, longtail: true, tailk: .9, flock: [1, 2], feet: 'ground', roof: .3, wire: .1, flee: 30, speed: 46, call: 'rattle', hab: { v: 2.5, h: 1.2, g: 1.2, s: .5, fm: .7, fb: .2, fh: .6 },
     pal: { crown: [24, 24, 30], face: [24, 24, 30], throat: [24, 24, 30], back: [26, 26, 32], breast: [26, 26, 32], belly: [242, 242, 240], wing: [36, 56, 90], wing2: [28, 44, 70], wbar: [244, 244, 242], tail: [36, 84, 90], bill: [20, 20, 24], leg: [24, 24, 24], eye: [30, 26, 26] } },
-  sparrow: { name: 'воробей', cls: 'T', k: 1, flock: [3, 7], feet: 'ground', roof: .45, flee: 20, speed: 44, call: 'chirp', hab: { v: 5, h: 1.2, g: .5 }, bound: 1,
+  sparrow: { name: 'воробей', cls: 'T', k: 1, flock: [3, 7], feet: 'ground', roof: .45, wire: .6, flee: 20, speed: 44, call: 'chirp', hab: { v: 5, h: 1.2, g: .5 }, bound: 1,
     pal: { crown: [118, 98, 86], face: [172, 166, 158], cheek: [182, 176, 168], throat: [44, 40, 38], bib: [44, 40, 38], back: [140, 94, 58], back2: [150, 130, 108], rump: [128, 118, 106], breast: [178, 172, 162], belly: [192, 186, 174], wing: [128, 84, 50], wing2: [98, 68, 46], wbar: [230, 220, 198], tail: [102, 78, 58], bill: [72, 68, 62], leg: [160, 110, 100], eye: [24, 20, 20] } },
   tit: { name: 'большая синица', cls: 'T', k: 1.05, flock: [1, 3], feet: 'tree', flee: 14, speed: 44, call: 'tit', hab: { v: 1.5, g: .4, fm: 3, fb: 1.2, fs: 1.2, fh: 3 }, bound: 1,
     pal: { crown: [22, 24, 28], face: [236, 236, 232], cheek: [242, 242, 238], throat: [24, 26, 30], bib: [30, 32, 20], back: [122, 142, 64], back2: [190, 180, 70], rump: [120, 130, 150], breast: [238, 210, 62], belly: [234, 206, 60], wing: [102, 122, 146], wing2: [80, 98, 124], wbar: [236, 236, 230], tail: [96, 114, 140], bill: [26, 26, 28], leg: [70, 76, 84], eye: [20, 18, 18] } },
@@ -3756,7 +3756,7 @@ const BKIND = {
     pal: { crown: [142, 148, 152], face: [152, 156, 158], cheek: [160, 156, 150], throat: [210, 170, 110], back: [126, 86, 52], back2: [190, 150, 104], rump: [152, 156, 160], breast: [208, 160, 100], belly: [238, 232, 222], spot: [62, 42, 30], wing: [104, 72, 50], wing2: [72, 54, 42], tail: [30, 28, 28], bill: [228, 192, 62], leg: [70, 58, 48], eye: [20, 18, 18] } },
   jay: { name: 'сойка', cls: 'M', k: 1.15, flock: [1, 2], feet: 'tree', flee: 26, speed: 46, call: 'screech', hab: { fm: 2.2, fb: 1.4, fs: 1.2, fh: 2.4, g: .5, v: .4 },
     pal: { crown: [198, 164, 146], face: [216, 180, 156], cheek: [28, 26, 30], throat: [244, 240, 234], back: [188, 138, 114], back2: [200, 154, 130], rump: [244, 244, 244], breast: [198, 152, 128], belly: [206, 164, 142], wing: [30, 42, 66], wing2: [22, 24, 32], wbar: [64, 150, 222], tail: [26, 26, 32], bill: [28, 26, 28], leg: [150, 120, 100], eye: [30, 26, 26] } },
-  pigeon: { name: 'сизый голубь', cls: 'C', k: .88, flock: [2, 5], feet: 'ground', roof: .6, flee: 26, speed: 50, call: 'coo', hab: { v: 2.5, h: 1 },
+  pigeon: { name: 'сизый голубь', cls: 'C', k: .88, flock: [2, 5], feet: 'ground', roof: .6, wire: .35, flee: 26, speed: 50, call: 'coo', hab: { v: 2.5, h: 1 },
     pal: { crown: [116, 120, 130], face: [120, 124, 134], cheek: [96, 140, 132], throat: [96, 140, 132], bib: [118, 140, 150], back: [150, 156, 168], back2: [140, 146, 158], rump: [236, 236, 238], breast: [132, 138, 152], belly: [144, 150, 162], wing: [146, 152, 166], wing2: [100, 106, 120], wbar: [44, 44, 52], tail: [64, 68, 80], bill: [150, 150, 154], leg: [190, 80, 92], eye: [230, 150, 60] } },
   crossbill: { name: 'клёст-еловик', cls: 'T', k: 1.25, billk: 1.05, flock: [3, 7], feet: 'tree', flee: 18, speed: 48, call: 'chip', mate: 'crossbillF', matep: .45, hab: { fs: 3.2, fb: 1.4, fm: .3 }, bound: 1,
     pal: { crown: [186, 70, 62], face: [194, 78, 68], cheek: [194, 78, 68], throat: [196, 86, 74], back: [172, 62, 56], back2: [190, 96, 84], rump: [206, 90, 70], breast: [198, 84, 72], belly: [194, 104, 90], wing: [90, 54, 46], wing2: [68, 42, 38], tail: [70, 44, 40], bill: [74, 70, 68], leg: [70, 56, 50], eye: [20, 18, 18] } },
@@ -3831,27 +3831,45 @@ function bTrunkOn(o, near) { const L = bTrunks(o); if (!L.length) return null; c
     const px = ox + p[0], py = oy + p[1]; if (Math.hypot(px - R.x, py - R.y) < 26) continue; return { x: px, y: o.y + .6, z: o.y + .6 - py, key, o, cling: 1, hw: p[2], L, ox, oy, row: p[1] } } return null }
 function bTrunkNear(x, y, r) { const cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t) && Math.hypot(o.x - x, o.y - y) < r) cand.push(o);
   for (let n = 0; n < 6 && cand.length; n++) { const nd = bTrunkOn(bPick(cand)); if (nd) return nd } return null }
+// ---- the wires of the power line: sparrows (or jackdaws, pigeons, a crow or two) sit along a span in a row, spaced along it, and sway with it. Where a
+// bird sits is found the way drawWire draws the cable (the same sag, the same sway, the same pixels), so its feet are on the wire and not beside it ----
+const bWireLen = Wr => Math.hypot(Wr.b[0] - Wr.a[0], Wr.b[1] - Wr.a[1]);
+const bWireOK = Wr => !Wr.thin && bWireLen(Wr) > 40;
+function bWireAt(Wr, u) { const [ax, ay] = Wr.a, [bx, by] = Wr.b, len = bWireLen(Wr), g = gustNow(), sway = (WINDX * WIND.s * (.5 + g) * 1.6 + Math.sin(t * 1.3 + Wr.ph) * .35 * (.3 + WIND.s)) * Math.min(1, len / 80), n = Math.max(6, Math.round(len / 5));
+  const P = i => { const v = i / n, q = 4 * v * (1 - v); return [Math.round(ax + (bx - ax) * v + sway * q), Math.round(ay + (by - ay) * v + Wr.sag * q)] }, f = u * n, i = Math.min(n - 1, Math.floor(f)), p0 = P(i), p1 = P(i + 1);
+  const X = Math.round(p0[0] + (p1[0] - p0[0]) * (f - i)), Y = p1[0] !== p0[0] && Math.abs(p1[0] - p0[0]) >= Math.abs(p1[1] - p0[1]) ? Math.round(p0[1] + (p1[1] - p0[1]) * (X - p0[0]) / (p1[0] - p0[0])) : Math.round(p0[1] + (p1[1] - p0[1]) * (f - i));
+  return [X, Y, Wr.ga[1] + (Wr.gb[1] - Wr.ga[1]) * u] }
+const bWireSp = K => ({ T: 3.4, M: 5.2, C: 7.5 }[K.cls] || 5);
+function bWireNode(Wr, u, K) { if (Wr._i === undefined) Wr._i = WIRES.indexOf(Wr); const len = bWireLen(Wr), sp = bWireSp(K), slot = Math.round(clamp(u, .1, .9) * len / sp), key = 'w' + Wr._i + ':' + slot; if (BOCC.has(key)) return null;
+  const uu = slot * sp / len, [X, Y, gy] = bWireAt(Wr, uu), y = gy + .4; if (Math.hypot(X - R.x, gy - R.y) < 20) return null; return { x: X, y, z: y - Y + .5, key, wire: Wr, u: uu, slot } }
+// the span of the line nearest a point, within r (along its ground), and where along it
+function bWireNear(x, y, r) { let best = null, bd = r; for (const Wr of WIRES) { if (!bWireOK(Wr)) continue; const [x0, y0] = Wr.ga, [x1, y1] = Wr.gb, dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1, u = clamp(((x - x0) * dx + (y - y0) * dy) / l2, .15, .85), d = Math.hypot(x - x0 - dx * u, y - y0 - dy * u); if (d < bd) { bd = d; best = { Wr, u, d, gx: x0 + dx * u, gy: y0 + dy * u } } } return best }
 // the bird takes its place on a trunk: on the side the sprite's body hangs to
 function bCling(B, nd) { B.node = nd; B.cling = 1; B.x = nd.x + (B.f > 0 ? -nd.hw : nd.hw); B.y = nd.y; B.z = nd.z }
-function bFree(B) { if (B.node) { BOCC.delete(B.node.key); B.node = null } if (B.tnode) { BOCC.delete(B.tnode.key); B.tnode = null } } // (the place it sits on, and the one it is flying to)
+function bFree(B) { B.dk = undefined; if (B.node) { BOCC.delete(B.node.key); B.node = null } if (B.tnode) { BOCC.delete(B.tnode.key); B.tnode = null } } // (the place it sits on, and the one it is flying to)
 function bMake(id, x, y, z) { const K = BKIND[id], B = { id: BID++, kind: id, K, x, y, z: z || 0, vx: 0, vy: 0, vz: 0, st: 'ground', f: Math.random() < .5 ? 1 : -1, t: bRand(1, 4), ph: Math.random() * 6, wp: Math.random(), bnd: Math.random(), boff: 0, spd: bRand(.9, 1.1), pk: 0, hop: 0,
     call: bRand(4, 20), fl: null, node: null, tnode: null, T: null, delay: 0, zc: bRand(-2, 4), alert: 0, gl: false }; BIRDS.push(B); return B }
 const bRest = F => F.mode === 'ground' ? bRand(80, 220) : F.mode === 'water' ? bRand(120, 300) : F.mode === 'trunk' ? bRand(50, 140) : bRand(60, 180); // (how long a flock stays before it moves on by itself)
 // the way a flock of a kind sits at a place: on the ground (or, the crows, the jackdaws, the pigeons and the sparrows of the village, on the roofs), in the trees, on a trunk, on the water
-function bModeAt(K, x, y, fleeing) { if (K.feet !== 'ground') return K.feet; if (fleeing) return Math.random() < (K.cls === 'T' ? .45 : K.roof || .35) ? (K.cls === 'T' ? 'tree' : 'roof') : 'ground';
-  return bctx(x, y).v > .3 && Math.random() < (K.roof || 0) ? 'roof' : 'ground' }
+function bModeAt(K, x, y, fleeing) { if (K.feet !== 'ground') return K.feet; const wire = () => K.wire && Math.random() < K.wire && bWireNear(x, y, fleeing ? 170 : 70);
+  if (fleeing) { if (Math.random() < (K.cls === 'T' ? .55 : K.roof || .35)) return wire() ? 'wire' : K.cls === 'T' ? 'tree' : 'roof'; return 'ground' }
+  if (K.wire && Math.random() < K.wire * .6 && bWireNear(x, y, 60)) return 'wire'; // (the line runs along the street: where it is near, a good many sit on it)
+  return bctx(x, y).v > .3 && Math.random() < (K.roof || 0) ? (wire() ? 'wire' : 'roof') : 'ground' }
 // one member's place in its flock's spot: a ground place spaced from the others, a perch on the flock's tree or roof (or one near), a trunk, a patch of water
 function bSpot(F, x, y, obj, taken, pref) { const K = F.K, mode = F.mode;
   if (mode === 'water') { for (let k = 0; k < 10; k++) { const a = Math.random() * TAU, r = Math.random() * (pref && k < 5 ? 5 : 20), px = (pref && k < 5 ? pref.x : x) + Math.cos(a) * r, py = (pref && k < 5 ? pref.y : y) + Math.sin(a) * r * .6; if (bWater(px, py) && !taken.some(q => Math.hypot(q.x - px, q.y - py) < 6)) return { x: px, y: py, z: 0, kind: 'water' } } return null }
   if (mode === 'ground') { const sep = { T: 5, M: 7.5, C: 9, D: 12 }[K.cls] || 7, rr = sep * (1.4 + 1.1 * Math.sqrt(F.n || 3)); for (let k = 0; k < 16; k++) { const near = pref && k < 6, a = Math.random() * TAU, r = near ? Math.random() * sep * .8 : Math.sqrt(Math.random()) * rr, px = (near ? pref.x : x) + Math.cos(a) * r, py = (near ? pref.y : y) + Math.sin(a) * r * .7; if (taken.some(q => Math.hypot(q.x - px, (q.y - py) * 1.4) < sep)) continue; if (bGround(px, py)) return { x: px, y: py, z: 0, kind: 'ground' } } return null }
   if (mode === 'trunk') { const nd = (obj && bTrunkOn(obj)) || bTrunkNear(x, y, 50); return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
+  if (mode === 'wire') { const Wr = F.wire; if (!Wr) return null; const len = bWireLen(Wr), u0 = clamp((F.uc ?? .5) + (pref ? ((pref.x - x) * (Wr.gb[0] - Wr.ga[0]) + (pref.y - y) * (Wr.gb[1] - Wr.ga[1])) / (len * len) : 0), .12, .88), sp = bWireSp(K) / len;
+    for (let k = 0; k < 12; k++) { const nd = bWireNode(Wr, u0 + (k ? (k % 2 ? 1 : -1) * Math.ceil(k / 2) * sp : 0) + (Math.random() - .5) * sp * .3, K); if (nd) return { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } } return null }
   const tree = mode === 'tree' || mode === 'roof', prop = mode === 'roof', bush = mode === 'tree' && K.cls === 'T'; let nd = obj && bPerchable(obj, tree, prop, bush) ? bNodeOn(obj, pref ? pref.x : undefined) : null; if (!nd) nd = bNodeNear(x, y, 40, tree, prop, bush);
   return nd ? { x: nd.x, y: nd.y, z: nd.z, kind: 'node', node: nd } : null }
 // a flock of one kind put at its place; `fromAir`: it comes flying in to it from the edge of the view
 function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + Math.floor(Math.random() * (K.flock[1] - K.flock[0] + 1)), F = { id: BFID++, kind: id, K, n, members: [], home: { x, y }, mode: bModeAt(K, x, y, false), obj: null, rest: 0, calm: 0, dx: 0, dy: 0 };
+  if (F.mode === 'wire') { const W0 = bWireNear(x, y, 70); if (W0) { F.wire = W0.Wr; F.uc = W0.u; x = W0.gx; y = W0.gy } else F.mode = 'roof' }
   if (F.mode === 'trunk' || F.mode === 'tree' || F.mode === 'roof') { const r = 70, cand = []; for (const o of objsIn(x - r, y - r, x + r, y + r)) if (F.mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, F.mode === 'roof', F.mode === 'tree' && K.cls === 'T')) cand.push(o); if (!cand.length) { if (K.feet !== 'ground') return null; F.mode = 'ground' } else F.obj = bPick(cand) }
   const taken = [];
-  for (let i = 0; i < n; i++) { const sp = bSpot(F, F.obj ? F.obj.x : x, F.obj ? F.obj.y : y, F.obj, taken); if (!sp) continue; taken.push(sp); const B = bMake(K.mate && i > 0 && Math.random() < (K.matep || .5) ? K.mate : id, sp.x, sp.y, sp.z); B.fl = F; F.members.push(B);
+  for (let i = 0; i < n; i++) { const sp = bSpot(F, F.obj ? F.obj.x : x, F.obj ? F.obj.y : y, F.obj, taken, F.mode === 'wire' ? { x: x + (i - (n - 1) / 2) * bWireSp(K) * (F.wire.gb[0] - F.wire.ga[0]) / bWireLen(F.wire), y: y + (i - (n - 1) / 2) * bWireSp(K) * (F.wire.gb[1] - F.wire.ga[1]) / bWireLen(F.wire) } : undefined); if (!sp) continue; taken.push(sp); const B = bMake(K.mate && i > 0 && Math.random() < (K.matep || .5) ? K.mate : id, sp.x, sp.y, sp.z); B.fl = F; F.members.push(B);
     if (sp.kind === 'water') { B.st = 'swim'; B.hd = Math.random() * TAU } else if (sp.node) { B.st = 'perch'; BOCC.add(sp.node.key); if (sp.node.cling) bCling(B, sp.node); else B.node = sp.node } else B.st = 'ground' }
   if (!F.members.length) return null; F.rest = bRest(F); BFL.push(F);
   if (fromAir) { const cx = CAM.x + W / 2, cy = CAM.y + H / 2, a = Math.atan2(F.home.y - cy, F.home.x - cx) + bRand(-.6, .6), ex = cx + Math.cos(a) * (W * .5 + 40), ey = cy + Math.sin(a) * (H * .5 + 40);
@@ -3860,16 +3878,17 @@ function bSpawnGroup(id, x, y, fromAir) { const K = BKIND[id], n = K.flock[0] + 
 // where a flock goes: a place of its kind a little way off, away from `from` (the rider) and from the way he is going. null: nowhere to go near
 function bPlan(F, from, dmin, dmax) { const K = F.K; let cx = 0, cy = 0, n = 0; for (const B of F.members) { cx += B.x; cy += B.y; n++ } if (!n) return null; cx /= n; cy /= n;
   const sp = Math.abs(R.v), path = [[R.x, R.y], [R.x + Math.sin(R.psi) * sp * 2.5, R.y - Math.cos(R.psi) * sp * 2.5]], away = from ? Math.atan2(cy - from[1], cx - from[0]) : Math.random() * TAU, spread = from ? 1.2 : Math.PI;
-  const score = (x, y) => Math.min(Math.hypot(x - R.x, y - R.y), segD(path, x, y) * 1.3) + (bInZone(x, y) ? 0 : -300) + Math.random() * 16, mode = bModeAt(K, cx, cy, !!from);
+  const score = (x, y) => Math.min(Math.hypot(x - R.x, y - R.y), segD(path, x, y) * 1.3) + (bInZone(x, y) ? 0 : -300) + Math.random() * 16; let mode = bModeAt(K, cx, cy, !!from);
   let best = null, bs = -1e9;
-  if (mode !== 'ground' && mode !== 'water') { for (const o of objsIn(cx - dmax, cy - dmax, cx + dmax, cy + dmax)) { if (o === F.obj) continue; const ok = mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, mode === 'roof', mode === 'tree' && K.cls === 'T'); if (!ok) continue;
+  if (mode === 'wire') { for (const Wr of WIRES) { if (!bWireOK(Wr)) continue; for (const u of [.2, .35, .5, .65, .8]) { const gx = Wr.ga[0] + (Wr.gb[0] - Wr.ga[0]) * u, gy = Wr.ga[1] + (Wr.gb[1] - Wr.ga[1]) * u, d = Math.hypot(gx - cx, gy - cy); if (d < dmin || d > dmax || (Wr === F.wire && Math.abs(u - F.uc) < .2)) continue; if (from && Math.cos(Math.atan2(gy - cy, gx - cx) - away) < -.15) continue; const s = score(gx, gy); if (s > bs) { bs = s; best = { x: gx, y: gy, mode, obj: null, wire: Wr, uc: u } } } } if (!best) mode = 'roof' }
+  if (!best && mode !== 'ground' && mode !== 'water') { for (const o of objsIn(cx - dmax, cy - dmax, cx + dmax, cy + dmax)) { if (o === F.obj) continue; const ok = mode === 'trunk' ? (o.ready && o.mask && o.kind === 'gen' && BTREE.has(o.t)) : bPerchable(o, true, mode === 'roof', mode === 'tree' && K.cls === 'T'); if (!ok) continue;
       const d = Math.hypot(o.x - cx, o.y - cy); if (d < dmin || d > dmax) continue; if (from && Math.cos(Math.atan2(o.y - cy, o.x - cx) - away) < -.15) continue; const s = score(o.x, o.y); if (s > bs) { bs = s; best = { x: o.x, y: o.y, mode, obj: o } } } }
   if (!best) { const m2 = mode === 'water' ? 'water' : K.feet === 'ground' ? 'ground' : null; if (!m2) return null;
     for (let k = 0; k < 18; k++) { const a = away + (Math.random() - .5) * 2 * spread, d = bRand(dmin, dmax), x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * .8; if (m2 === 'water' ? !bWater(x, y) : !bGround(x, y)) continue; const s = score(x, y); if (s > bs) { bs = s; best = { x, y, mode: m2, obj: null } } } }
   return best }
 const bInZone = (x, y) => x > CAM.x - 150 && x < CAM.x + W + 150 && y > CAM.y - 120 && y < CAM.y + H + 150;
 // the flock goes up for `D`: all together, the one nearest the fright first (`from`: what scared them; none: they move on by themselves, one after another)
-function bGo(F, D, from) { F.mode = D.mode; F.obj = D.obj; F.home = { x: D.x, y: D.y }; F.rest = bRest(F); F.calm = 6; F.taken = []; F.D = D;
+function bGo(F, D, from) { F.mode = D.mode; F.obj = D.obj; F.wire = D.wire || null; F.uc = D.uc; F.home = { x: D.x, y: D.y }; F.rest = bRest(F); F.calm = 6; F.taken = []; F.D = D;
   let cx = 0, cy = 0; for (const m of F.members) { cx += m.x / F.members.length; cy += m.y / F.members.length } for (const m of F.members) m.off = [(m.x - cx) * .8, (m.y - cy) * .8];
   const list = F.members.slice().sort((a, b) => from ? Math.hypot(a.x - from[0], a.y - from[1]) - Math.hypot(b.x - from[0], b.y - from[1]) : 0);
   list.forEach((m, i) => { bFree(m); m.mv = false; m.from = from || [m.x - (D.x - m.x), m.y - (D.y - m.y)]; m.alert = 1; if (m.st === 'fly' || m.st === 'flit') { bTakeoff(m, true); return } m.st = 'up'; m.upT = from ? i * bRand(.03, .1) : .15 + i * bRand(.15, .45) });
@@ -3924,6 +3943,9 @@ function stepBirds(dt) { if (!BSTART) bInit(); const act = bAct(), rv = Math.abs
       if (B.hop > 0) B.hop -= dt; if (B.pk > 0) B.pk -= dt; if (B.t <= 0) { B.t = bRand(.6, 2); const r = Math.random(), nd = B.node;
         if (r < .5 && nd && nd.L) { const q = bPick(nd.L.filter(p => p[1] !== nd.row && Math.abs(p[1] - nd.row) <= 6)); if (q) { const key = (nd.o.id || nd.o.x + ',' + nd.o.y) + ':t' + q[1]; if (!BOCC.has(key)) { BOCC.delete(nd.key); const n2 = { x: nd.ox + q[0], y: nd.y, z: nd.o.y + .6 - (nd.oy + q[1]), key, o: nd.o, cling: 1, hw: q[2], L: nd.L, ox: nd.ox, oy: nd.oy, row: q[1] }; BOCC.add(key); bCling(B, n2); B.hop = .16 } } }
         else if (r < .75 && K.drum) { B.pk = bRand(.5, 1.1); B.t = B.pk + bRand(.6, 1.6); if (d < 260) bVoice('drum', B.x, B.y - B.z) } else if (r < .85 && nd) { B.f = -B.f; bCling(B, nd) } } }
+    else if (B.st === 'perch' && B.node && B.node.wire) { // on a wire: sways with it, turns, shuffles a step along it now and then
+      const nd = B.node, [X, Y] = bWireAt(nd.wire, nd.u); B.x = X; B.z = B.y - Y + .5; B.dk = nd.wire.key + .05; if (B.hop > 0) B.hop -= dt;
+      if (B.t <= 0) { B.t = bRand(2, 7); const r = Math.random(); if (r < .3) B.f = -B.f; else if (r < .45) { const n2 = bWireNode(nd.wire, nd.u + (Math.random() < .5 ? 1 : -1) * bWireSp(K) / bWireLen(nd.wire), K); if (n2) { BOCC.delete(nd.key); BOCC.add(n2.key); B.node = n2; B.hop = .16 } } } }
     else if (B.st === 'perch') { // on a branch or a roof: turns, shifts its feet; the small birds of the trees flit to a twig near by now and then
       if (B.hop > 0) B.hop -= dt; if (B.t <= 0) { const treeBird = K.feet === 'tree'; B.t = treeBird ? bRand(1.5, 5) : bRand(2, 7); const r = Math.random();
         if (treeBird && r < .32 && !B.alert && B.node) { const nd = bNodeNear(B.x, B.y, 22, true, false, K.cls === 'T'); if (nd && nd.key !== B.node.key && Math.hypot(nd.x - B.x, nd.z - B.z) > 2) { bFlit(B, nd); continue } }
@@ -4196,6 +4218,58 @@ function drawGull(g) { const flip = g.f < 0, perched = g.st === 'perch', walking
   const S = gullSpr(name, flip, g.gk), lift = deckLift(g.x, g.y), gz = g.z; // (the shadow lies on the ground, or on the deck when it is over the jetty)
   if (gz > .5 || perched) { ctx.fillStyle = `rgba(8,16,20,${clamp(.24 - gz * .004, .05, .22).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(g.x + .5 + gz * .25, g.y + .5 - (perched && g.perch && g.perch.z > 10 ? 0 : lift) , Math.max(2, 4 - gz * .05), 1.3, 0, 0, TAU); ctx.fill() }
   ctx.drawImage(S.cv, Math.round(g.x) - S.ax, Math.round(g.y - gz) - S.ay) }
+
+// =====================================================================================================================
+// THE BIKE'S TRACKS: the two tyres leave their lines on the ground behind them: a groove in the sand (its lit side a shade lighter), a dark line in the dirt
+// of the roads and the paths (darker in the wet), a faint flattened line through the grass and the leaves, hardly anything on the gravel, none on the boards
+// of the jetty or in the water. In a turn the front wheel runs wide of the rear: two lines. Out of a puddle the tyres print wet for a few metres on anything.
+// They fade as the ground recovers: the grass springs back in a minute or two, the dirt keeps them some minutes, the sand longer (the rain smooths them all).
+// Kept per square of the ground (CK px) as a picture of its own with a brightness and a kind per pixel. The squares in view are brought up to date twice a
+// second; one out of view is brought up to date (all its fading at once) when it comes back into view, and a few of those are swept now and then, so that
+// a long ride does not leave a trail of work behind it; a square with nothing left on it is dropped.
+// =====================================================================================================================
+const TRK = new Map(); let TRKT = 0, TRKWET = 0, TRKP = null;
+// the kinds of mark: colour and how fast it goes (per second); a mark's kind is kept with each pixel
+const TRKC = [null,
+  { c: [88, 70, 44], k: .008 },  // 1 the groove in the sand
+  { c: [240, 228, 198], k: .008 }, // 2 its lit rim
+  { c: [36, 24, 16], k: .012 },  // 3 the line in the dirt
+  { c: [170, 142, 104], k: .012 }, // 4 the soil pushed up beside it
+  { c: [50, 42, 24], k: .03 },   // 5 the grass pressed down
+  { c: [44, 42, 40], k: .05 },   // 6 the gravel scuffed
+  { c: [30, 26, 22], k: .05 }];  // 7 wet tyres
+// per kind of ground: the mark of the groove (code, strength) and of its rim
+const TRKS = { sand: { m: 1, a: .78, rim: 2, ra: .55 }, dirt: { m: 3, a: .8, rim: 4, ra: .4 }, grass: { m: 5, a: .62 }, hard: { m: 6, a: .2 } };
+const TRKM = { beach: 'sand', road: 'dirt', path: 'dirt', dirt: 'dirt', track: 'dirt', trodden: 'dirt', rut: 'dirt', bog: 'dirt', gravel: 'hard', dam: 'hard', bridge: null, lake: null, river: null, pond: null, brook: null };
+function trkChunk(ci, cj) { const key = ci + ',' + cj; let C = TRK.get(key); if (C) return C; const cv = document.createElement('canvas'); cv.width = cv.height = CK; const g = cv.getContext('2d');
+  C = { ci, cj, a: new Float32Array(CK * CK), m: new Uint8Array(CK * CK), cv, g, img: g.createImageData(CK, CK), tu: t }; TRK.set(key, C); return C }
+// one pixel of a line: as strong as it is now or as the new mark, whichever is the more; drawn into the square's picture at once (the fading redraws it later)
+function trkPut(x, y, m, a) { x = Math.floor(x); y = Math.floor(y); const ci = Math.floor(x / CK), cj = Math.floor(y / CK), C = trkChunk(ci, cj), lx = x - ci * CK, ly = y - cj * CK, i = ly * CK + lx; if (C.a[i] >= a) return;
+  C.a[i] = a; C.m[i] = m; const c = TRKC[m].c; C.g.clearRect(lx, ly, 1, 1); C.g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`; C.g.fillRect(lx, ly, 1, 1) }
+// a tyre's mark at a point (dx, dy: the way it is going): what the ground there takes, how strong in the wet
+function trkMark(x, y, dx, dy) { if (deckLift(x, y) > 0) return; const sk = TRKM[matAt(x, y)]; if (sk === null) return; const S = TRKS[sk || 'grass'];
+  if (S === TRKS.sand) { const L = typeof wLocal === 'function' ? wLocal(x, y) : null; if (L && L.dw > -(WS.RU || 2) * 1.1) return } // (where the waves run up, the sand is smoothed again at once)
+  let m = S.m, a = S.a * (S === TRKS.dirt ? Math.min(1.2, 1 + .5 * WET) : 1); if (TRKWET > 0 && .7 * Math.min(1, TRKWET / 2.5) > a * .6) { m = 7; a = .7 * Math.min(1, TRKWET / 2.5) }
+  const l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, sd = nx + ny > 0 ? -1 : 1, tr = (Math.floor(x) + Math.floor(y)) & 1 ? 1 : .8; // (sd: the side toward the light, up and to the left; tr: the tread)
+  trkPut(x, y, m, a * tr); trkPut(x - nx * sd, y - ny * sd, m, a * .62 * tr); // (a line two pixels wide: the groove and its shoulder)
+  if (S.rim && m !== 7) trkPut(x + nx * sd, y + ny * sd, S.rim, S.ra) }
+// a square brought up to date: all the fading since it was last looked at, and its picture made again from what is left
+function trkUpdate(key, C) { const dt = t - C.tu; if (dt < .25) return; C.tu = t; const A = C.a, M = C.m, d = C.img.data, rain = 1 + WX.rain, F = TRKC.map(q => q ? Math.exp(-q.k * dt * rain) : 1); let live = 0;
+  for (let i = 0; i < A.length; i++) { let a = A[i]; if (!(a > 0)) { d[i * 4 + 3] = 0; continue } const q = TRKC[M[i]]; a *= F[M[i]]; if (a < .03) { a = 0; d[i * 4 + 3] = 0 } else { live++; d[i * 4] = q.c[0]; d[i * 4 + 1] = q.c[1]; d[i * 4 + 2] = q.c[2]; d[i * 4 + 3] = a * 255 } A[i] = a }
+  if (!live) { TRK.delete(key); return } C.g.putImageData(C.img, 0, 0) }
+function stepTracks(dt) { TRKWET = INPUD ? 2.5 : Math.max(0, TRKWET - dt);
+  // the contact points of the two tyres: the rear 6 px behind the bottom bracket, the front 12.4 px ahead of it, the tyres' bottoms 1.5 px below its point
+  // (the model's 8 and 16.5, the sprite being drawn at three quarters of the model); the front wheel wanders a little about the rear's line
+  const sx = Math.sin(R.psi), sy = -Math.cos(R.psi), rear = [R.x - sx * 6, R.y - sy * 6 + 1.5], wv = Math.sin(t * 1.9) * .55 + Math.sin(t * 4.7 + 1) * .3, front = [R.x + sx * 12.4 - sy * wv, R.y + sy * 12.4 + sx * wv + 1.5];
+  if (Math.abs(R.v) > .6 && TRKP) { for (const [P, Q] of [[TRKP[0], rear], [TRKP[1], front]]) { const dx = Q[0] - P[0], dy = Q[1] - P[1], m = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))); if (m > 40) continue; for (let s = 1; s <= m; s++) trkMark(P[0] + dx * s / m, P[1] + dy * s / m, dx, dy) } }
+  TRKP = [rear, front];
+  // twice a second: the squares in view (and next to it) brought up to date, and two of the others that have waited longest; never more than a hundred kept
+  TRKT -= dt; if (TRKT > 0) return; TRKT = .5;
+  const ci0 = Math.floor(CAM.x / CK) - 1, ci1 = Math.floor((CAM.x + W) / CK) + 1, cj0 = Math.floor(CAM.y / CK) - 1, cj1 = Math.floor((CAM.y + H) / CK) + 1, far = [];
+  for (const [key, C] of TRK) { if (C.ci >= ci0 && C.ci <= ci1 && C.cj >= cj0 && C.cj <= cj1) trkUpdate(key, C); else far.push([C.tu, key, C]) }
+  far.sort((a, b) => a[0] - b[0]); for (let i = 0; i < Math.min(2, far.length); i++) trkUpdate(far[i][1], far[i][2]); for (let i = 0; i < far.length - 100; i++) TRK.delete(far[i][1]) }
+// drawn on the ground, under the water's wash, the puddles and the shadows (a square that comes back into view is brought up to date first)
+function drawTracks(cx0, cy0) { if (!TRK.size) return; for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) { const key = ci + ',' + cj, C = TRK.get(key); if (!C) continue; if (t - C.tu > 1) trkUpdate(key, C); if (TRK.has(key)) ctx.drawImage(C.cv, ci * CK, cj * CK) } }
 
 
 // =====================================================================================================================
@@ -5409,7 +5483,7 @@ function drawWorld() {
   RLIFT += (deckLift(R.x, R.y) - RLIFT) * Math.min(1, LASTDT * 14); worldT(); const cx0 = Math.floor(CAM.x), cy0 = Math.floor(CAM.y), night = LT.dark > .38;
   // the ground
   for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  const key = ckey(ci, cj); let cv = CHUNKS.get(key); if (!cv) { if (CBAND.has(key)) { while (!bakeStep(ci, cj)); cv = CHUNKS.get(key) } else cv = bakeChunk(ci, cj) } ctx.drawImage(cv, ci * CK, cj * CK) }
-  drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);
+  drawTracks(cx0, cy0); drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);
   if (WET > .01) { ctx.globalAlpha = .3 * WET; ctx.fillStyle = '#120d0a'; ctx.fillRect(cx0, cy0, W + 2, H + 2); ctx.globalAlpha = 1 }
   // what is in view (and a margin: tall trees reach up into the screen from below it)
   VIS.length = 0; for (const o of objsIn(cx0 - 60, cy0 - 20, cx0 + W + 60, cy0 + H + 110)) { if (!o.ready) continue; const x0 = o.x - o.ax, y0 = o.y - o.ay; if (x0 > cx0 + W + 2 || x0 + o.mw < cx0 - 2 || y0 > cy0 + H + 2 || y0 + o.mh < cy0 - 2) continue; VIS.push(o) } visCount = VIS.length;
@@ -5430,7 +5504,7 @@ function drawWorld() {
   const rkey = riderKey(), list = VIS.map(o => [o.flat ? o.y - 1e4 : o.touchT !== undefined && t - o.touchT < .25 ? Math.min(o.y, rkey - .05) : o.y, o]); list.push([rkey, null]); // (undergrowth the bike is in is pressed under it)
   for (const o of FIGOBJ) o._figs = null; FIGOBJ.length = 0; const RF = { fy: R.y, w: RW, h: RH, img: null }; for (const o of OCC) { (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(RF) }
   for (const C of COWS) if (C.x > cx0 - 30 && C.x < cx0 + W + 30 && C.y > cy0 - 10 && C.y < cy0 + H + 40) list.push([C.y, { cow: C }]);
-  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }
+  for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.st === 'perch' && B.dk !== undefined ? B.dk : B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }
   for (const G of GULLS) if (G.x > cx0 - 20 && G.x < cx0 + W + 20 && G.y - G.z > cy0 - 20 && G.y < cy0 + H + 30) list.push([G.y + (G.st === 'perch' || G.st === 'walk' ? .4 : 0), { gull: G }]);
   for (const P of NPCS.concat(SITS)) if (P.x > cx0 - 20 && P.x < cx0 + W + 20 && P.y > cy0 - 10 && P.y < cy0 + H + 40) { const S = npcSpr(P), occ = P._occ || (P._occ = []); list.push([figKey(P.y, Math.round(P.x) - S.ax, Math.round(P.y) - S.ay, S.cv.width, S.cv.height, occ), { npc: P }]); P._F = { fy: P.y, w: S.cv.width, h: S.cv.height, img: S.cv, rx: Math.round(P.x) - S.ax, ry: Math.round(P.y) - S.ay }; for (const o of occ) (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(P._F) }
   // falling leaves in their turn too, by where they will come down, so one passing behind the rider is hidden by him
@@ -5848,7 +5922,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, blocked, matAt, toW, toL };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
@@ -5884,7 +5958,7 @@ function stepRings(dt) { if (WX.rain < .06) { RINGS = RINGS.filter(r => r.t < r.
   for (const r of RINGS) r.t += dt; RINGS = RINGS.filter(r => r.t < r.life); if (RINGS.length > 300) RINGS.splice(0, RINGS.length - 300) }
 function drawRings() { for (const r of RINGS) { const u = r.t / r.life, rad = 1 + u * 3.5, a = (1 - u) * .5; ctx.fillStyle = `rgba(200,220,228,${a})`; for (let i = 0; i < 8; i++) { const ang = i / 8 * TAU; ctx.fillRect(Math.round(r.x + Math.cos(ang) * rad), Math.round(r.y + Math.sin(ang) * rad * .5), 1, 1) } } }
 
-function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt) }
+function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt); stepTracks(dt) }
 // over the lit picture: the moths (in the lamplight they shine), the foxfire's specks; the birds over everything
 function drawLife() { worldT(); drawFoxDots(); drawGuardGlow(); drawMoths();
   drawBirdsHigh(); }
