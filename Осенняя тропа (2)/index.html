@@ -877,10 +877,10 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
   // bottom bracket eases forward to its true place so the legs do not cover the wheel. Sizes never change with the turn.
   const kT=Math.min(1,Math.abs(yaw)/35),kS=kT*kT*(3-2*kT),mx=(a,b)=>a+(b-a)*kS;
   const RA=[0,0,6.5],FA=[24.5,0,6.5],BBX=mx(7.6,8.2),BBH=mx(4.8,5.0),BB=[BBX,0,BBH],RW=6.5;
-  const JK=T3([C.jacketL,C.jacket,C.jacketD]),PN=T3([[110,82,60],C.pants,C.pantsD]),PK=T3([C.packL,C.pack,C.packD]),FR=T3([[78,140,134],C.frameC,C.frameD]),
+  const JK=T3([C.jacketL,C.jacket,C.jacketD]),PN=T3([C.pantsL||[110,82,60],C.pants,C.pantsD]),PK=T3([C.packL,C.pack,C.packD]),FR=T3([[78,140,134],C.frameC,C.frameD]),
     FRD=rgbI(C.frameD),BAR=T3([[118,118,122],C.bar,[50,50,54]]),STEM=T3([[110,110,116],C.bar,[54,54,58]]),GRIP=rgbI(C.grip),CRK=T3([[112,112,118],[88,88,94],[62,62,68]]),
     RING=T3([[118,118,124],[90,90,96],[62,62,68]]),SEAT=T3([[78,62,54],C.seat,[26,20,18]]),PED=T3([[90,90,96],[60,60,66],[40,40,44]]),BOOT=T3([[84,64,54],C.boot,[34,26,22]]),SOLE=rgbI(C.sole),
-    GLV=T3([[96,66,46],C.glove,[44,28,20]]),RACK=T3([C.frameC,C.frameD,C.frameD]),LIGHT=rgbI(C.lightOff),STRAP=rgbI(C.strap),JKD=rgbI(C.jacketD),
+    GLV=T3([C.gloveL||[96,66,46],C.glove,C.gloveD||[44,28,20]]),COLL=C.collar?T3([C.collar,C.collar,C.collarD]):null,RACK=T3([C.frameC,C.frameD,C.frameD]),LIGHT=rgbI(C.lightOff),STRAP=rgbI(C.strap),JKD=rgbI(C.jacketD),
     PKc=rgbI(C.pack),PKD=rgbI(C.packD),PKL=rgbI(C.packL),BUCK=rgbI(C.buckle),SCF=rgbI(C.scarf),SCS=rgbI(C.scarfS),SCD=rgbI(C.scarfD),
     SKIN=rgbI([214,160,128]),SKIND=rgbI([176,124,98]),HAIR=rgbI(C.hair),BN=rgbI(C.beanie),BND=rgbI(C.beanieD),BNT=T3([C.beanieL,C.beanie,C.beanieD]),POM=rgbI(C.pom),POMD=rgbI(C.pomD);
   // ---- steering: the front wheel, fork, stem, handlebar and the hands on it turn by `steer` degrees (+ to the right)
@@ -919,12 +919,12 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
     const knee=ik(hip,ank,8.9,8.6,pole);
     tube([BBX,side*1.9,BBH],[pd[0],side*2.9,pd[2]],.32,.32,d=>tone(d,CRK),1);                                          // crank arm
     box(add(pd,[0,side*.5,-.1]),[[1.05,0,0],[0,.75,0],[0,0,.22]],d=>tone(d,PED));                                    // pedal
-    tube(hip,knee,1.65,1.2,d=>tone(d,PN,.45,-.15));                                                           // thigh
+    tube(hip,knee,1.65,1.2,d=>tone(d,PN,.45,-.15));if(C.coat)tube(hip,add(hip,mul(sub(knee,hip),.5)),1.78,1.5,d=>tone(d,JK,.45,-.15)); // thigh (a coat's skirt over it)
     tube(knee,ank,1.2,.95,d=>tone(d,PN,.62,.05));                                                   // shin
     const bc=add(mul(add(ank,toe),.5),[0,0,-.05]);
     ell(bc,mul(nrm(sub(toe,ank)),2.15),[0,1.0,0],[0,0,.95],d=>NH<-.45?SOLE:tone(d,BOOT,.5,-.1))}                      // boot
   // ---- body: hips, a torso leaning forward, the arms, the backpack on it, the scarf at the neck, the head ----
-  ell([5.5+PDF,o*.5,19.6-PDZ],[3.0,0,0],[0,5.0,0],[0,0,2.6],d=>tone(d,PN,.5,-.1));
+  ell([5.5+PDF,o*.5,19.6-PDZ],[3.0,0,0],[0,5.0,0],[0,0,2.6],d=>tone(d,C.coat?JK:PN,.5,-.1));
   const P0=[5.6+PDF,19.6-PDZ],P1=[12.3+PDF,26.6-PDZ+PBZ],ua=nrm([P1[0]-P0[0],0,P1[1]-P0[1]]),nb=[-ua[2],0,ua[0]],TC=[(P0[0]+P1[0])/2,o,(P0[1]+P1[1])/2];
   ell(TC,mul(ua,5.8),[0,5.9,0],mul(nb,3.5),d=>U0<-.78?JKD:tone(d,JK,.5,-.12));
   // arms: shoulder to the hand on the grip, the elbow bent out and a little back
@@ -940,7 +940,7 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
   const HC=[14.5+PDF-(gk===3?.5*GE:0),o+(gk===1?-.7:gk===2?.7:0)*GE,30.1-PDZ+PBZ+(gk===3?.6*GE:0)];
   const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];if(C.scarf!==false){
   ell([11.7+PDF,o,28.1-PDZ+PBZ],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
-  ball(KN,.95,d=>d>-.05?SCF:SCD)}else ell([12.3+PDF,o,28.4-PDZ+PBZ],[1.6,0,.3],[0,3.4,0],[-.3,0,1.4],d=>tone(d,JK,.5,-.12)); // (no scarf: the jacket's collar)
+  ball(KN,.95,d=>d>-.05?SCF:SCD)}else ell([12.3+PDF,o,28.4-PDZ+PBZ],[1.6,0,.3],[0,3.4,0],[-.3,0,1.4],d=>COLL?tone(d,COLL,.3,-.25):tone(d,JK,.5,-.12)); // (no scarf: the jacket's collar, or the shirt's over it)
   // head: the beanie over the crown and the back, a ribbed band, hair at the nape, a sliver of face in front
   const hpsi=(gk===1?-62:gk===2?62:0)*D*GE,hth=(gk===3?38:gk===6?9:0)*D*GE,hcp=Math.cos(hth),hsp=Math.sin(hth),hcy=Math.cos(hpsi),hsy=Math.sin(hpsi),
     HR=v=>{const f1=v[0]*hcp-v[2]*hsp,h1=v[0]*hsp+v[2]*hcp;return[f1*hcy-v[1]*hsy,f1*hsy+v[1]*hcy,h1]};
@@ -2216,36 +2216,43 @@ function t3rot(M, yaw) { const a = (yaw - 180) * Math.PI / 180, c = Math.cos(a),
   for (const f of M.faces) { if (f.tex) { const tx = f.tex; f.tex = (x, n, z, ...a) => tx(x * c - n * s, x * s + n * c, z, ...a) } f.pts.forEach(R); const n = [f.nr[0], f.nr[1], f.nr[2]]; f.nr = [n[0] * c + n[1] * s, -n[0] * s + n[1] * c, n[2]]; const cc = [f.c[0], f.c[1], f.c[2]]; f.c = [cc[0] * c + cc[1] * s, -cc[0] * s + cc[1] * c, cc[2]] }
   for (const L of M.lines) { R(L.a); R(L.b) } for (const d of M.dots) R(d[0]) }
 // a rounded limb between two points: a six-sided prism, radius r0 at a, r1 at b, capped
-function t3limb(M, a, b, r0, r1, col, o = {}) { const ax = v3n(v3sub(b, a)), up = Math.abs(ax[2]) > .9 ? [1, 0, 0] : [0, 0, 1], u = v3n(v3cross(ax, up)), v = v3cross(ax, u), seg = 6, ctr = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+function t3limb(M, a, b, r0, r1, col, o = {}) { const ax = v3n(v3sub(b, a)), up = Math.abs(ax[2]) > .9 ? [1, 0, 0] : [0, 0, 1], u = v3n(v3cross(ax, up)), v = v3cross(ax, u), seg = o.seg || 6, ctr = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
   const P = (q, r, i) => { const t = i / seg * TAU, cs = Math.cos(t) * r, sn = Math.sin(t) * r; return [q[0] + u[0] * cs + v[0] * sn, q[1] + u[1] * cs + v[1] * sn, q[2] + u[2] * cs + v[2] * sn] };
   for (let i = 0; i < seg; i++) t3face(M, [P(a, r0, i), P(a, r0, i + 1), P(b, r1, i + 1), P(b, r1, i)], col, ctr, o);
   const ca = [], cb = []; for (let i = 0; i < seg; i++) { ca.push(P(a, r0, i)); cb.push(P(b, r1, i)) } t3face(M, ca, col, ctr, o); t3face(M, cb, o.capCol || col, ctr, o) }
 // an ellipsoid (a head, a fist, a bun of hair), optionally only its upper part (k0..1 of the height from the bottom)
-function t3ball(M, c, rx, rn, rz, col, o = {}) { const U = o.seg || 8, V = 5, k0 = o.from ?? 0, P = (i, j) => { const a = i / U * TAU, e = -Math.PI / 2 + (k0 + (1 - k0) * j / V) * Math.PI; return [c[0] + Math.cos(a) * Math.cos(e) * rx, c[1] + Math.sin(a) * Math.cos(e) * rn, c[2] + Math.sin(e) * rz] };
+function t3ball(M, c, rx, rn, rz, col, o = {}) { const U = o.seg || 8, V = o.vs || 5, k0 = o.from ?? 0, P = (i, j) => { const a = i / U * TAU, e = -Math.PI / 2 + (k0 + (1 - k0) * j / V) * Math.PI; return [c[0] + Math.cos(a) * Math.cos(e) * rx, c[1] + Math.sin(a) * Math.cos(e) * rn, c[2] + Math.sin(e) * rz] };
   for (let i = 0; i < U; i++) for (let j = 0; j < V; j++) { const pts = [P(i, j), P(i + 1, j), P(i + 1, j + 1)]; if (j < V - 1) pts.push(P(i, j + 1)); if (j === 0 && k0 === 0) pts.splice(0, 1); t3face(M, pts, col, c, o) } }
 // a body: a band from the hips to the shoulders, eight-sided, its width and depth changing on the way up
-function t3torso(M, z0, z1, hw0, hd0, hw1, hd1, col, o = {}) { const seg = 8, d0 = o.dn0 || 0, d1 = o.dn1 || 0, ctr = [0, 1 + (d0 + d1) / 2, (z0 + z1) / 2], P = (z, hw, hd, i, dn) => { const a = i / seg * TAU; return [Math.cos(a) * hw, 1 + dn + Math.sin(a) * hd, z] };
+function t3torso(M, z0, z1, hw0, hd0, hw1, hd1, col, o = {}) { const seg = o.seg || 8, d0 = o.dn0 || 0, d1 = o.dn1 || 0, ctr = [0, 1 + (d0 + d1) / 2, (z0 + z1) / 2], P = (z, hw, hd, i, dn) => { const a = i / seg * TAU; return [Math.cos(a) * hw, 1 + dn + Math.sin(a) * hd, z] };
   for (let i = 0; i < seg; i++) t3face(M, [P(z0, hw0, hd0, i, d0), P(z0, hw0, hd0, i + 1, d0), P(z1, hw1, hd1, i + 1, d1), P(z1, hw1, hd1, i, d1)], col, ctr, o);
   const top = [], bot = []; for (let i = 0; i < seg; i++) { top.push(P(z1, hw1, hd1, i, d1)); bot.push(P(z0, hw0, hd0, i, d0)) } t3face(M, top, col, ctr, o); t3face(M, bot, col, ctr, o) }
 const SKINS = [[226, 178, 144], [214, 164, 128], [234, 190, 160], [196, 146, 110]];
 // look: { h height (px = 10 cm), build (.85 slim .. 1.2 stout), sex 'm'|'f', skin 0..3, hair: [r,g,b], cut: 'short'|'long'|'tail'|'bald',
 //   beard: [r,g,b]|null, hat: 'cap'|'beanie'|'hood'|null, hatCol, top: [r,g,b] (jacket), topKind: 'jacket'|'vest'|'hoodie'|'fleece',
-//   shirt: [r,g,b] (under a vest), legs: [r,g,b], boots: [r,g,b], carry: 'bucket'|'towel'|'backpack'|'mug'|null, carryCol, age: 'young'|'old' }
-function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.build || 1, f = L.sex === 'f', skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
+//   shirt: [r,g,b] (under a vest), legs: [r,g,b], boots: [r,g,b], carry: 'bucket'|'towel'|'backpack'|'mug'|null, carryCol, age: 'young'|'old',
+//   det: drawn with more care (the heroes): ears and a nose, the hair cut to a shape, the clothes' parts, shoes with soles; then topKind may also
+//   be 'blazer' (an open jacket over the shirt, a tie: [r,g,b]), 'coat' (belted, to above the knee) or 'sweater' (a polo neck);
+//   scarf: [main, stripe, dark], sole: [r,g,b], bootH (a boot's height over the ankle), hairTie: [r,g,b] }
+// pose.fine: the picture will be large (a portrait, a card): rounder solids, brows, eyes with their whites, a mouth
+// (people are never weathered: no moss on them, no fallen leaves on their shoulders)
+function personModel(L, pose = {}) { const M = personBody(L, pose); for (const f of M.faces) f.clean = true; return M }
+function personBody(L, pose) { const M = T3(), H = L.h || 17.6, bd = L.build || 1, f = L.sex === 'f', skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
   const head = H / 4.5, legH = H * .42, shZ = H - head * 1.05 - .3, hipZ = legH + .2, shW = (f ? 2.25 : 2.7) * bd, hipW = (f ? 2.15 : 1.95) * bd, dep = (f ? 1.25 : 1.35) * bd, hz = H - head * .55;
   const run = pose.run != null, walk = run ? pose.run : pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : run ? .3 + (1 - Math.abs(cw)) * 1.1 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
   const lift = z => z + bob, sx = sway * .35, SA = run ? 1.45 : 1, LN = run ? 1.1 : 0; // (SA: the stride; LN: how far the shoulders lean forward)
+  const det = !!L.det, fine = !!pose.fine, SG = fine ? { seg: 9 } : {}, KN = {};
   if (pose.chair) { // sitting on a chair (seat height pose.seat), the hands on a desk before them (at pose.desk), typing (pose.type: the hands' frame), or in the lap
     const C = pose.chair, sz = C.seat ?? legH * .62, dz = C.desk, ty = C.type || 0, lean = C.lean ?? .5;
     for (const s of [-1, 1]) { const x = s * hipW * .48, hip = [x, 1, sz + .8], knee = [x * 1.08, 1 - 4.3, sz + 1], foot = [x * 1.1, 1 - 4.9, .6];
-      t3limb(M, hip, knee, 1.05 * bd, .9, legs); t3limb(M, knee, foot, .9, .7, legs); t3box(M, foot[0] - .75, foot[1] - 1.6, 0, foot[0] + .75, foot[1] + .6, 1.3, boots, { noAO: true }) }
-    const tz0 = sz + .5, tz1 = tz0 + (shZ - hipZ) * 1.02, wz = tz0 + (tz1 - tz0) * .4; t3torso(M, tz0, wz, hipW, dep, hipW * (f ? .82 : .95), dep * .95, top, { tex: torsoTex(L, 0, 0), dn1: -lean * .3 });
-    t3torso(M, wz, tz1, hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: torsoTex(L, wz, tz1), dn0: -lean * .3, dn1: -lean });
+      t3limb(M, hip, knee, 1.05 * bd, .9, legs, SG); t3limb(M, knee, foot, .9, .7, legs, SG); if (det) heroShoe(M, L, [foot[0], foot[1], .6]); else t3box(M, foot[0] - .75, foot[1] - 1.6, 0, foot[0] + .75, foot[1] + .6, 1.3, boots, { noAO: true }) }
+    const tz0 = sz + .5, tz1 = tz0 + (shZ - hipZ) * 1.02, wz = tz0 + (tz1 - tz0) * .4; t3torso(M, tz0, wz, hipW, dep, hipW * (f ? .82 : .95), dep * .95, top, { tex: det ? heroTopTex(L, tz0, wz, 0, -lean * .3, dep, wz, tz1) : torsoTex(L, 0, 0), dn1: -lean * .3, seg: SG.seg });
+    t3torso(M, wz, tz1, hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: det ? heroTopTex(L, wz, tz1, -lean * .3, -lean, dep, wz, tz1) : torsoTex(L, wz, tz1), dn0: -lean * .3, dn1: -lean, seg: SG.seg });
     for (const s of [-1, 1]) { const up = dz !== undefined ? (s > 0 ? (ty % 2 ? .45 : 0) : (ty % 2 ? 0 : .45)) : 0, sh = [s * (shW - .15), 1 - lean, tz1 - .5],
         hd = dz !== undefined ? [s * (shW * .5 + .2), 1 - 5.2 + (ty === 3 && s > 0 ? 1.2 : 0), dz + .7 + up] : [s * hipW * .45, 1 - 3.2, sz + 1.7], el = [s * (shW + .2), (sh[1] + hd[1]) / 2 + .6, Math.min(sh[2], hd[2]) - 1.2];
-      t3limb(M, sh, el, .72 * bd, .62, top); t3limb(M, el, hd, .62, .52, top); t3ball(M, hd, .6, .6, .62, skin, { seg: 6 }) }
-    t3limb(M, [0, 1 - lean, tz1 - .2], [0, 1 - lean * 1.15, tz1 + .8], .65, .6, skin);
-    headModel(M, L, [0, 1.05 - lean * 1.25 - (C.bow || 0), tz1 + head * .55 + .3 - (C.bow || 0) * .6], head, skin, look); return M }
+      t3limb(M, sh, el, .72 * bd, .62, top, SG); if (det) heroCuff(M, L, el, hd, top, SG); else t3limb(M, el, hd, .62, .52, top); t3ball(M, hd, .6, .6, .62, skin, { seg: 6 }) }
+    t3limb(M, [0, 1 - lean, tz1 - .2], [0, 1 - lean * 1.15, tz1 + .8 + (det ? .35 : 0)], .65, .6, skin); if (det) heroNeck(M, L, tz1, -lean, 0, SG.seg);
+    (det ? heroHead : headModel)(M, L, [0, 1.05 - lean * 1.25 - (C.bow || 0), tz1 + head * .55 + .3 + (det ? .35 : 0) - (C.bow || 0) * .6], head, skin, look, null, fine); return M }
   if (sit) { // sitting on the ground, knees up, forearms on them
     const sz = 1.2; for (const s of [-1, 1]) { const x = s * hipW * .45, hip = [x, 1, sz + .8], knee = [x * 1.2, -2.8, sz + 3.8], foot = [x * 1.2, -4.2, .6];
       t3limb(M, hip, knee, 1, .85, legs); t3limb(M, knee, foot, .85, .7, legs); t3box(M, foot[0] - .8, foot[1] - 1.4, 0, foot[0] + .8, foot[1] + .6, 1.2, boots) }
@@ -2256,23 +2263,27 @@ function personModel(L, pose = {}) { const M = T3(), H = L.h || 17.6, bd = L.bui
   // ground as it passes the other, the leg behind rises on its toes before it leaves, the leg in front reaches out nearly straight
   for (const s of [-1, 1]) { const ph = s * sw, sg = Math.max(0, s * cw), x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = run ? [x, 1 - ph * 1.9 - sg * 1.6, lift(legH * .52) + sg * 2.4 + Math.max(0, ph) * .5] : [x, 1 - ph * 1.3 - sg * .9, lift(legH * .52) + sg * .8 + Math.max(0, ph) * .2],
       foot = run ? [x, 1 - ph * 3.2 + Math.max(0, -ph) * 1.2 + sg * .6, bob + .6 + sg * 1.8 + Math.max(0, -ph - .2) * 3.4] : [x, 1 - ph * 2.3 + (ph < 0 ? .3 : 0) - sg * .3, .6 + sg * 1.1 + Math.max(0, -ph - .55) * 1.1];
-    t3limb(M, hip, knee, 1.05 * bd, .85, legs); t3limb(M, knee, foot, .85, .65, legs); t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
+    t3limb(M, hip, knee, 1.05 * bd, .85, legs, SG); t3limb(M, knee, foot, .85, .65, legs, SG); KN[s] = knee; if (det) heroShoe(M, L, foot); else t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
   // the body: hips to waist to shoulders
-  const waistZ = lift(hipZ + (shZ - hipZ) * .38), LW = -LN * .38; t3torso(M, lift(hipZ - .3), waistZ, hipW, dep, hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: torsoTex(L, 0, 0), dn1: LW });
-  t3torso(M, waistZ, lift(shZ), hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: torsoTex(L, waistZ, lift(shZ)), dn0: LW, dn1: -LN });
+  const waistZ = lift(hipZ + (shZ - hipZ) * .38), LW = -LN * .38, hem = lift(hipZ - (det && L.topKind === 'blazer' ? .9 : .3)); t3torso(M, hem, waistZ, hipW * (det ? 1.12 : 1), dep * (det ? 1.08 : 1), hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: det ? heroTopTex(L, hem, waistZ, 0, LW, dep, waistZ, lift(shZ)) : torsoTex(L, 0, 0), dn1: LW, seg: SG.seg });
+  t3torso(M, waistZ, lift(shZ), hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: det ? heroTopTex(L, waistZ, lift(shZ), LW, -LN, dep, waistZ, lift(shZ)) : torsoTex(L, waistZ, lift(shZ)), dn0: LW, dn1: -LN, seg: SG.seg });
+  // a coat's skirt, from the hips to above the knee, each half of it going a little with its leg
+  if (det && L.topKind === 'coat') { const z0 = lift(hipZ - .3), z1 = lift(legH * .64), go = s => { const k = KN[s], t = clamp((z0 - z1) / Math.max(1, z0 - k[2]), 0, 1.3); return clamp(t * (k[1] - 1), -2, 1.4) };
+    coatSkirt(M, L, z0, z1, hipW * 1.12, dep * 1.08, hipW * 1.26, dep * 1.26, go(-1), go(1), heroTopTex(L, z1, z0, 0, 0, dep * 1.1, waistZ, lift(shZ)), SG.seg) }
   if (L.topKind === 'vest') for (const s of [-1, 1]) t3face(M, [[s * .3, -.5 + 1 - dep, waistZ], [s * hipW * .8, -.5 + 1 - dep, waistZ], [s * shW * .7, -.3 + 1 - dep, lift(shZ) - .2], [s * .6, -.3 + 1 - dep, lift(shZ) - .2]], L.shirt || [180, 60, 50], null, { both: true, zb: .2 });
   if (L.carry === 'backpack') t3box(M, -shW * .7, 1 + dep * .8, waistZ, shW * .7, 1 + dep * .8 + 2.2, lift(shZ) - .4, L.carryCol || [70, 90, 60]);
   // arms: from the shoulder, swinging opposite the legs, the elbow bending forward a little; hands
   for (const s of [-1, 1]) { const carrying = (L.carry === 'bucket' || L.carry === 'mug') && s > 0, ph = -s * sw * (carrying ? .3 : 1), sh = [s * (shW - .15), 1 - LN, lift(shZ) - .5];
     // (running: the upper arm swings from the shoulder, the forearm held forward and up, the hand loosely closed by the chest)
     const el = run ? [s * (shW + .1), 1 - LN - ph * 1.7 + .5, lift(shZ) - H * .16] : [s * (shW + .05), 1 - ph * .9 + (carrying ? -.4 : 0), lift(shZ) - H * .17], hd = run ? [s * (shW - .25), el[1] - 1.9 - ph * .5, el[2] + 1.1 + Math.max(0, ph) * .6] : [s * (shW + .1 + (carrying ? .25 : 0)), 1 - ph * 1.8 - (carrying ? .8 : .2), lift(shZ) - H * .33 + (carrying ? 1.2 : 0) + Math.max(0, ph) * .5];
-    const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve); t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
+    const sleeve = L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top; t3limb(M, sh, el, .7 * bd, .6, sleeve, SG); if (det) heroCuff(M, L, el, hd, sleeve, SG); else t3limb(M, el, hd, .6, .5, sleeve); t3ball(M, hd, .6, .6, .65, skin, { seg: 6 });
     if (carrying && L.carry === 'bucket') { t3cyl(M, hd[0], hd[1] - .4, 1.5, hd[2] - 4, hd[2] - 1.2, L.carryCol || [150, 156, 160], { topCol: [70, 110, 140] }); t3line(M, [hd[0] - 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]); t3line(M, [hd[0] + 1.3, hd[1] - .4, hd[2] - 1.2], hd, [90, 90, 94]) }
     if (carrying && L.carry === 'mug') t3cyl(M, hd[0], hd[1] - .6, .6, hd[2] - .2, hd[2] + 1, L.carryCol || [200, 60, 50]) }
   if (L.carry === 'towel') t3face(M, [[shW * .9, 1 - dep - .2, lift(shZ) + .2], [shW * .9 - 1.6, 1 - dep - .2, lift(shZ) + .2], [shW * .9 - 1.6, 1 - dep - .2, lift(shZ) - 4], [shW * .9, 1 - dep - .2, lift(shZ) - 4.5]], L.carryCol || [236, 236, 228], null, { both: true, zb: .3, tex: (x, n, z) => (Math.round(z) % 3 === 0 ? [214, 90, 70] : (L.carryCol || [236, 236, 228])) });
   // neck and head (turning a little when the person looks about)
-  t3limb(M, [sx, 1 - LN, lift(shZ) - .2], [sx, 1 - LN * 1.15, lift(shZ) + .8], .65, .6, skin);
-  headModel(M, L, [sx, 1.05 - LN * 1.25, lift(hz)], head, skin, look); return M }
+  t3limb(M, [sx, 1 - LN, lift(shZ) - .2], [sx, 1 - LN * 1.15, lift(shZ) + .8], .65, .6, skin); if (det) heroNeck(M, L, lift(shZ), -LN, sw, SG.seg);
+  if (det) t3limb(M, [sx, 1 - LN * 1.15, lift(shZ) + .6], [sx, 1 - LN * 1.2, lift(shZ) + 1.2], .62, .6, skin); // (the neck a little longer)
+  (det ? heroHead : headModel)(M, L, [sx, 1.05 - LN * 1.25, lift(hz) + (det ? .35 : 0)], head, skin, look, { sw, cw, run, bob }, fine); return M }
 // the clothes' small marks: a zip down the front, a pocket, a hoodie's drawstrings, a fleece's darker yoke
 function torsoTex(L, z0, z1) { const c = L.top || [60, 110, 80]; return (x, n, z, col) => { if (n > 0) return col;
   if (L.topKind !== 'vest' && Math.abs(x) < .25 && z > z0 && z < z1 - .2) return cmul(c, .7);
@@ -2280,6 +2291,68 @@ function torsoTex(L, z0, z1) { const c = L.top || [60, 110, 80]; return (x, n, z
   if (L.badge && z1 > 0 && ((z > z1 - 4.4 && z < z1 - 2.8 && x > .6 && x < 2.6) || (z > z1 - 3 && z < z1 - 1.8 && x < -.6 && x > -2.4))) return L.badge; // (the firm's patch and a pocket flap)
   if (L.topKind === 'hoodie' && z > z1 - 2 && Math.abs(Math.abs(x) - .7) < .2) return [236, 236, 230];
   return col } }
+// ---- the heroes' own parts (look.det) ----
+// what a hero's top shows on the body, in the model's own frame (the front toward -n): z0..z1 the band, d0..d1 how far it leans forward
+// there, hd its depth, zw the waist, zs the shoulders. An open jacket: the shirt in a V down to its button, a loosened tie, lit lapels,
+// pocket flaps, the seam behind; a coat: lapels over the sweater, the fronts' edge a little to one side, two rows of buttons, the belt
+function heroTopTex(L, z0, z1, d0, d1, hd, zw, zs) { const sh = L.shirt || [214, 222, 232], tie = L.tie, k = L.topKind, coat = k === 'coat', vz = coat ? zs - 2.6 : zw + .9;
+  return (x, n, z, col) => { const t = z1 > z0 ? clamp((z - z0) / (z1 - z0), 0, 1) : 0, dn = 1 + d0 + (d1 - d0) * t, ax = Math.abs(x), fr = n < dn - hd * .3;
+    if (k === 'sweater') return z < z0 + .45 && z1 <= zw + .01 ? cmul(col, .9) : (Math.round(x * 3 + z * .5) % 2 ? col : cmul(col, .96)); // (a ribbed hem; the knit)
+    if (coat && Math.abs(z - zw) < .34) return fr && ax < .34 && Math.abs(z - zw) < .2 ? [172, 146, 100] : cmul(col, .74); // the belt, its buckle in front
+    if (fr) { const w = z > vz ? (z - vz) / (zs - vz) * (coat ? 1.15 : 1.05) : -1;
+      if (ax < w) { if (coat) return ax > w - .34 ? cmul(col, 1.14) : sh;
+        if (tie && z < zs - .5 && z > zw + .25 && ax < .3) return ax > .19 ? cmul(tie, .76) : tie;
+        if (tie && z >= zs - .5 && ax < .36) return cmul(tie, 1.12); return Math.abs(ax - w) < .14 ? cmul(sh, .86) : sh }
+      if (!coat && w > 0 && ax < w + .3) return cmul(col, 1.22);
+      if (coat ? Math.abs(x + .3) < .09 && z < vz : ax < .09 && z <= vz) return cmul(col, .62); // where the fronts meet
+      if (coat ? Math.abs(Math.abs(x + .3) - .62) < .15 && [zw + 1.2, zw + 2.5, zw - 1.1].some(b => Math.abs(z - b) < .15) : Math.abs(z - vz) < .17 && Math.abs(x + .2) < .17) return cmul(col, .52); // buttons
+      if (!coat && Math.abs(z - (zw - 1.1)) < .13 && ax > .75 && ax < 1.75) return cmul(col, .72) } // the pockets' flaps
+    else if (n > dn + hd * .45 && ax < .09 && z < zw - .2) return cmul(col, .74); // the seam behind, open at the bottom
+    return col } }
+// a coat's skirt: a band from the hips (z0) down to the hem (z1), wider there; nL, nR how far forward each half has gone with its leg
+function coatSkirt(M, L, z0, z1, hw0, hd0, hw1, hd1, nL, nR, tex, seg = 10) { const ctr = [0, 1, (z0 + z1) / 2], bot = c => (1 + c) / 2 * nR + (1 - c) / 2 * nL,
+    P = (z, hw, hd, i, lo) => { const a = i / seg * TAU, c = Math.cos(a); return [c * hw, 1 + Math.sin(a) * hd + (lo ? bot(c) : 0), z] }, tx = (x, n, z, c) => (z < z1 + .3 ? cmul(c, .84) : tex(x, n, z, c));
+  for (let i = 0; i < seg; i++) t3face(M, [P(z1, hw1, hd1, i, 1), P(z1, hw1, hd1, i + 1, 1), P(z0, hw0, hd0, i + 1, 0), P(z0, hw0, hd0, i, 0)], L.top, ctr, { tex: tx }) }
+// at the end of the sleeve: the shirt's cuff out of the jacket's, or the coat's darker cuff
+function heroCuff(M, L, el, hd, sleeve, o) { const q = k => [el[0] + (hd[0] - el[0]) * k, el[1] + (hd[1] - el[1]) * k, el[2] + (hd[2] - el[2]) * k];
+  t3limb(M, el, q(.82), .6, .53, sleeve, o); t3limb(M, q(.82), q(.97), L.topKind === 'blazer' ? .49 : .55, .48, L.topKind === 'blazer' ? L.shirt : cmul(sleeve, .82), o) }
+// round the neck (z the shoulders, dn how far they lean forward): the shirt's collar, open at the throat, and the jacket's behind it; a
+// polo neck; a scarf wound round, one end hanging down the chest and swinging with the step
+function heroNeck(M, L, z, dn, sw, seg) { const k = L.topKind;
+  if (k === 'blazer') { t3torso(M, z - .3, z + .5, .92, .84, .8, .74, L.shirt, { dn0: dn, dn1: dn * 1.1, seg, tex: (x, n, zz, c) => (n < 1 + dn - .45 && Math.abs(x) < .24 && zz > z + .05 ? null : c) });
+    t3torso(M, z - .35, z + .22, 1.22, 1.06, 1.04, .92, L.top, { dn0: dn, dn1: dn, seg, tex: (x, n, zz, c) => (n < 1 + dn ? null : cmul(c, .92)) }) }
+  if (k === 'sweater') t3torso(M, z - .2, z + .72, .92, .84, .84, .76, cmul(L.top, .96), { dn0: dn, dn1: dn * 1.1, seg, tex: (x, n, zz, c) => (Math.round(x * 3) % 2 ? c : cmul(c, .92)) });
+  if (L.scarf) { const [c0, c1, c2] = L.scarf, st = (x, n, zz) => ((Math.floor((zz - z) * 2.4 + x * .5) % 3 + 3) % 3 === 0 ? c1 : c0);
+    t3torso(M, z - .45, z + .75, 1.32, 1.12, 1.05, .9, c0, { dn0: dn, dn1: dn, seg, tex: st });
+    const a = [.62, 1 + dn - 1.0, z - .05], b = [.74 - sw * .24, 1 + dn - 1.34, z - 3.1]; t3limb(M, a, b, .5, .44, c0, { seg, tex: st }); t3ball(M, a, .56, .44, .5, c2, { seg: 6 }) } }
+// a shoe: the sole, the heel and the upper, the toe lower in front; a boot higher up the ankle, on a heel
+function heroShoe(M, L, ft) { const b = L.boots || [52, 44, 40], so = L.sole || cmul(b, .5), z0 = ft[2] - .6, nm = ft[1] - .5, hb = L.bootH || 0;
+  const tx = (x, n, z, c) => (z < z0 + (hb && n > nm + .6 ? .5 : .3) ? so : c), o = { noAO: true, tex: tx };
+  t3box(M, ft[0] - .72, nm, z0, ft[0] + .72, ft[1] + .75, ft[2] + .55 + hb, b, o); t3box(M, ft[0] - .66, ft[1] - 1.6, z0, ft[0] + .66, nm + .05, z0 + .95, b, o) }
+// a hero's head: the face (the eyes; brows, the eyes' whites, a mouth and a little colour when drawn large), ears and a nose; the hair
+// cut to its shape, in strands of lighter and darker: Рома's short (the nape and the ears bare, a little height over the forehead),
+// Даша's drawn back into a ponytail that swings with her step, a fringe swept over one side of her forehead
+function heroHead(M, L, c, head, skin, look, mot, fine) { const r = head * .5, hair = L.hair || [70, 50, 36], rot = look * .45, ew = Math.max(.32, r * .16), U = fine ? 12 : 8, VS = fine ? 7 : 5, f = L.sex === 'f', tail = L.cut === 'tail';
+  const cs = Math.cos(rot), sn = Math.sin(rot), at = (dx, dn) => [c[0] + dx * cs - dn * sn, c[1] + dx * sn + dn * cs], loc = (x, n) => { const dx = x - c[0], dn = n - c[1]; return [dx * cs + dn * sn, -dx * sn + dn * cs] };
+  t3ball(M, c, r, r * .98, r * .97, skin, { seg: U, vs: VS, tex: (x, n, z) => { const [a, b] = loc(x, n); if (b > -r * .45) return skin; const dz = z - c[2], aa = Math.abs(a), e = aa - r * .37;
+    if (Math.abs(dz - r * .03) < ew && Math.abs(e) < ew * 1.15) return fine && e > ew * .3 ? [234, 230, 224] : [44, 34, 32]; // the eyes
+    if (fine && Math.abs(dz - r * .3) < r * (f ? .05 : .07) && aa > r * .17 && aa < r * .58) return cmul(hair, .78); // brows
+    if (Math.abs(dz + r * .47) < ew * (fine ? .5 : .7) && aa < r * (fine ? (f ? .19 : .23) : .26)) return f ? cmix(skin, [176, 72, 72], fine ? .45 : .3) : cmul(skin, .74); // the mouth
+    if (fine && Math.abs(dz + r * .2) < r * .13 && Math.abs(aa - r * .52) < r * .13) return cmix(skin, [232, 124, 112], .16);
+    if (!fine && Math.abs(dz + r * .1) < ew && aa < ew * .7 && b < -r * .85) return cmul(skin, .88); return skin } });
+  for (const s of [-1, 1]) { const [ex, en] = at(s * r * .95, r * .08); t3ball(M, [ex, en, c[2] - r * .06], r * .2, r * .17, r * .3, cmul(skin, .93), { seg: 6 }) }
+  { const [nx, nn] = at(0, -r * .95); t3ball(M, [nx, nn, c[2] - r * .14], r * .13, r * .15, r * .2, skin, { seg: 6 }) }
+  const hl = cmix(hair, [255, 230, 190], .2), hd = cmul(hair, .72), strand = (a, dz) => { const v = tail ? vn(a / r * 5, dz / r * 1.2, 11) : vn(a / r * 7 + dz / r * 2, dz / r * 6, 11); return v > (fine ? (tail ? .64 : .68) : .72) ? hl : v < (fine ? (tail ? .3 : .24) : .22) ? hd : hair };
+  // where the hair ends: on the forehead (Даша's fringe lower on one side), down the temples, over the ears and round to the nape
+  const nape = -r * (tail ? .5 : .1), edge = (a, b) => { const k = b / r, aa = Math.abs(a) / r;
+    if (k < -.3 && aa < .86) return tail ? r * (.12 + .3 * clamp((a / r + .86) / 1.16, 0, 1)) : r * (.42 - .12 * clamp((aa - .55) / .3, 0, 1));
+    const u = clamp((k + .3) / .6, 0, 1); return r * (tail ? .1 : .22) * (1 - u) + nape * u };
+  { const [hx, hn] = at(0, r * (tail ? .06 : .1)); t3ball(M, [hx, hn, c[2] + r * (tail ? .05 : .1)], r * (tail ? 1.04 : 1.07), r * (tail ? 1.03 : 1.05), r * (tail ? 1 : 1.03), hair, { from: .28, seg: U, vs: VS, tex: (x, n, z) => { const [a, b] = loc(x, n), dz = z - c[2]; return dz < edge(a, b) ? null : strand(a, dz) } }) }
+  if (!tail) { const [qx, qn] = at(-r * .2, -r * .5); t3ball(M, [qx, qn, c[2] + r * .8], r * .62, r * .46, r * .32, hair, { seg: U, tex: (x, n, z) => strand(loc(x, n)[0], z - c[2]) }) } // (the height over the forehead, parted a little to one side)
+  if (tail) { const m = mot || {}, k = m.run ? 1.7 : 1, sx = -(m.sw || 0) * r * .34 * k, bk = m.run ? r * .4 : 0, up = (m.bob || 0) * .25, p0 = at(0, r * .98), p1 = at(sx * .6, r * 1.32 + bk * .6), p2 = at(sx * 1.4, r * 1.36 + bk);
+    const A = [p0[0], p0[1], c[2] + r * .3], B = [p1[0], p1[1], c[2] - r * .5 + up], E = [p2[0], p2[1], c[2] - r * 1.75 + up * 2 + bk * .5], tx = (x, n, z) => (vn(x * 3 + n, z * 1.4, 13) > .64 ? hl : hair);
+    t3limb(M, A, B, r * .27, r * .3, hair, { seg: fine ? 8 : 6, tex: tx }); t3limb(M, B, E, r * .3, r * .09, hair, { seg: fine ? 8 : 6, tex: tx }); t3ball(M, A, r * .24, r * .22, r * .22, L.hairTie || [96, 40, 46], { seg: 6 });
+    if (fine) for (const s of [-1, 1]) { const a0 = at(s * r * .8, -r * .52), a1 = at(s * r * .86, -r * .44); t3limb(M, [a0[0], a0[1], c[2] + r * .3], [a1[0], a1[1], c[2] - r * .55], r * .1, r * .07, hd) } } }
 function headModel(M, L, c, head, skin, look) { const r = head * .5, hair = L.hair || [70, 50, 36], rot = look * .45, ew = Math.max(.32, r * .16);
   const fx = (x, n) => [x * Math.cos(rot) - n * Math.sin(rot), x * Math.sin(rot) + n * Math.cos(rot)];
   // the face: eyes, brows, a mouth on the side turned to us (the south, before the figure is turned)
@@ -2305,17 +2378,22 @@ function npcSprite(look, kind, dir, frame) { const key = (look.id || JSON.string
 // backpack; on foot first (walking, or running), the bike from the camp's rental. On foot they are drawn like the people of
 // the places (the same model and scale), in sixteen directions; on the bike the rider model wears their clothes (rc). ----
 const HEROES = {
-  roma: { id: 'roma', name: 'Рома', look: { id: 'hero-roma', sex: 'm', h: 18.2, build: 1, skin: 1, hair: [56, 40, 30], cut: 'short', top: [58, 66, 86], topKind: 'jacket', legs: [62, 74, 102], boots: [62, 50, 42] },
-    rc: { jacket: [58, 66, 86], jacketD: [40, 46, 62], jacketL: [84, 94, 118], pants: [62, 74, 102], pantsD: [44, 54, 76], boot: [62, 50, 42], glove: [204, 152, 120], hair: [56, 40, 30], hat: false, tail: false, pack: false, scarf: false } },
-  dasha: { id: 'dasha', name: 'Даша', look: { id: 'hero-dasha', sex: 'f', h: 16.8, build: .9, skin: 2, hair: [150, 92, 54], cut: 'tail', top: [176, 128, 82], topKind: 'jacket', legs: [50, 56, 80], boots: [92, 64, 48] },
-    rc: { jacket: [176, 128, 82], jacketD: [138, 96, 58], jacketL: [204, 160, 112], pants: [50, 56, 80], pantsD: [36, 40, 60], boot: [92, 64, 48], glove: [224, 174, 140], hair: [150, 92, 54], hat: false, tail: true, pack: false, scarf: [64, 104, 82], scarfS: [44, 76, 60], scarfD: [42, 70, 56] } } };
+  roma: { id: 'roma', name: 'Рома', look: { id: 'hero-roma', det: true, sex: 'm', h: 18.2, build: 1, skin: 1, hair: [52, 38, 30], cut: 'short', top: [52, 62, 92], topKind: 'blazer', shirt: [214, 222, 232], tie: [136, 44, 56],
+      legs: [108, 110, 120], boots: [84, 56, 40], sole: [40, 32, 28] },
+    rc: { jacket: [52, 62, 92], jacketD: [36, 44, 68], jacketL: [80, 92, 126], pants: [108, 110, 120], pantsD: [76, 78, 88], pantsL: [140, 142, 152], boot: [84, 56, 40], sole: [40, 32, 28],
+      glove: [204, 152, 120], gloveL: [226, 182, 150], gloveD: [160, 108, 82], hair: [52, 38, 30], collar: [214, 222, 232], collarD: [164, 172, 186], hat: false, tail: false, pack: false, scarf: false } },
+  dasha: { id: 'dasha', name: 'Даша', look: { id: 'hero-dasha', det: true, sex: 'f', h: 16.8, build: .9, skin: 2, hair: [112, 64, 42], cut: 'tail', hairTie: [44, 74, 58], top: [184, 136, 88], topKind: 'coat', shirt: [146, 70, 80],
+      scarf: [[66, 106, 84], [96, 138, 110], [44, 74, 58]], legs: [50, 56, 84], boots: [70, 48, 36], bootH: 1.2, sole: [34, 26, 22] },
+    rc: { jacket: [184, 136, 88], jacketD: [142, 100, 62], jacketL: [214, 170, 120], pants: [50, 56, 84], pantsD: [36, 40, 60], pantsL: [76, 84, 114], boot: [70, 48, 36], sole: [34, 26, 22],
+      glove: [226, 178, 146], gloveL: [242, 204, 178], gloveD: [178, 128, 100], hair: [112, 64, 42], coat: true, hat: false, tail: true, pack: false, scarf: [66, 106, 84], scarfS: [96, 138, 110], scarfD: [44, 74, 58] } } };
+HEROES.dasha.office = Object.assign({}, HEROES.dasha.look, { id: 'hero-dasha-office', topKind: 'sweater', top: [146, 70, 80], scarf: null }); // (her coat on the hook)
 const INTRO_ON = /[?&]intro\b/.test(location.search) || typeof INTRO_PREVIEW !== 'undefined';
 const HERO0 = INTRO_ON ? null : (() => { try { return localStorage.getItem('trail.hero') } catch (e) { return null } })(); let HERO = HEROES[HERO0] || HEROES.roma, HGEN = 0;
 // the hero changed: their pictures made again (on foot at once as needed; on the bike in the background, the old ones dropped)
 function setHero(id) { if (!HEROES[id]) return; try { localStorage.setItem('trail.hero', id) } catch (e) { } if (HERO.id === id) return; HERO = HEROES[id]; HGEN++; HSPR.clear();
   RSETS.clear(); RPND.clear(); SPR_ST.clear(); SPND.clear(); SQ.length = 0; RORDER = null; STAND.k = 0; STAND.go = 0; STAND.cv = null; $('bHero').innerHTML = 'Герой: <b>' + HERO.name + '</b>' }
 // the choosing: the two of them standing side by side, large; a click (or a tap) on one
-function heroPortrait(id) { const L = HEROES[id].look, sp = t3sprite(() => { const M = personModel(L, { sway: id === 'roma' ? 1 : -1 }); t3rot(M, id === 'roma' ? 210 : 150); t3scale(M, NPC_K * 3.2); return M }, [0])[0]; return sp.s.canvas() }
+function heroPortrait(id) { const L = HEROES[id].look, sp = t3sprite(() => { const M = personModel(L, { sway: id === 'roma' ? 1 : -1, fine: 1 }); t3rot(M, id === 'roma' ? 210 : 150); t3scale(M, NPC_K * 3.2); return M }, [0])[0]; return sp.s.canvas() }
 function heroPick(first) { const P = $('heroPick'); if (!P.dataset.made) { P.dataset.made = 1; for (const b of P.querySelectorAll('button[data-h]')) { const c = heroPortrait(b.dataset.h); c.className = 'por'; b.prepend(c); b.onclick = () => { setHero(b.dataset.h); P.hidden = true; paused = P.wasPaused; if (P.first && INTRO_ON) introStart(null) } } }
   P.first = first; P.wasPaused = first ? false : paused; paused = true; P.hidden = false }
 const HDIRS = 16, HSPR = new Map(), HERO_RUN = 24; // (HERO_RUN: px per running cycle of two steps; walking: 12.8)
@@ -2362,7 +2440,7 @@ function cardChair(x, n, back, col = [52, 56, 66]) { const M = T3(), metal = [96
   if (back) { const bn = n + back * 2.3; t3box(M, x - 2, bn - .25, 5.2, x + 2, bn + .25, 10.6, col); t3box(M, x - .2, bn - .2, 4.6, x + .2, bn + .2, 5.4, metal) }
   return M }
 // one at a desk: the chair, the person on it typing (frame f; 3: a hand on the mouse), facing north (dir 0) or south (4)
-function cardWorker(look, x, n, dir, f, o = {}) { const P = personModel(look, { chair: { seat: 4.8, desk: 7.4, type: f, lean: o.lean ?? .5, bow: o.bow || 0 }, look: o.look || 0 }); t3rot(P, dir * 45);
+function cardWorker(look, x, n, dir, f, o = {}) { const P = personModel(look, { chair: { seat: 4.8, desk: 7.4, type: f, lean: o.lean ?? .5, bow: o.bow || 0 }, look: o.look || 0, fine: 1 }); t3rot(P, dir * 45);
   t3shift(P, x, n, 0); return t3join(cardChair(x, n + (dir === 0 ? -.4 : .4), dir === 0 ? -1 : 1), P) }
 
 // ---- the office: an open floor on a high storey, rain on the big windows, the hero at a desk with their back to us, a colleague
@@ -2390,7 +2468,7 @@ const CARD_OFFICE = {
   // the hero at the far desk facing us (the window and the clock behind them, the monitor's light on their face); a colleague in front with
   // her back to us, her screen to us; beside her a desk nobody sits at today
   units: [
-    { n: 31, frames: 4, make: f => { const M = t3join(cardDesk(-10, 22, 14, 28, { back: true }), cardMonitor(2, 23.6, 1), cardWorker(HERO.look, 2, 31, 4, f === 2 ? 0 : f, { bow: .25 }));
+    { n: 31, frames: 4, make: f => { const M = t3join(cardDesk(-10, 22, 14, 28, { back: true }), cardMonitor(2, 23.6, 1), cardWorker(HERO.office || HERO.look, 2, 31, 4, f === 2 ? 0 : f, { bow: .25 }));
         t3box(M, -.3, 25.3, 7.4, 4.3, 26.6, 7.7, [52, 54, 60]); t3cyl(M, 9, 24.5, .55, 7.4, 8.6, [236, 232, 222], { topCol: [90, 60, 40] }); // (the keyboard, a mug)
         for (let k = 0; k < 6; k++) t3box(M, -8, 23, 7.4 + k * .18, -4.5, 26, 7.58 + k * .18, k % 2 ? [244, 244, 240] : [232, 230, 222]); return M } }, // (a stack of papers)
     { n: 4, frames: 4, make: f => { const L = { id: 'colleague-1', sex: 'f', h: 16.6, build: .95, skin: 0, hair: [40, 34, 30], cut: 'long', top: [120, 128, 138], topKind: 'fleece', legs: [50, 50, 60], boots: [40, 36, 34] };
@@ -3765,7 +3843,7 @@ function guardModel(L, P) { const M = T3(); M.seed = 7; const H = L.h || 17, bd 
     const vz = cz + .3, quad = [[-.8, -.9], [.8, -.9], [.66, -1.22], [-.66, -1.22]].map(([a, b]) => { const [x, n] = fx(a * r, b * r); return [hc[0] + x, hc[1] + .2 + n, vz - (b < -1.1 ? .25 : 0)] }); // (a short visor: it must not cover the eyes in the slanting view)
     t3face(M, quad, cmul(hcol, .7), null, { both: true, zb: .15, clean: true }) }
   { const rot = look * .45, a = [0, -r * .95], cs = Math.cos(rot), sn = Math.sin(rot); M.mouth = [hc[0] + a[0] * cs - a[1] * sn, hc[1] + a[0] * sn + a[1] * cs, hc[2] - r * .45] } // (where the smoke comes from: kept in the model's own frame, turned and scaled with the sprite by the caller)
-  return M }
+  for (const f of M.faces) f.clean = true; return M }
 function guardMarkMouth(m, dir) { const T = T3(); T.dots.push([m.slice(), [0, 0, 0]]); t3rot(T, dir * 45); t3scale(T, NPC_K); return t3p(T.dots[0][0]) }
 
 // ---- the day of the guard ----
@@ -6288,7 +6366,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
