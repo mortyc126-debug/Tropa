@@ -6223,7 +6223,9 @@ const PLACES = {};
       ...[[[468, 506], [446, 486], [420, 474]], [[492, 488], [530, 470], [562, 466]], [[492, 512], [540, 504], [578, 503]]].flatMap((L, i) => [-4, 4].map(o => ({ id: 'track-' + (i + 1) + (o < 0 ? 'a' : 'b'), mat: 'track', line: L.map(([x, y]) => [x, y + o]), w: 1.6, rough: .4 }))),
       { id: 'dirt-porch', mat: 'dirt', ellipse: [272, 372, 24, 10], rough: .4 }, { id: 'dirt-board', mat: 'dirt', ellipse: [563, 392, 18, 7], rough: .4 },
       { id: 'dirt-wash', mat: 'dirt', ellipse: [690, 316, 22, 8], rough: .5 }, { id: 'dirt-stand', mat: 'dirt', ellipse: [409, 442, 18, 7], rough: .4 },
-      { id: 'road', mat: 'road', line: [[480, 928], [483, 480], [480, 419], [480, 378]], w: 28 },
+      // the way in: wide at the gate and the car park, a forest road out in the wood (narrowing between)
+      { id: 'road', mat: 'road', line: [[480, 928], [478, 840], [483, 760], [481, 690], [480, 640]], w: 16 }, { id: 'road-neck', mat: 'road', line: [[480, 680], [480, 620]], w: 21 },
+      { id: 'road-gate', mat: 'road', line: [[480, 640], [483, 480], [480, 419], [480, 378]], w: 28 },
     ],
     objects,
     scatter: [{ id: 'scatter', n: 150, seed: 12, in: 'clearing', clear: 9, kinds: [['grass', 3], ['juniper', 1], ['lowshrub', 1], ['fern', 1], ['mush', 1], ['rock', 1], ['bush', 1], ['branch', 1.2]] }],
@@ -6867,9 +6869,10 @@ const HIT = { L: null, d: 0 };
 function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { if (SKIPS.length && SKIPS.includes(A[i])) continue; let d = layerD(A[i], x, y); if (d < 0) {
       if (A[i].soft && MAPW.on && A[A.length - 1] === MWL) { const w = mapwD(x, y); if (w < 0) { HIT.L = MWL; HIT.d = w; HIT.w = 0; return HIT } } /* (a clearing's grass or a place's sand, a path, a yard: the map's water lies over it; only a road or a dam goes out over it) */
       if (A[i].soft) for (let j = i + 1; j < A.length; j++) { const B = A[j]; if ((B.mat === 'road' || B.mat === 'path' || B.mat === 'bridge') && !B.soft) { const d2 = layerD(B, x, y); if (d2 < 0) { i = j; d = d2; break } } } /* (and a road from outside going in over its grass) */ if (A[i].mat === 'dam' && damPart(A[i], x, y) === 0) continue; HIT.L = A[i]; HIT.d = d; HIT.w = A[i].ws ? LW : A[i].w;
+      // (a dam, laid in pieces, is one embankment too: the piece nearest its middle line draws it, or each piece's round end shows)
       // roads and paths meeting (the branches of a fork, the pieces of the trail, a side road) are one surface: its edge
       // is the edge of all of them together, so the rounded end of one piece never shows as a line across another
-      const m = A[i].mat; if (m === 'road' || m === 'path') for (let j = i + 1; j < A.length; j++) { const B = A[j]; if (B.mat !== m) continue; const d2 = layerD(B, x, y); if (d2 < HIT.d) { HIT.d = d2; HIT.L = B; HIT.w = B.ws ? LW : B.w } }
+      const m = A[i].mat; if (m === 'road' || m === 'path' || m === 'dam') for (let j = i + 1; j < A.length; j++) { const B = A[j]; if (B.mat !== m || SKIPS.length && SKIPS.includes(B)) continue; const d2 = layerD(B, x, y); if (d2 < HIT.d) { HIT.d = d2; HIT.L = B; HIT.w = B.ws ? LW : B.w } }
       return HIT } } HIT.L = null; HIT.d = 0; return HIT }
 const matAt = (x, y) => { const h = layerAt(x, y); return h.L ? h.L.mat : PL.base };
 const inClearing = (x, y, pad = 0) => inPlace(x, y, pad);
@@ -7209,6 +7212,9 @@ let REVHOLD = false;
 const R = { autoRev: 0, blockT: 0, forceTurn: 0, x: 0, y: 0, psi: 0, v: 0, steer: 0, crank: 0, f: 0, yi: 0, li: 0, surf: 'road', walk: false,
   foot: GAMEMODE, gp: 0, gf: 0, gk: 'idle', ia: 'idle', ib: 0, it: 1, hd16: 0, stepN: 0, settle: false }; // (foot: the hero on foot, without the bike; gp..settle: their steps and how they stand)
 { const [x, y] = toW(PL.spawn.x, PL.spawn.y); R.x = x; R.y = y; R.psi = (PL.spawn.heading || 0) * D2R; R.yi = Math.round(PL.spawn.heading / YSTEP) % NY }
+// the dam's page (or ?at=dam): on the bike at the turning onto the dam, facing along it, to ride it through
+const START_DAM = (typeof AT_DAM !== 'undefined' || /[?&]at=dam\b/.test(location.search)) && GAMEMODE && DAMR.pts;
+if (START_DAM) { const P = DAMR.pts, a = P[0], b = P[Math.min(P.length - 1, 10)], h = Math.atan2(b[0] - a[0], -(b[1] - a[1])); R.x = a[0]; R.y = a[1]; R.psi = h; R.foot = false; R.yi = ((Math.round(h / D2R / YSTEP) % NY) + NY) % NY }
 const BIKE_L = 14; // wheelbase, px
 // ---- input: the arrows or WASD say where to go (screen directions, north up); the bike steers there as a bicycle
 // does. On a touch screen a stick appears where the thumb lands. Space brakes. ----
