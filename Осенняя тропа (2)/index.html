@@ -2541,13 +2541,13 @@ function cardActor(look, keys, o = {}) { const dirOf = (dx, dn) => (Math.round(M
     add = (key, pose, dir) => { if (!idx.has(key)) { idx.set(key, F.length); F.push([pose, dir]) } }, segs = []; let acc = 0;
   for (let i = 0; i + 1 < keys.length; i++) { const [u0, x0, n0, f0] = keys[i], [u1, x1, n1] = keys[i + 1], d = Math.hypot(x1 - x0, n1 - n0), dr = d > .01 ? dirOf(x1 - x0, n1 - n0) : null;
     if (dr != null) for (let f = 0; f < 8; f++) add('w' + dr + '/' + f, Object.assign({ walk: f / 8 }, o.base), dr); segs.push({ u0, u1, x0, n0, x1, n1, d, dr, f0, acc }); acc += d }
-  for (const k of keys) for (let f = 0; f < 2; f++) add('i' + k[3] + '/' + f, Object.assign({ sway: f ? 1 : -1 }, o.base), k[3]);
+  for (const k of keys) for (let f = 0; f < 4; f++) add('i' + k[3] + '/' + f, Object.assign({ sway: (f / 3 * 2 - 1) * .3 }, o.base), k[3]); // (standing: the weight shifting slowly, a little, from foot to foot)
   for (const [key, pose, dir] of o.poses || []) add(key, Object.assign({}, o.base, pose), dir);
   const first = keys[0], last = keys[keys.length - 1], clk = (T, u) => (o.clock ? o.clock(T, u) : u),
     spot = w => { if (w <= first[0]) return [first[1], first[2], null, 0, first[3]]; if (w >= last[0]) return [last[1], last[2], null, 0, last[3]];
       const s = segs.find(q => w >= q.u0 && w <= q.u1), k = s.u1 > s.u0 ? (w - s.u0) / (s.u1 - s.u0) : 1; return [s.x0 + (s.x1 - s.x0) * k, s.n0 + (s.n1 - s.n0) * k, s, k, s.f0] };
   return { n: o.sortN ?? keys[0][2], frames: F.length, make: f => cardPerson(look, F[f][0], F[f][1], o.extra), where: (T, u) => spot(clk(T, u)).slice(0, 2), at: (T, u) => { if (o.when && !o.when(T, u)) return null;
-    const w = clk(T, u), id = Math.floor(T * 1.1 + first[1] * .1) % 2; if (o.enter && w < first[0]) return null; if (o.exit && w > last[0]) return null;
+    const w = clk(T, u), id = Math.round((Math.sin(T * 1.1 + first[1] * .7) + 1) * 1.5); if (o.enter && w < first[0]) return null; if (o.exit && w > last[0]) return null;
     const [x, n, s, k, face] = spot(w); let f = s && s.dr != null ? idx.get('w' + s.dr + '/' + Math.floor((s.acc + s.d * k) / 10.7 * 8) % 8) : idx.get('i' + face + '/' + id);
     const p = o.pose && o.pose(T, u); if (p != null && idx.has(p)) f = idx.get(p);
     const fi = o.fadeIn ?? .03, fo = o.fadeOut ?? .03; return { x, n, s: o.sortN ?? n, f, a: Math.min(o.enter && fi > 0 ? (w - first[0]) / fi : 1, o.exit && fo > 0 ? (last[0] - w) / fo : 1), clip: o.clip && o.clip(T, u, x, n) } } } }
@@ -2555,6 +2555,10 @@ function cardActor(look, keys, o = {}) { const dirOf = (dx, dn) => (Math.round(M
 // head back (held), and down the same way; stretchAt(t, d): which of them t seconds into a stretch of d seconds
 const STRETCH_POSES = (dir, base = {}) => [['s1', Object.assign({}, base, { handR: 'hug', handL: 'hug', bow: .1 }), dir], ['s2', Object.assign({}, base, { handR: 'face', handL: 'face', bow: 0 }), dir],
   ['s3', Object.assign({}, base, { handR: 'up', handL: 'up', bow: -.1 }), dir], ['s4', Object.assign({}, base, { handR: 'up', handL: 'up', bow: -.3 }), dir]];
+// the head turned by degrees (seven steps from the left to the right), and where it is turned at the moment w of a path [[w, -1..1], ..] (eased)
+const LOOK_POSES = (dir, base = {}) => [0, 1, 2, 3, 4, 5, 6].map(i => ['k' + i, Object.assign({}, base, { look: i / 3 - 1 }), dir]);
+const lookAt = (w, path) => { let v = path[0][1]; for (let i = 0; i + 1 < path.length; i++) { const [a, va] = path[i], [b, vb] = path[i + 1]; if (w >= a && w <= b) { const k = (w - a) / (b - a), e = k * k * (3 - 2 * k); v = va + (vb - va) * e; break } if (w > b) v = vb }
+  return 'k' + Math.round((v + 1) * 3) };
 const stretchAt = (t, d) => { const k = t / d, st = ['s1', 's2', 's3', 's4']; if (k < 0 || k > 1) return null; const up = k < .5 ? k / .4 : (1 - k) / .3; return st[Math.max(0, Math.min(3, Math.floor(up * 4)))] };
 // the townsfolk of the cards: at the bus stop, in the bus
 const CARD_FOLK = [
@@ -2616,10 +2620,7 @@ function officeSet() { const M = T3(), wall = [178, 176, 166], side = [160, 158,
   t3face(M, [[-34, 34, 0], [34, 34, 0], [34, 34, 24], [-34, 34, 24]], wall, [0, 44, 12], { tex: (x, n, z, c) => {
     if (z < .8) return [96, 92, 86];
     for (const [a, b] of OF_WINS) if (x > a - .7 && x < b + .7 && z > WZ[0] - .7 && z < WZ[1] + .7) { if (!inWin(x, z) || Math.abs(x - (a + b) / 2) < .25) return [214, 214, 210];
-      const sky = cmix([150, 160, 172], [120, 132, 146], (z - WZ[0]) / (WZ[1] - WZ[0])), bh = 9 + 3.5 * Math.sin(x * .9) + 2.6 * Math.sin(x * .37 + 1) + (Math.floor((x + 50) / 3) % 3) * 1.3;
-      if (z < WZ[0] + bh * .6) { const far = Math.floor((x + 50) / 2.3) % 2; return ((Math.floor(z * 1.6) + Math.floor(x * 1.1)) % 3 === 0) ? [132, 140, 150] : far ? [104, 112, 124] : [96, 104, 116] }
-      if (x > 22 && x < 22.4 && z > WZ[0] + 5) return [92, 96, 102]; if (z > 18 && z < 18.4 && x > 17 && x < 29) return [92, 96, 102];
-      return sky }
+      return cmix([150, 160, 172], [120, 132, 146], (z - WZ[0]) / (WZ[1] - WZ[0])) } // (the glass: the town beyond it is drawn over, officeWindows)
     return c } });
   t3face(M, [[-34, -8, 0], [-34, 34, 0], [-34, 34, 24], [-34, -8, 24]], side, [-44, 17, 12], { tex: (x, n, z, c) => {
     if (n > d0 - .7 && n < d1 + .7 && z < 21.7) return n < d0 || n > d1 || z > 21 ? [126, 112, 94] : [34, 32, 30]; // (the doorway and its frame)
@@ -2637,13 +2638,30 @@ function officeSet() { const M = T3(), wall = [178, 176, 166], side = [160, 158,
 // with its minutes) and the tear-off calendar on the back wall
 function officeUnder(g, O, S, T, dusk, h, day = ['13', 'ПН'], rain = 1) { const P = (x, n, z) => cardP(O, x, n, z, S), k = S / 3;
   for (const [a, b] of OF_WINS) { const q = [P(a, 34, 7), P(b, 34, 7), P(b, 34, 21), P(a, 34, 21)]; g.save(); g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip();
-    g.fillStyle = `rgba(28,36,60,${.68 * dusk})`; g.fillRect(0, 0, CARD.W, CARD.H);
-    if (dusk > .2) for (let i = 0; i < 40; i++) { const r = h2(i, 7, 77), x = q[0][0] + r * (q[1][0] - q[0][0]), y = q[2][1] + h2(i, 8, 77) * (q[0][1] - q[2][1]) * .55 + (q[0][1] - q[2][1]) * .4; if (h2(i, 9, 77) < dusk * .9) { g.fillStyle = 'rgba(255,214,140,.8)'; g.fillRect(Math.round(x), Math.round(y), Math.ceil(k), Math.ceil(k)) } }
+    officeTown(g, P, a, b, dusk, T, k);
     g.fillStyle = 'rgba(214,226,240,.5)'; if (rain) for (let i = 0; i < 26; i++) { const x = q[0][0] + h2(i, 3, 5) * (q[1][0] - q[0][0]) + 4, y = q[2][1] + ((h2(i, 4, 5) * 60 * k + T * 70 * k * (.8 + h2(i, 6, 5) * .5)) % (q[0][1] - q[2][1] + 6)) - 3; g.fillRect(Math.round(x), Math.round(y), 1, Math.round(2 * k)); g.fillRect(Math.round(x - 1), Math.round(y + 2 * k), 1, 1) }
+    { const m = (a + b) / 2, p = P(m - .25, 34, 21), q = P(m + .25, 34, 7); g.fillStyle = '#d6d6d2'; g.fillRect(Math.round(p[0]), Math.round(p[1]), Math.max(1, Math.round(q[0] - p[0])), Math.round(q[1] - p[1])) } // (the mullion)
     g.restore() }
   { const [cx, cy] = P(-10.5, 34, 17), r = 4.2 * k; g.fillStyle = '#f2f0ea'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); g.strokeStyle = '#3a3c42'; g.lineWidth = 1; g.stroke();
     g.strokeStyle = '#24262c'; for (const [a, l] of [[(h % 12) / 12 * TAU, r * .55], [(h % 1) * TAU, r * .85]]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(a) * l, cy - Math.cos(a) * l); g.stroke() } }
   { const [x, y] = P(9.4, 34, 19.6), w = Math.round(12 * k), hh = Math.round(14 * k); g.fillStyle = '#f0ece2'; g.fillRect(Math.round(x), Math.round(y), w, hh); g.fillStyle = '#c0453a'; g.fillRect(Math.round(x), Math.round(y), w, Math.round(3 * k)); cardText(g, day[0], x + w / 2 - cardTextW(day[0]) / 2, y + 4 * k, '#2a2a30'); cardText(g, day[1], x + w / 2 - cardTextW(day[1]) / 2, y + 9 * k, '#7a7a82') } }
+// the town beyond a window (x from a to b on the back wall, z 7..21), as one view through all three: the sky (grey day, or the evening's),
+// the far blocks pale in the haze, the nearer ones darker with their windows in rows (lit as it gets dark), a crane over a building site,
+// the street's trees' crowns below, autumn yellow; its mullion over it
+function officeTown(g, P, a, b, dusk, T, k) { const Z0 = 7, Z1 = 21, top = P(a, 34, Z1), bot = P(a, 34, Z0), rect = (x0, x1, z0, z1, col) => { const p = P(x0, 34, z1), q = P(x1, 34, z0); g.fillStyle = col; g.fillRect(Math.round(p[0]), Math.round(p[1]), Math.max(1, Math.round(q[0] - p[0])), Math.max(1, Math.round(q[1] - p[1]))) };
+  const sky = g.createLinearGradient(0, top[1], 0, bot[1]); sky.addColorStop(0, crgb(cmix([142, 154, 170], [38, 46, 72], dusk))); sky.addColorStop(1, crgb(cmix([196, 200, 202], [104, 86, 100], dusk))); g.fillStyle = sky; g.fillRect(Math.round(top[0]) - 2, Math.round(top[1]), Math.round(P(b, 34, Z1)[0] - top[0]) + 4, Math.round(bot[1] - top[1]));
+  const haze = cmix([168, 176, 188], [56, 64, 90], dusk), far = cmix([132, 142, 156], [40, 48, 70], dusk), mid = cmix([98, 106, 120], [26, 30, 46], dusk), win = cmix([138, 148, 162], [38, 44, 62], dusk);
+  for (let i = Math.floor((a + 60) / 1.6) - 1; i <= Math.floor((b + 60) / 1.6) + 1; i++) { const x = i * 1.6 - 60, h = 3 + h2(i, 1, 301) * 3.5; rect(x, x + 1.6, Z0, Z0 + 4 + h, crgb(haze)) } // (the farthest, in the haze)
+  for (let i = Math.floor((a + 60) / 2.2) - 1; i <= Math.floor((b + 60) / 2.2) + 1; i++) { const x = i * 2.2 - 60 + h2(i, 4, 302) * .4, w = 1.4 + h2(i, 5, 302) * .7, h = 2 + h2(i, 6, 302) * 4.5; rect(x, x + w, Z0, Z0 + 2 + h, crgb(far));
+    if (h2(i, 7, 302) < .3) rect(x + w * .4, x + w * .44, Z0 + 2 + h, Z0 + 3.4 + h, crgb(far)) } // (an aerial)
+  for (let i = Math.floor((a + 60) / 3.4) - 1; i <= Math.floor((b + 60) / 3.4) + 1; i++) { const x = i * 3.4 - 60 + h2(i, 8, 303) * .5, w = 2.2 + h2(i, 9, 303) * .9, h = 1.5 + h2(i, 10, 303) * 5.5; if (h2(i, 11, 303) < .2) continue;
+    rect(x, x + w, Z0, Z0 + h, crgb(mid)); rect(x + w - .25, x + w, Z0, Z0 + h, crgb(cmul(mid, .82))); // (its side in shade)
+    for (let z = Z0 + .9; z < Z0 + h - .5; z += .9) for (let xx = x + .35; xx < x + w - .45; xx += .6) { const lit = h2(Math.round(xx * 10), Math.round(z * 10), 304) < dusk * .55; rect(xx, xx + .3, z, z + .35, lit ? 'rgb(255,214,140)' : crgb(win)) } }
+  { const cx = 20.5, base = Z0 + 3; if (cx > a - 4 && cx < b + 6) { g.strokeStyle = crgb(cmix([78, 84, 96], [24, 26, 38], dusk)); g.lineWidth = 1; const L = (x0, z0, x1, z1) => { const p = P(x0, 34, z0), q = P(x1, 34, z1); g.beginPath(); g.moveTo(Math.round(p[0]) + .5, Math.round(p[1]) + .5); g.lineTo(Math.round(q[0]) + .5, Math.round(q[1]) + .5); g.stroke() };
+    L(cx, base, cx, Z0 + 12); L(cx + .3, base, cx + .3, Z0 + 12); L(cx - 2.4, Z0 + 12, cx + 6, Z0 + 12); L(cx - 2.4, Z0 + 11.6, cx + 6, Z0 + 12); L(cx + 4.2, Z0 + 12, cx + 4.2, Z0 + 9.8 + Math.sin(T * .3) * .2); rect(cx - 2.4, cx - 1.4, Z0 + 11, Z0 + 12, crgb(cmix([78, 84, 96], [24, 26, 38], dusk))) } } // (a crane, its hook hanging)
+  for (let i = Math.floor((a + 60) / 1.3) - 1; i <= Math.floor((b + 60) / 1.3) + 1; i++) { const x = i * 1.3 - 60, r = h2(i, 12, 305), cz = Z0 + .3 + r * 1.1, col = cmix(r < .35 ? [206, 150, 60] : r < .7 ? [178, 112, 52] : [136, 120, 60], [40, 36, 40], dusk * .8);
+    const p = P(x, 34, cz), rr = Math.max(2, Math.round((1.1 + r * .6) * 3 * k)); cardDisc(g, p[0], p[1], rr, crgb(col)); cardDisc(g, p[0] - rr * .3, p[1] - rr * .35, Math.max(1, rr - 2), crgb(cmul(col, 1.12))) } // (the street's trees)
+  g.fillStyle = `rgba(28,36,60,${.25 * dusk})`; g.fillRect(0, 0, CARD.W, CARD.H) }
 // the door: shut, or open out into the corridor (the corridor's light in the doorway, the leaf's edge by its hinge) over the moments given;
 // a part of the wall, so drawn before anyone in the room. The doorway on the card (one beyond the wall is seen only in it)
 function ofDoor(opens) { const [wx, d0, d1] = OF_DOOR, col = [150, 128, 100];
@@ -3203,7 +3221,7 @@ const CARD_END = {
   units: [cardBusUnit('paz', false, END_XS, -1, -.5, .3, .52, null, .21),
     cardActor(heroIn('look'), [[.08, END_XS + busDC('paz'), BUS_N + 5, 4], [.15, END_XS + busDC('paz'), 16.4, 4], [.5, END_XS + busDC('paz'), 16.4, 4], [.56, END_XS + busDC('paz'), 16.4, 0], [.82, 2, 46, 0]], { enter: 1, fadeIn: 0, sortN: 16.4,
       clip: (T, u, x, n) => (u < .16 && n > BUS_N - .4 ? busDoor(END_O, 2, 'paz', END_XS) : null), // (only while stepping down out of the door)
-      poses: [...STRETCH_POSES(4), ['l', { look: -1 }, 5], ['r', { look: 1 }, 3], ['sign', { bow: -.35 }, 0]], pose: (T, u) => (u > .16 && u < .38 ? stretchAt((u - .16) * 11, 2.4) : u > .39 && u < .46 ? 'l' : u > .46 && u < .54 ? 'r' : u > .85 ? 'sign' : null) }),
+      poses: [...STRETCH_POSES(4), ...LOOK_POSES(4), ['sign', { bow: -.35 }, 0]], pose: (T, u) => (u > .16 && u < .38 ? stretchAt((u - .16) * 11, 2.4) : u > .38 && u < .58 ? lookAt(u, [[.38, 0], [.43, -1], [.46, -1], [.52, 1], [.55, 1], [.58, 0]]) : u > .85 ? 'sign' : null) }),
     { n: 2, frames: 1, make: () => { const M = T3();
         for (const [x, n, c] of [[-58, 4, [170, 70, 44]], [-52, 1, [196, 110, 50]], [-46, 6, [150, 60, 40]], [52, 3, [190, 120, 50]], [58, 7, [160, 70, 44]]]) for (let k = 0; k < 4; k++) t3ball(M, [x + Math.cos(k * 1.7) * 2, n + Math.sin(k * 1.7) * 1.5, 2 + (k % 2) * 1.5], 2.6, 2.2, 2.2, cmul(c, .9 + (k % 3) * .08));
         return M } }], // (the bushes by the road)
@@ -3322,8 +3340,8 @@ function scrChat(who, msgs, typed, keys, time = '18:41') { return (g, sx, sy, sw
   cardDisc(g, sx + sw - 6, fy + 4, 3, typed ? '#3c80e0' : '#3a4258');
   if (keys) { g.fillStyle = '#20242e'; g.fillRect(sx, sy + sh - kb, sw, kb); for (let r = 0; r < 2; r++) for (let c = 0; c < 9 - r; c++) { const kx = sx + 2 + r * 3 + c * 6, ky = sy + sh - kb + 2 + r * 8; g.fillStyle = keys === r * 10 + c + 1 ? '#7a8296' : '#3a404e'; g.fillRect(kx, ky, 5, 7) } } } }
 // a call coming in: who, its state; the buttons (the red to send it away; where it is: for the mark)
-function scrCall(who, state, ring) { return (g, sx, sy, sw, sh) => { const gr = g.createLinearGradient(0, sy, 0, sy + sh); gr.addColorStop(0, '#2a2030'); gr.addColorStop(1, '#0c0a12'); g.fillStyle = gr; g.fillRect(sx, sy, sw, sh);
-  scrBar(g, sx, sy, sw, '09:12'); cardDisc(g, sx + sw / 2, sy + 30, 10, '#5a5a6e'); cardTextC(g, 'Н', sx + sw / 2, sy + 28, '#d8d8e4'); cardTextC(g, who, sx + sw / 2, sy + 46, '#f2f4f8'); cardTextC(g, state, sx + sw / 2, sy + 55, '#9aa0b4');
+function scrCall(who, state, ring, time = PHONE_T[1]) { return (g, sx, sy, sw, sh) => { const gr = g.createLinearGradient(0, sy, 0, sy + sh); gr.addColorStop(0, '#2a2030'); gr.addColorStop(1, '#0c0a12'); g.fillStyle = gr; g.fillRect(sx, sy, sw, sh);
+  scrBar(g, sx, sy, sw, time); cardDisc(g, sx + sw / 2, sy + 30, 10, '#5a5a6e'); cardTextC(g, 'Н', sx + sw / 2, sy + 28, '#d8d8e4'); cardTextC(g, who, sx + sw / 2, sy + 46, '#f2f4f8'); cardTextC(g, state, sx + sw / 2, sy + 55, '#9aa0b4');
   if (ring) { const p = (INTRO.A * 1.4) % 1; g.strokeStyle = `rgba(240,90,74,${.7 * (1 - p)})`; g.beginPath(); g.arc(sx + 14.5, sy + sh - 14.5, 6 + p * 8, 0, TAU); g.stroke(); cardDisc(g, sx + 14, sy + sh - 15, 6, '#e0483a'); cardText(g, 'Х', sx + 13, sy + sh - 17, '#fff'); cardDisc(g, sx + sw - 15, sy + sh - 15, 6, '#3cb060') } } }
 const scrCallRed = (sx, sy, sw, sh) => [sx + 14, sy + sh - 15];
 // ---- a door in a side wall (x = wx, from n d0 to d1): shut, or open out (the light beyond in the doorway); a part of the wall: drawn
@@ -3341,7 +3359,7 @@ const backDoorway = (O, S, wn, a, b, top = 20) => [[a, 0], [b, 0], [b, top], [a,
 // ---- 1. the hall: dark; the key in the lock, the door, the stairs' light; the light switched on (the player); the old bicycle by the wall
 // under a bag and a scarf, its front tyre flat; the coat hung up; to the mirror: a long look at themself, a heavy sigh, «как белка в
 // колесе»; on into the kitchen ----
-const HALL_O = [CARD.W / 2 + 6, CARD.H + 10], HALL_DOOR = [-30, 4, 12], HALL_ON = 3.25, HALL_MIR = [9.6, 11.2]; // (the words at the mirror from; going on from it)
+const HALL_O = [CARD.W / 2 + 6, CARD.H + 10], HALL_DOOR = [-30, 4, 12], HALL_ON = 3.25;
 function hallSet() { const M = T3(), wall = [168, 154, 132], side = [150, 138, 118], floor = [138, 106, 74], frame = [74, 104, 112];
   t3face(M, [[-30, -8, 0], [34, -8, 0], [34, 22, 0], [-30, 22, 0]], floor, [0, 7, -5], { tex: (x, n, z, c) => { const s = Math.floor((n + 8) / 2.6), j = ((x + s * 9) % 18 + 18) % 18; if (x < -23 && x > -29.6 && n > 4.6 && n < 11.4) return x < -28.8 || x > -23.8 || n < 5.4 || n > 10.6 ? [74, 60, 52] : (Math.floor(x * 2) + Math.floor(n * 2)) % 2 ? [92, 76, 64] : [100, 84, 70]; // (the mat)
     return ((n + 8) % 2.6 + 2.6) % 2.6 < .2 || j < .2 ? cmul(c, .82) : h2(Math.floor(x), s, 17) < .3 ? cmul(c, .94) : c } });
@@ -3376,27 +3394,37 @@ const hallHook = { n: 21.4, frames: 1, at: T => (T > 5.1 ? {} : null), make: () 
   else { t3box(M, -2.2, .2, 9.8, 2.2, 1.6, 13.6, [70, 52, 40]); t3line(M, [-1.8, .9, 13.6], [0, .9, 15.6], [50, 40, 32]); t3line(M, [1.8, .9, 13.6], [0, .9, 15.6], [50, 40, 32]) } return t3shift(M, -21.5, 20.2, 0) } };
 const HALL_HERO = [cardActor(heroIn('look'), [[1.5, -40, 8, 2], [2.6, -25, 8, 2], [3.4, -25, 8, 2], [4.3, -21.5, 16.4, 0], [5.3, -21.5, 16.4, 0]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, clip: (T, u, x) => (x < -29.6 ? sideDoorway(HALL_O, 3, ...HALL_DOOR) : null),
     poses: [['hang', { handR: 'up', handL: 'out' }, 0], ['sw', { handL: 'out' }, 6]], pose: T => (T > 4.4 && T < 5.2 ? 'hang' : T > 2.9 && T < 3.3 ? 'sw' : null) }),
-  cardActor(heroIn('office'), [[5.3, -21.5, 16.4, 0], [5.6, -21.5, 16.4, 2], [7.4, 11, 15.4, 2], [7.9, 16, 17.4, 0], [HALL_MIR[1], 16, 17.4, 0], [HALL_MIR[1] + 1, 24.6, 18.4, 0], [HALL_MIR[1] + 1.7, 24.6, 26, 0]], { clock: SEC, enter: 1, exit: 1, fadeIn: 0, fadeOut: 0, clip: (T, u, x, n) => (n > 21.6 ? backDoorway(HALL_O, 3, 22, 21.6, 27.8, 19.8) : null),
-    poses: [['in', { bow: -.2 }, 0], ['out', { bow: .4 }, 0], ['low', { bow: .25 }, 0]], pose: T => (T > 8.1 && T < 8.9 ? 'in' : T > 8.9 && T < 10 ? 'out' : T > 10 && T < HALL_MIR[1] ? 'low' : null) })];
-// the one in the mirror while they stand before it: the same person, turned to us, a little lower than true so the face is in the glass
-// (the back of the real one hides some of it), dimmed by the glass
-const HALL_GLASS = [12.5, 19.5, 8.5, 19.1], hallGlass = () => { const [x0, x1, z0, z1] = HALL_GLASS, a = cardP(HALL_O, x0, 22, z1), b = cardP(HALL_O, x1, 22, z0); return [a[0], a[1], b[0] - a[0], b[1] - a[1]] };
-const HALL_REFL = { n: 23, frames: 4, make: f => cardPerson(heroIn('office'), [{}, { bow: -.2 }, { bow: .4 }, { bow: .25 }][f], 4),
-  at: T => { if (T < 7.5 || T > HALL_MIR[1] + .3) return null; return { x: 17.8, n: 22, z: -3.4, s: 23, f: T > 8.1 && T < 8.9 ? 1 : T > 8.9 && T < 10 ? 2 : T > 10 && T < HALL_MIR[1] ? 3 : 0, a: .82 * Math.min(1, (T - 7.5) / .4, (HALL_MIR[1] + .3 - T) / .3), clip: hallGlass() } },
-  post: (g, T) => { if (T < 7.5 || T > HALL_MIR[1] + .3) return; const [x, y, w, h] = hallGlass(); g.fillStyle = 'rgba(150,170,196,.14)'; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)) } };
+  cardActor(heroIn('office'), [[5.3, -21.5, 16.4, 0], [5.6, -21.5, 16.4, 2], [7.4, 11, 15.4, 2], [7.9, 16, 17.4, 0]], { clock: SEC, enter: 1, fadeIn: 0 })];
+// the one in a mirror, near: the same person turned to us, a little lower than true so the face is in the glass beside the head (the
+// real one's back hides some of it), dimmed by the glass; going (turned, walking) along with the one before it
+const HALL_GLASS = [12.5, 19.5, 8.5, 19.1], hallGlass = (O, S) => { const [x0, x1, z0, z1] = HALL_GLASS, a = cardP(O, x0, 22, z1, S), b = cardP(O, x1, 22, z0, S); return [a[0], a[1], b[0] - a[0], b[1] - a[1]] };
+function mirrorOf(actor, O, S, from = 0) { return Object.assign({}, actor, { where: null, at: (T, u) => { if (T < from) return null; const s = actor.at(T, u); if (!s) return null; return Object.assign(s, { z: -3.4, s: 23, a: .85 * Math.min(1, (T - from) / .4), clip: hallGlass(O, S) }) },
+  post: (g, T) => { if (T < from) return; const [x, y, w, h] = hallGlass(O, S); g.fillStyle = 'rgba(150,170,196,.14)'; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)) } }) }
+const HALL_REFL = mirrorOf(cardActor(heroIn('office'), [[0, 17.8, 22, 4]], { clock: SEC }), HALL_O, 3, 7.5);
 const SHOT_HALL = {
-  O: HALL_O, dur: 13.2, auto: 1, live: 1, beats: [0], bed: [['rain_light', .06, 500]],
+  O: HALL_O, dur: 8.7, auto: 1, cut: 0, hold: .05, live: 1, beats: [0], bed: [['rain_light', .06, 500]],
   acts: [{ at: HALL_ON, kind: 'tap', hint: 'СВЕТ', wait: 7, snd: 'click', spot: () => cardP(HALL_O, -30, HALL_DOOR[2] + 1.8, 10) }],
-  cues: [[.5, 'click'], [.8, 'click'], [1.2, 'door'], [2.9, 'thud'], [8.6, 'exhale']],
+  cues: [[.5, 'click'], [.8, 'click'], [1.2, 'door'], [2.9, 'thud']],
   bg: hallSet,
   units: [cardSideDoor(...HALL_DOOR, [[1.2, 2.9]], [120, 96, 70], [200, 190, 164]), hallHook, HALL_REFL, ...HALL_HERO],
   over(g, T) { const P = (x, n, z) => cardP(HALL_O, x, n, z), on = T > HALL_ON + .01, open = T > 1.2 && T < 2.9;
     if (!on) { cardShade(g, 'rgba(6,8,16,.84)'); if (open) { const [dx, dy] = P(-29, 8, 2); cardGlow(g, dx, dy, 34, '255,220,160', .3) } else { const [ux, uy] = P(-29.7, 8, .3); g.fillStyle = 'rgba(255,214,150,.5)'; g.fillRect(Math.round(ux), Math.round(uy) - 1, 1, 2) } }
-    else { cardShade(g, 'rgba(28,20,12,.16)'); cardGlow(g, CARD.W * .45, -30, 150, '255,214,150', .26) } // (the lamp over the hall, out of the picture)
-    saidBy(g, P, '...КАК БЕЛКА В КОЛЕСЕ.', 16, 17.4, 18, T, HALL_MIR[0], HALL_MIR[1] - .1) },
-  under(g, T) { const P = (x, n, z) => cardP(HALL_O, x, n, z), k0 = HALL_MIR[1] + 1.2;
-    if (T > k0) { const a = P(21.6, 22, 0), b = P(27.8, 22, 19.8); g.fillStyle = `rgba(255,214,140,${Math.min(.45, (T - k0) * .9)})`; g.fillRect(Math.round(a[0]), Math.round(b[1]), Math.round(b[0] - a[0]), Math.round(a[1] - b[1])) } }, // (the kitchen's light on)
+    else { cardShade(g, 'rgba(28,20,12,.16)'); cardGlow(g, CARD.W * .45, -30, 150, '255,214,150', .26) } }, // (the lamp over the hall, out of the picture)
   lines: h => ['Дома темно и тихо.'] };
+// ---- 1b. at the mirror, near: their own face looking back, tired; «как белка в колесе»; a breath, the long sigh, the head going down;
+// turned away from it, gone to the kitchen; the empty mirror left a moment ----
+const MIR_S = 7, MIR_O = [-8, 333], MIR_SAY = [.7, 2.7], MIR_SIGH = [3, 3.6, 4.6], MIR_GO = [5, 6.3];
+const MIR_POSES = (dir, base) => [['in', Object.assign({ bow: -.25 }, base), dir], ['out', Object.assign({ bow: .5 }, base), dir], ['say', Object.assign({ bow: .12 }, base), dir]];
+const mirPose = T => (T > MIR_SIGH[0] && T < MIR_SIGH[1] ? 'in' : T > MIR_SIGH[1] && T < MIR_GO[0] ? 'out' : T > MIR_SAY[0] && T < MIR_SAY[1] ? 'say' : null);
+const MIR_HERO = cardActor(heroIn('office'), [[0, 14.2, 17.4, 0], [MIR_GO[0], 14.2, 17.4, 0], [MIR_GO[0] + .3, 14.2, 17.4, 2], [MIR_GO[1], 28, 17.4, 2]], { clock: SEC, exit: 1, fadeOut: 0, poses: MIR_POSES(0), pose: mirPose });
+const SHOT_MIRROR = {
+  O: MIR_O, S: MIR_S, dur: 7.2, auto: 1, cut: 1, hold: .05, live: 1, beats: [0], bed: [['rain_light', .05, 500]], cues: [[MIR_SIGH[1], 'exhale']],
+  bg: hallSet,
+  units: [mirrorOf(cardActor(heroIn('office'), [[0, 17, 22, 4], [MIR_GO[0], 17, 22, 4], [MIR_GO[0] + .3, 17, 22, 2], [MIR_GO[1], 31, 22, 2]], { clock: SEC, poses: MIR_POSES(4), pose: mirPose }), MIR_O, MIR_S), MIR_HERO],
+  over(g, T) { const P = (x, n, z) => cardP(MIR_O, x, n, z, MIR_S); cardShade(g, 'rgba(28,20,12,.2)');
+    const vg = g.createRadialGradient(CARD.W * .55, CARD.H * .45, 40, CARD.W * .55, CARD.H * .45, 170); vg.addColorStop(0, 'rgba(10,8,6,0)'); vg.addColorStop(1, 'rgba(10,8,6,.55)'); g.fillStyle = vg; g.fillRect(0, 0, CARD.W, CARD.H); // (the dark round the edges)
+    saidBy(g, P, '...КАК БЕЛКА В КОЛЕСЕ.', 11.4, 17.4, 17.2, T, MIR_SAY[0], MIR_SAY[1]) },
+  lines: h => [''] };
 
 // ---- 2. the kitchen, near: the microwave going round (its light, the box on its plate turning, the seconds counting down to the ding);
 // beside it the fridge's door, its magnets and a list ----
@@ -3433,21 +3461,25 @@ const SHOT_MIC = {
 // folders piling on it, on the floor the screwed-up pages, the cans of energy drink, the bags and the boxes of the deliveries (e: 0 Monday
 // .. 4 Friday). Its people: the hero on the sofa (supper, the phone, the series; then bent over the laptop typing, rubbing the eyes, the
 // head going down)
-const LIV_POSES = [...HOME_POSES, ...[0, 1, 0, 3].map(f => ({ chair: { seat: 5.4, desk: 4.1, reach: 5.2, type: f, lean: .9, bow: .6 } })), { chair: { seat: 5.4, desk: 4.1, reach: 5.2, type: 0, lean: .5, bow: .45 }, handR: 'eyes', handL: 'eyes' },
-  { chair: { seat: 5.4, desk: 4.1, reach: 5.2, type: 0, lean: 1, bow: .95 } }, { chair: { seat: 5.4, lean: .1, bow: -.05 }, look: .7, handR: 'lap', handL: 'lap' }]; // (8..11 typing, 12 the eyes, 13 nodding off over it, 14 the series)
+const LIV_LAP = 7.7; // (the laptop's top, on the knees)
+const LIV_POSES = [...HOME_POSES, ...[0, 1, 0, 3].map(f => ({ chair: { seat: 5.4, desk: LIV_LAP - .7, reach: 3.7, type: f, lean: .5, bow: .7 } })), { chair: { seat: 5.4, desk: LIV_LAP - .7, reach: 3.7, type: 0, lean: .4, bow: .45 }, handR: 'eyes', handL: 'eyes' },
+  { chair: { seat: 5.4, desk: LIV_LAP - .7, reach: 3.7, type: 0, lean: .7, bow: 1.05 } }, { chair: { seat: 5.4, lean: .1, bow: -.05 }, look: .7, handR: 'lap', handL: 'lap' }]; // (8..11 typing, 12 the eyes, 13 nodding off over it, 14 the series)
 const LIV_TYPE = 8, LIV_EYES = 12, LIV_NOD = 13, LIV_TV = 14;
 // the hero in two halves, below the table's top and above it (the table drawn between: the hands on the keys, over it), in the clothes
 // of home or (wear: 'office') still those of the day
-const LIV_TOP = 4.3, livHero = (lo, wear = 'home') => ({ n: lo ? 15 : 9.45, frames: LIV_POSES.length, at: T => ({ f: INTRO.C.frame(T) }), make: f => t3part(t3shift(cardPerson(heroIn(wear), LIV_POSES[f], 2), -25, 15, 0), LIV_TOP, lo) });
+// (three parts: below the table's top, between it and the laptop's on the knees, above that: the table and the laptop drawn between them)
+const LIV_TOP = 4.3, LIV_PART = { lo: [-9, LIV_TOP, 15], mid: [LIV_TOP, LIV_LAP, 9.6], hi: [LIV_LAP, 99, 9.45] };
+const t3band = (M, z0, z1) => { const k = z => z >= z0 && z < z1; M.faces = M.faces.filter(f => k(f.c[2])); M.lines = M.lines.filter(l => k((l.a[2] + l.b[2]) / 2)); M.dots = M.dots.filter(d => k(d[0][2])); return M };
+const livHero = (part, wear = 'home') => { const [z0, z1, n] = LIV_PART[part]; return { n, frames: LIV_POSES.length, at: T => ({ f: INTRO.C.frame(T) }), make: f => t3band(t3shift(cardPerson(heroIn(wear), LIV_POSES[f], 2), -25, 15, 0), z0, z1) } };
 // the work table brought up to the sofa, the laptop on it (its lid's back to us), what lies about by evening e
 const livTable = { n: 10, frames: 1, make: () => { const M = T3(), w = [120, 90, 64]; t3box(M, -21.4, 9, 3.6, -11, 21, 4.3, w); for (const [x, n] of [[-20.8, 9.6], [-11.6, 9.6], [-20.8, 20.4], [-11.6, 20.4]]) t3box(M, x - .3, n - .3, 0, x + .3, n + .3, 3.6, cmul(w, .8)); return M } };
 // the laptop on the table, open to the hero: its base (the keys on it, the touchpad), its lid leaning back from the hinge (seen from behind:
 // dark, its edge lit, its mark); the screen's light is drawn on the hero's face, not over it
-const livLaptopPart = lid0 => ({ n: 9.5, frames: 1, at: T => (T >= INTRO.C.laptop ? {} : null), make: () => { const M = T3(), base = [150, 154, 162], lid = [56, 60, 70]; if (!lid0) {
-  t3box(M, -21.4, 13, 4.3, -18.4, 17, 4.56, base, { tex: (x, n, z, c) => { if (z < 4.54) return cmul(c, .8); if (x > -20.5 && x < -18.7 && n > 13.3 && n < 16.7) return ((x + 21) * 3.6) % 1 < .7 && ((n - 13.2) * 3.6) % 1 < .7 ? [62, 64, 72] : [120, 124, 132]; // (the keys)
-    if (x < -20.7 && Math.abs(n - 15) < .9) return [134, 138, 146]; return c } }); return M } // (the touchpad)
-  t3face(M, [[-18.5, 13, 4.56], [-18.5, 17, 4.56], [-17.7, 17, 7.4], [-17.7, 13, 7.4]], lid, [-21, 15, 5], { both: true, tex: (x, n, z, c) => (n < 13.2 || n > 16.8 || z > 7.25 ? [120, 126, 138] : Math.hypot(n - 15, z - 6) < .45 ? [176, 184, 198] : c) });
-  t3box(M, -18.6, 13, 4.46, -18.3, 17, 4.68, [40, 42, 48]); return M } }); // (the hinge; a laptop of its real size, the keys under the hands, the screen before the eyes)
+const livLaptopPart = lid0 => ({ n: 9.5, frames: 1, at: T => (T >= INTRO.C.laptop ? {} : null), make: () => { const M = T3(), base = [150, 154, 162], lid = [56, 60, 70], z0 = LIV_LAP - .26, z1 = LIV_LAP; if (!lid0) {
+  t3box(M, -23.4, 13, z0, -20.4, 17, z1, base, { tex: (x, n, z, c) => { if (z < z1 - .02) return cmul(c, .8); if (x > -22.5 && x < -20.7 && n > 13.3 && n < 16.7) return ((x + 23) * 3.6) % 1 < .7 && ((n - 13.2) * 3.6) % 1 < .7 ? [62, 64, 72] : [120, 124, 132]; // (the keys)
+    if (x < -22.7 && Math.abs(n - 15) < .9) return [134, 138, 146]; return c } }); return M } // (the touchpad)
+  t3face(M, [[-20.5, 13, z1], [-20.5, 17, z1], [-19.8, 17, z1 + 2.8], [-19.8, 13, z1 + 2.8]], lid, [-23, 15, z1], { both: true, tex: (x, n, z, c) => (n < 13.2 || n > 16.8 || z > z1 + 2.65 ? [120, 126, 138] : Math.hypot(n - 15, z - z1 - 1.4) < .45 ? [176, 184, 198] : c) });
+  t3box(M, -20.6, 13, z1 - .1, -20.3, 17, z1 + .12, [40, 42, 48]); return M } }); // (the hinge: the laptop on the knees, the keys under the hands, the screen under the eyes)
 const livLaptop = livLaptopPart(false), livLid = Object.assign(livLaptopPart(true), { n: 9.4 }); // (drawn: the hero's lower half, the table, the base, the hero's upper half, the lid)
 // what lies about by evening e, each thing put down where there is room for it: not into the sofa, the table, the rack, nor into each other
 // (each a footprint on the floor or on the table, tried at its places in turn till one is free)
@@ -3474,21 +3506,21 @@ const LIV_TIMES = ['22:47', '23:40', '00:21', '00:58', '23:38'];
 // the living room's light: the dark, the lamp, the series' changing light, the phone's or the laptop's light on the face; the clock
 function livOver(g, T, C) { const O = CARD_HOME.O, P = (x, n, z) => cardP(O, x, n, z), sc = Math.floor(INTRO.A / 1.3), hue = [[90, 130, 190], [190, 140, 90], [80, 150, 110], [170, 90, 100]][sc % 4], f = C.frame(T);
   cardShade(g, `rgba(10,12,28,${.5 + C.eve * .03})`); { const [lx, ly] = P(-29, 27.6, 17); cardGlow(g, lx, ly, 44, '255,190,110', .28 - C.eve * .04); cardGlow(g, lx, ly + 4, 11, '255,214,150', .5); const [tx, ty] = P(-8, 28.2, 10.4); cardGlow(g, tx, ty, 58, hue.join(','), .14 + .05 * h2(Math.floor(INTRO.A * 6), 2, 33)) }
-  if (f >= LIV_TYPE && f < LIV_TV) { const [fx, fy] = P(-23.4, 15, 12.6), [kx, ky] = P(-19.4, 15, 4.8); cardGlow(g, fx, fy, 9, '170,200,255', .3); cardGlow(g, kx, ky, 7, '170,200,255', .14) } // (the screen's light on the face, on the keys)
+  if (f >= LIV_TYPE && f < LIV_TV) { const [fx, fy] = P(-23.4, 15, 12.6), [kx, ky] = P(-22, 15, 8); cardGlow(g, fx, fy, 9, '170,200,255', .3); cardGlow(g, kx, ky, 7, '170,200,255', .14) } // (the screen's light on the face, on the keys)
   else { const gp = homeGlow(f); if (gp) { const [px, py] = P(...gp); cardGlow(g, px, py, 6, '170,200,255', .45); cardGlow(g, px - 3, py - 14, 11, '150,180,240', .16) } }
   const [cx, cy] = P(-29.6, 1.2, 7.6); cardDigits(g, C.eve ? LIV_TIMES[C.eve] : `22:${47 + Math.floor(T / 10 * 6)}`, cx, cy, '#ff5a3c') }
 const SOFA_PING = 5.6, SOFA_OPEN = 7.4;
 const SHOT_SOFA = Object.assign({}, CARD_HOME, { eve: 0, laptop: SOFA_OPEN,
   dur: 10.6, auto: 1, cut: 1, hold: .2, reuse: null, beats: [.05], bed: [['rain_light', .1, 600], ['hum', .12, 300]], cues: [[SOFA_PING, 'ping'], [SOFA_OPEN, 'click']],
   frame: T => (T < 3.2 ? Math.floor(T * 1.6) % 2 : T < SOFA_PING + .2 ? 2 + Math.floor(T * .7) % 2 : T < 6.8 ? 6 : T < SOFA_OPEN ? 4 : LIV_TYPE + Math.floor(T * 6) % 4),
-  units: [livHero(true), CARD_HOME.units[1], livLitter, livTable, livLaptop, livHero(false), livLid, { n: 9.3, frames: 1, make: () => { const M = T3(); t3box(M, -15, 13, 4.3, -11.6, 16, 6.6, [234, 230, 222], { tex: (x, n, z, c) => (z > 6.3 ? [214, 206, 190] : Math.abs(z - 5.2) < .5 && n < 13.2 ? [196, 64, 50] : c) }); t3line(M, [-12.4, 13.4, 6.7], [-9, 14.6, 7.6], [196, 170, 120]); t3cyl(M, -13, 18.4, .7, 4.3, 6.3, [176, 40, 44], { topCol: [190, 190, 196] }); return M } }, livClutter],
+  units: [livHero('lo'), CARD_HOME.units[1], livLitter, livTable, livHero('mid'), livLaptop, livHero('hi'), livLid, { n: 9.3, frames: 1, make: () => { const M = T3(); t3box(M, -15, 13, 4.3, -11.6, 16, 6.6, [234, 230, 222], { tex: (x, n, z, c) => (z > 6.3 ? [214, 206, 190] : Math.abs(z - 5.2) < .5 && n < 13.2 ? [196, 64, 50] : c) }); t3line(M, [-12.4, 13.4, 6.7], [-9, 14.6, 7.6], [196, 170, 120]); t3cyl(M, -13, 18.4, .7, 4.3, 6.3, [176, 40, 44], { topCol: [190, 190, 196] }); return M } }, livClutter],
   under(g, T) { CARD_HOME.under.call(CARD_HOME, g, INTRO.A, .2) },
   over(g, T) { livOver(g, T, this); cardPhone(g, Math.min((T - SOFA_PING) / .2, (6.8 - T) / .2), ['НАЧАЛЬНИК', 'ПАПКУ К УТРУ!'], {}) },
   lines: h => ['Сериал — фоном. И снова работа.'] });
 // ---- an evening of the week (e 1..4): bent over the laptop, the series on, more lying about every evening ----
 function evening(e, o = {}) { return Object.assign({}, CARD_HOME, { eve: e, laptop: 0, dur: [0, 3.2, 3, 2.8, 3.4][e], auto: 1, cut: 1, hold: .05, reuse: 'evening' + (o.wear || ''), beats: [1], bed: [['hum', .14, 300]],
   frame: T => (e === 2 && T > 1.4 && T < 2.4 ? LIV_EYES : e === 3 && T > 1.6 ? LIV_NOD : e === 4 && T > 2.2 ? LIV_TV : LIV_TYPE + Math.floor(T * 6) % 4),
-  units: [livHero(true, o.wear), CARD_HOME.units[1], livLitter, livTable, livLaptop, livHero(false, o.wear), livLid, livClutter],
+  units: [livHero('lo', o.wear), CARD_HOME.units[1], livLitter, livTable, livHero('mid', o.wear), livLaptop, livHero('hi', o.wear), livLid, livClutter],
   under(g, T) { CARD_HOME.under.call(CARD_HOME, g, INTRO.A, .2) },
   over(g, T) { isndEvery('k', .14, 'key'); livOver(g, T, this) },
   lines: h => [''] }, o) }
@@ -3557,7 +3589,7 @@ const SHOT_BED = {
     handsBehind(g, x, y, L); phoneNear(g, x, y, { screen: lit ? scrAlarmSet(k) : null }); handsFront(g, x, y, L, { thumb: T > BED_ON - .6 && T < BED_ON + .5 ? scrAlarmSwitch(x + 3, y + 8, PHONE_W - 6) : null });
     if (lit) cardGlow(g, x + PHONE_W / 2, y + 40, 70, '150,180,255', .18); cardShade(g, `rgba(4,6,14,${clamp((T - 4.2) / 1.2, 0, .55)})`) },
   lines: h => ['Будильник на семь. Завтра всё сначала.'] };
-const HOME_SHOTS = [SHOT_HALL, SHOT_MIC, SHOT_SOFA, bedNight(0, { dur: 2.4, down: 9 }), SHOT_BED];
+const HOME_SHOTS = [SHOT_HALL, SHOT_MIRROR, SHOT_MIC, SHOT_SOFA, bedNight(0, { dur: 2.4, down: 9 }), SHOT_BED];
 
 // ======================== THE WEEK: the same morning three times, a little worse each time ========================
 // each day: the alarm on the bedside table (the player stops it: on Wednesday a second one at 7:05, on Thursday the work's chat before
@@ -3615,7 +3647,8 @@ const WEEK_STOP_UNITS = [{ n: 13, frames: 1, make: () => cardShelter(false) }, {
 function weekStop(day) { const [dn, dw] = WEEK_DAYS[day];
   const dur = [6.4, 5.8, 5.2][day]; return { day, O: STREET_O, S: 2, dur, auto: 1, cut: 1, hold: .05, reuse: 'stop', beats: [1], cues: [[.31 * dur, 'hiss'], [.69 * dur, 'hiss']], bed: day === 1 ? [['rain_heavy', .18, 2200]] : [['wind_low', .12, 900]],
     bg: () => cardStreet(false), units: WEEK_STOP_UNITS,
-    over(g, T, u) { if (day === 0 && Math.floor(INTRO.A * 1.4) % 2) { const P = (x, n, z) => cardP(this.O, x, n, z, 2); g.fillStyle = '#d8c8a0'; for (let k = 0; k < 6; k++) { const ph = (INTRO.A * 1.4) % 1, [cx, cy] = P(-30 + (h2(k, Math.floor(INTRO.A * 1.4), 50) - .5) * 8, 9 + ph * 3 + h2(k, 2, 50) * 2, 6 * (1 - ph)); g.fillRect(Math.round(cx), Math.round(cy), 1, 1) } } // (the crumbs she throws)
+    under(g, T, u) { if (day === 0 && Math.floor(INTRO.A * 1.4) % 2) { const P = (x, n, z) => cardP(this.O, x, n, z, 2); g.fillStyle = '#d8c8a0'; for (let k = 0; k < 6; k++) { const ph = (INTRO.A * 1.4) % 1, [cx, cy] = P(-30 + (h2(k, Math.floor(INTRO.A * 1.4), 50) - .5) * 8, 9 + ph * 3 + h2(k, 2, 50) * 2, 6 * (1 - ph)); g.fillRect(Math.round(cx), Math.round(cy), 1, 1) } } }, // (the crumbs she throws, out in front of her: behind her from here)
+    over(g, T, u) {
       if (day === 0) cardShade(g, 'rgba(150,170,200,.14)'); else if (day === 1) { cardShade(g, 'rgba(50,60,90,.24)'); cardRain(g, INTRO.A, .8) } else cardShade(g, 'rgba(204,208,214,.34)');
       cardCalendar(g, dn, dw, '7:40') },
     lines: h => [''] } }
@@ -3799,17 +3832,28 @@ const SHOT_RIDE2 = rideInterior({ dur: 11, stops: [.5], stage: [.45, .7], names:
 const SHOT_WIN2 = windowShot({ dur: 12, W0: 2640, vmax: 32, stops: [6.8, 'ПОС. ЛЕСНОЙ'], lines: h => [''] });
 
 // ---- 5. the phone near, on the knees: the boss (nine o'clock gone, and no one at work), again and again; the player sends him away ----
-const CALLS = [[.3, .5], [2.1, 2.3], [3.9, 4.1]]; // (each ringing from, and asked from)
+// the phone at a quarter past eleven, far out of the town: the boss's twenty-one missed calls, his messages piling up (the threats), then
+// him calling again, and again: the player sends him away. The game goes on from the last time on the phone (PHONE_LAST_H)
+const PHONE_T = ['11:14', '11:15', '11:16'], PHONE_LAST_H = 11 + 16 / 60;
+const CALL_MSGS = [[.3, ['21 ПРОПУЩ.'], 1], [.9, ['ТЫ ГДЕ?!']], [1.5, ['ВОЗЬМИ', 'ТРУБКУ!']], [2.1, ['НЕ ВЫЙДЕШЬ -', 'УВОЛЮ.']], [2.6, ['Я НЕ ШУЧУ.']]];
+const CALLS = [[3.1, 3.3], [5.1, 5.3]]; // (each ringing from, and asked from)
 function seatSet() { const M = T3(), seat = [66, 78, 118]; t3face(M, [[-60, -20, 0], [60, -20, 0], [60, 60, 0], [-60, 60, 0]], seat, [0, 20, -5], { tex: (x, n, z, c) => { const r = h2(Math.floor(x * 1.2), Math.floor(n * 1.2), 61); return r < .05 ? [118, 70, 84] : r < .14 ? cmul(c, .86) : c } }); return M }
 const callState = T => { for (let i = CALLS.length - 1; i >= 0; i--) if (T >= CALLS[i][0]) return [i, T <= CALLS[i][1] + .01]; return [-1, false] };
+// the locked screen with the messages come by now, the newest on top (sliding in), the older pushed down and out
+function scrThreats(T) { return (g, sx, sy, sw, sh) => { const gr = g.createLinearGradient(0, sy, 0, sy + sh); gr.addColorStop(0, '#26304e'); gr.addColorStop(1, '#141826'); g.fillStyle = gr; g.fillRect(sx, sy, sw, sh);
+  cardTextC(g, PHONE_T[0], sx + sw / 2, sy + 8, '#e8ecf4', 2); cardTextC(g, 'СБ 18 ОКТ', sx + sw / 2, sy + 22, '#9aa6c0');
+  g.save(); g.beginPath(); g.rect(sx, sy + 30, sw, sh - 30); g.clip(); let y = sy + 31;
+  for (const [t0, lines, missed] of CALL_MSGS.filter(m => T >= m[0]).reverse()) { const k = Math.min(1, (T - t0) / .2), h = 9 + lines.length * 7; if (k < 1) y -= Math.round((1 - k) * h);
+    cardRR(g, sx + 2, y, sw - 4, h - 1, 3, missed ? '#f4e4e2' : '#e8ecf4'); cardText(g, 'НАЧАЛЬНИК', sx + 5, y + 2, '#6a7080'); lines.forEach((l, i) => cardText(g, l, sx + 5, y + 9 + i * 7, missed ? '#c03a30' : '#30343c')); y += h + 1 }
+  g.restore() } }
 const SHOT_CALLS = {
-  O: [128, 150], S: 4, dur: 6.4, auto: 1, cut: 1, hold: .2, beats: [0, 2.15 / 6.4, 3.95 / 6.4], seps: [' ', ' '], bed: [['engine', .45, 140]],
-  acts: CALLS.map(([, at], i) => ({ at, kind: 'tap', hint: 'СБРОСИТЬ', wait: [7, 5, 4][i], snd: 'off', spot: () => scrCallRed(98 + 3, 30 + 8, PHONE_W - 6, PHONE_H - 16) })),
+  O: [128, 150], S: 4, dur: 7.2, auto: 1, cut: 1, hold: .2, beats: [0, 3.1 / 7.2, 5.1 / 7.2], seps: [' ', ' '], bed: [['engine', .45, 140]], cues: CALL_MSGS.map(([t]) => [t, 'ping']),
+  acts: CALLS.map(([, at], i) => ({ at, kind: 'tap', hint: 'СБРОСИТЬ', wait: [7, 5][i], snd: 'off', spot: () => scrCallRed(98 + 3, 30 + 8, PHONE_W - 6, PHONE_H - 16) })),
   bg: seatSet, units: [],
-  over(g, T) { const L = heroIn('look')(), [i, ring] = callState(T), x = 98, y = 30 + (ring ? (Math.floor(INTRO.A * 24) % 2) : 0); cardShade(g, 'rgba(30,36,56,.3)'); if (ring) { isndEvery('ring', 1.1, 'ring'); isndEvery('vibe', .9, 'vibe') }
-    handsBehind(g, x, y, L); phoneNear(g, x, y, { screen: i < 0 ? scrLock('09:11', 'СБ 18 ОКТ') : ring ? scrCall('НАЧАЛЬНИК', 'ВЫЗОВ', 1) : scrCall('НАЧАЛЬНИК', T - CALLS[i][1] < .9 ? 'ОТКЛОНЕН' : (i + 1) + ' ПРОПУЩ.', 0) });
+  over(g, T) { const L = heroIn('look')(), [i, ring] = callState(T), x = 98, y = 30 + (ring || CALL_MSGS.some(([t]) => T > t && T < t + .25) ? (Math.floor(INTRO.A * 24) % 2) : 0); cardShade(g, 'rgba(30,36,56,.3)'); if (ring) { isndEvery('ring', 1.1, 'ring'); isndEvery('vibe', .9, 'vibe') }
+    handsBehind(g, x, y, L); phoneNear(g, x, y, { screen: i < 0 ? scrThreats(T) : ring ? scrCall('НАЧАЛЬНИК', 'ВЫЗОВ', 1) : scrCall('НАЧАЛЬНИК', T - CALLS[i][1] < .9 ? 'ОТКЛОНЕН' : (22 + i) + ' ПРОПУЩ.', 0) });
     handsFront(g, x, y, L, { thumb: !ring && i >= 0 && T - CALLS[i][1] < .5 ? scrCallRed(x + 3, y + 8, PHONE_W - 6, PHONE_H - 16) : null }); cardGlow(g, x + PHONE_W / 2, y + 40, 60, ring ? '255,160,150' : '150,180,255', .12) },
-  lines: h => ['Звонит начальник.', 'Ещё раз.', 'И ещё.'] };
+  lines: h => ['Двадцать один пропущенный.', 'И он всё звонит.', 'Снова.'] };
 // ---- 6. held off: the finger on the side button, held (the player): «Выключить?» filling as it is held; dark ----
 const OFF_AT = 1;
 function scrPower(k) { return (g, sx, sy, sw, sh) => { g.fillStyle = '#05060a'; g.fillRect(sx, sy, sw, sh); cardRR(g, sx + 4, sy + 26, sw - 8, 40, 5, '#1c2030');
@@ -3821,7 +3865,7 @@ const SHOT_OFF = {
   bg: seatSet, units: [],
   over(g, T) { const L = heroIn('look')(), x = 98, y = 30 + Math.max(0, T - 2.2) * 26, A = INTRO.act, k = A ? INTRO.hold / (A.d.need || 1.8) : T >= OFF_AT ? 1 : 0, dark = T > OFF_AT + .01; cardShade(g, 'rgba(30,36,56,.32)');
     if (A && INTRO.held && !INTRO.cued.inh) { INTRO.cued.inh = 1; isnd('hum') } if (A && !INTRO.held) INTRO.cued.inh = 0;
-    handsBehind(g, x, y, L); phoneNear(g, x, y, { press: T > OFF_AT - .4 && !dark, screen: dark ? null : A && INTRO.hold > .05 ? scrPower(k) : scrCall('НАЧАЛЬНИК', '3 ПРОПУЩ.', 0) }); handsFront(g, x, y, L, { press: T > OFF_AT - .4 && !dark });
+    handsBehind(g, x, y, L); phoneNear(g, x, y, { press: T > OFF_AT - .4 && !dark, screen: dark ? null : A && INTRO.hold > .05 ? scrPower(k) : scrCall('НАЧАЛЬНИК', '23 ПРОПУЩ.', 0, PHONE_T[2]) }); handsFront(g, x, y, L, { press: T > OFF_AT - .4 && !dark });
     if (!dark) cardGlow(g, x + PHONE_W / 2, y + 40, 60, '150,180,255', .12) },
   lines: h => [`${h.name} выключает телефон.`] };
 // ---- 7. the bus, the forest in its windows: the phone left on the seat; a look out ----
@@ -3901,7 +3945,8 @@ function introCard(k) { INTRO.k = k; INTRO.T = 0; INTRO.A = 0; INTRO.ch = 0; INT
   const R = INTRO.next && INTRO.next.C === C ? INTRO.next : introBuild(C); INTRO.next = null; isndScene(C);
   // (finished a moment later, so the plate is up first; then the card after it begun)
   setTimeout(() => { if (!INTRO.on || INTRO.k !== k) return; introWork(R, -1); INTRO.made = R; INTRO.T = 0; INTRO.A = 0; const N = INTRO_CARDS[k + 1]; INTRO.next = N ? introBuild(N) : null }, C.cut ? 0 : 30) }
-function introEnd() { INTRO.on = false; INTRO.next = null; INTRO.act = null; introAsk(null); isndScene(null); $('intro').hidden = true; paused = INTRO.wasPaused && false; if (INTRO.done) INTRO.done() }
+function introEnd() { INTRO.on = false; INTRO.next = null; INTRO.act = null; introAsk(null); isndScene(null); $('intro').hidden = true; DAY.h = PHONE_LAST_H; computeLight(); // (the day goes on from the last time the phone showed)
+  paused = INTRO.wasPaused && false; if (INTRO.done) INTRO.done() }
 // a card's words: its lines joined (by C.seps, or a new line), and where each line ends in them
 function introWords(C) { const L = C.lines(HERO), sp = C.seps || []; let full = '', ends = []; L.forEach((l, i) => { full += (i ? sp[i - 1] ?? '\n' : '') + l; ends.push(full.length) }); return { full, ends } }
 function introNext() { if (!INTRO.on) return; const C = INTRO_CARDS[INTRO.k], { full } = introWords(C);
