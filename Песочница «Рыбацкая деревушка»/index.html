@@ -22,11 +22,12 @@ body{margin:0;font-size:14px;background:var(--bg);color:var(--ink);font-family:v
 button{pointer-events:auto;font:inherit;font-size:12px;color:var(--ink);background:var(--plate);border:2px solid var(--plate-edge);
   padding:5px 7px;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.45)}
 button b{color:var(--amber);font-weight:600}
-#bAct{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));font-size:15px;padding:10px 14px;color:var(--amber)}
+#bAct{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(var(--hudH,58px) + 10px);font-size:15px;padding:10px 14px;color:var(--amber)}
 button:active{transform:translateY(2px);box-shadow:none}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;max-width:calc(100vw - 32px)}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--hudH,58px) + 8px);text-align:center;pointer-events:none;max-width:calc(100vw - 32px)}
 #hint .val{font-size:15px}
+@media (max-width:640px){#hint{bottom:calc(var(--hudH,58px) + 62px)}}
 #hint[hidden],#loading[hidden],#heroPick[hidden],#intro[hidden],#devPanel[hidden],#stick[hidden],#devCopy[hidden]{display:none}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
 #loading .plate{font-size:15px;padding:10px 16px}
@@ -6227,7 +6228,7 @@ const PLACES = {};
     scatter: [{ id: 'scatter', n: 150, seed: 12, in: 'clearing', clear: 9, kinds: [['grass', 3], ['juniper', 1], ['lowshrub', 1], ['fern', 1], ['mush', 1], ['rock', 1], ['bush', 1], ['branch', 1.2]] }],
     // the wood round the camp, in stands: tall spruce with a floor of fallen leaves; mixed wood of oak, maple, birch,
     // aspen and spruce; hazel thickets under old oaks with fallen mossy trunks (share: how much of the wood each covers)
-    forest: { clearing: 'clearing', cell: 22, zone: .005, stands: [
+    forest: { clearing: 'clearing', cell: 22, zone: .0028, stands: [
       { id: 'spruce', share: .42, keep: .6, size: 1.1, kinds: [['spruce', 7], ['birch', .5], ['decid', .35], ['aspen', .2]], underKeep: .35, under: [['lowshrub', 2], ['fern', 1.2], ['branch', 1.6], ['log', 1], ['stump', .8], ['snag', .5], ['mush', 1], ['bush', .4]] },
       { id: 'mixed', share: .3, keep: .5, kinds: [['decid', 2], ['bare', 1.5], ['birch', 2], ['spruce', 1.6], ['aspen', 1], ['rowan', .6], ['pine', .2]], bt: 'oak', under: [['bush', 1.6], ['barebush', 1.2], ['fern', .8], ['branch', 1.2], ['log', .8], ['snag', .35], ['grass', .6], ['sapling', .6], ['mush', .5]] },
       { id: 'hazel', share: .28, keep: .32, kinds: [['bare', 3], ['decid', 1], ['aspen', .6], ['birch', .5], ['spruce', .4]], bt: 'oak', underKeep: .8, under: [['barebush', 4], ['bush', 1.6], ['log', 1.2], ['branch', 1.4], ['sapling', .5], ['stump', .5], ['snag', .4]],
@@ -6309,6 +6310,17 @@ const PLACES = {};
     { id: 'fence-nw', p: 'fence', axis: 'x', len: 33, x: 860, y: 460, seed: 41 }, { id: 'fence-ne', p: 'fence', axis: 'x', len: 43, x: 957, y: 460, seed: 42 },
     { id: 'fence-w', p: 'fence', axis: 'n', len: 76, x: 860, y: 536, seed: 43 }, { id: 'fence-e', p: 'fence', axis: 'n', len: 76, x: 1000, y: 536, seed: 44 }, { id: 'fence-s', p: 'fence', axis: 'x', len: 140, x: 860, y: 536, seed: 45 },
     { id: 'trough', p: 'trough', len: 26, x: 972, y: 482 }, { id: 'bales-in', p: 'bales', n: 2, x: 890, y: 478, seed: 6 }, { id: 'haystack', p: 'haystack', x: 1040, y: 480, R: 14, H: 28, seed: 2 }, { id: 'bales-out', p: 'bales', n: 3, x: 842, y: 500, seed: 9 },
+    // the kitchen gardens across the street from the houses: dug over for the winter, fenced against the cows, a gap for a gate
+    { id: 'gfence-1a', p: 'fence', axis: 'x', len: 60, x: 222, y: 474, seed: 51 }, { id: 'gfence-1b', p: 'fence', axis: 'x', len: 72, x: 306, y: 474, seed: 52 }, { id: 'gfence-1s', p: 'fence', axis: 'x', len: 156, x: 222, y: 546, seed: 53 },
+    { id: 'gfence-1w', p: 'fence', axis: 'n', len: 72, x: 222, y: 546, seed: 54 }, { id: 'gfence-1e', p: 'fence', axis: 'n', len: 72, x: 378, y: 546, seed: 55 },
+    { id: 'gfence-2a', p: 'fence', axis: 'x', len: 50, x: 432, y: 466, seed: 56 }, { id: 'gfence-2b', p: 'fence', axis: 'x', len: 50, x: 506, y: 466, seed: 57 }, { id: 'gfence-2s', p: 'fence', axis: 'x', len: 124, x: 432, y: 532, seed: 58 },
+    { id: 'gfence-2w', p: 'fence', axis: 'n', len: 66, x: 432, y: 532, seed: 59 }, { id: 'gfence-2e', p: 'fence', axis: 'n', len: 66, x: 556, y: 532, seed: 60 },
+    // the hay meadow east of the cowshed, an old birch with a bench under it, the firewood by the boats' shed
+    { id: 'haystack-2', p: 'haystack', x: 1190, y: 522, R: 16, H: 30, seed: 7 }, { id: 'haystack-3', p: 'haystack', x: 1272, y: 556, R: 13, H: 25, seed: 8 }, { id: 'bales-meadow', p: 'bales', n: 2, x: 1146, y: 474, seed: 12 },
+    { id: 'birch-old', t: 'birch', x: 1420, y: 508, sz: 1.45, seed: 4411 }, { id: 'bench-birch', p: 'bench', x: 1424, y: 532 }, { id: 'logpile-shed', p: 'logpile', x: 1548, y: 444, seed: 13 },
+    // a few lone trees out on the grass, where the wood once was, so its rim is no line drawn round the village
+    { id: 'pine-lone', t: 'pine', x: 92, y: 574, sz: 1.3, seed: 4421 }, { id: 'rowan-lone', t: 'rowan', x: 608, y: 586, sz: 1.1, seed: 4422 }, { id: 'birch-lone-1', t: 'birch', x: 1118, y: 626, sz: 1.15, seed: 4423 },
+    { id: 'birch-lone-2', t: 'birch', x: 1602, y: 566, sz: 1.2, seed: 4424 }, { id: 'rowan-house', t: 'rowan', x: 560, y: 352, sz: .95, seed: 4425 },
     // at the foot of the ramp: a post each side
     { id: 'bollard-r0', p: 'bollard', x: PIER.x - PIER.w - 3, y: PIER.y1 + PIER.ramp - 3, seed: 20 }, { id: 'bollard-r1', p: 'bollard', x: PIER.x + PIER.w + 3, y: PIER.y1 + PIER.ramp - 3, seed: 21 },
     // on the jetty: cleats, coils of rope, a stack of crates and barrels at the edge, lanterns at the far end
@@ -6343,6 +6355,8 @@ const PLACES = {};
       { id: 'path-beach', mat: 'path', line: [[110, 334], [200, 340], [300, 344], [400, 342], [480, 332], [552, 310], [610, 282], [670, 254], [760, 236], [900, 250]], w: 5 }, // (round the head of the inlet, on the sand's back)
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
       { id: 'dirt-well', mat: 'dirt', ellipse: [388, 399, 18, 7], rough: .4 },
+      { id: 'garden-1', mat: 'bed', rect: [228, 480, 372, 540], rough: .3 }, { id: 'garden-2', mat: 'bed', rect: [438, 472, 550, 526], rough: .3 },
+      { id: 'path-g1', mat: 'path', line: [[294, 432], [296, 478]], w: 5 }, { id: 'path-g2', mat: 'path', line: [[494, 418], [494, 470]], w: 5 }, { id: 'path-hay', mat: 'path', line: [[1150, 412], [1166, 470], [1188, 506]], w: 4 },
       // the way into the village from the forest, the street and the embankment out over the bay
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'road-south', mat: 'road', line: [[770, 394], [778, 500], [790, 640]], w: 13 }, // (the way in, up from the turning below the village)
@@ -6362,7 +6376,7 @@ const PLACES = {};
       { id: 'drift-w', n: 36, seed: 24, in: 'beach-w', clear: 10, kinds: [['log', .8], ['branch', 2], ['rock', 1.4]] },
     ],
     // (in the world: the pine wood round the village reaches some 450 m from it, then the wood of the camp's country)
-    forest: { clearing: 'clearing', cell: 22, zone: .005, reach: 4500, stands: [
+    forest: { clearing: 'clearing', cell: 22, zone: .0028, reach: 4500, stands: [
       { id: 'bor', share: .42, keep: .55, size: 1.05, kinds: [['pine', 6], ['birch', 1.2], ['spruce', .8], ['decid', .25]], underKeep: .5,
         under: [['juniper', 1.6], ['lowshrub', 2], ['branch', 1.4], ['grass', 1.2], ['mush', .8], ['log', .5], ['stump', .4], ['rock', .3]] },
       { id: 'mixed', share: .28, keep: .5, kinds: [['decid', 2], ['bare', 1.4], ['birch', 2.4], ['pine', 1.2], ['aspen', 1], ['rowan', .7]], bt: 'oak',
@@ -6436,7 +6450,7 @@ function layerBox(o) {
   if (o.ellipse) { const [wx, wy, rx, ry] = o.ellipse, m = (o.rough || 0) * Math.max(rx, ry) + 4; o.bb = [wx - rx - m, wy - ry - m, wx + rx + m, wy + ry + m] }
   if (o.rect) { const [x0, y0, x1, y1] = o.rect; o.bb = [x0 - 4, y0 - 4, x1 + 4, y1 + 4] } }
 // a layer in world coordinates: filed in every cell its box (and a margin, for the "near a road" questions) touches
-const MW_YIELD = new Set(['glade', 'beach', 'path', 'trodden', 'dirt', 'track', 'rut', 'hump']);
+const MW_YIELD = new Set(['glade', 'beach', 'path', 'trodden', 'dirt', 'track', 'rut', 'hump', 'bed']);
 function addLayer(o, k) { o.k = k ?? LAYER_K++; if (MW_YIELD.has(o.mat)) o.soft = 1; if (o.sd === undefined) o.sd = hashStr(o.id || 'L' + o.k) % 9973; layerBox(o); LAYERS.push(o); if (o.id) LAYER[o.id] = o;
   const M = 28; for (let j = Math.floor((o.bb[1] - M) / LGC); j <= Math.floor((o.bb[3] + M) / LGC); j++) for (let i = Math.floor((o.bb[0] - M) / LGC); i <= Math.floor((o.bb[2] + M) / LGC); i++) {
     const key = lkey(i, j); let a = LGRID.get(key); if (!a) LGRID.set(key, a = []); a.push(o); a.sort((p, q) => q.k - p.k) } return o }
@@ -6536,10 +6550,11 @@ function addPlace(P, ox, oy, pre = '') { const toWp = (x, y) => [x + ox, y + oy]
 // the place a point is in (or nearest to: by how far it is outside each clearing)
 function placeOf(x, y) { let best = PLW[0], bd = 1e9; for (const W of PLW) { const d = layerD(W.C, x, y); if (d < bd) { bd = d; best = W } } return best }
 // a road going on from a point in a given direction, bending gently, then turning toward a goal (or ending in the forest)
-function roadOn(id, from, dir, len, w, sd, goal, mat = 'road') { const r = mulberry(sd), pts = [from]; let [x, y] = from, a = Math.atan2(dir[1], dir[0]); const st = 24;
+function roadOn(id, from, dir, len, w, sd, goal, mat = 'road', taper = true) { const r = mulberry(sd), pts = [from]; let [x, y] = from, a = Math.atan2(dir[1], dir[0]); const st = 24;
   for (let s = 0; s < len; s += st) { if (goal) { const ga = Math.atan2(goal[1] - y, goal[0] - x), k = clamp(s / len, 0, 1); let d = wrapA(ga - a); a += d * (.08 + .5 * k * k) }
     a += (vn(s * .01, 0, sd) - .5) * .25; x += Math.cos(a) * st; y += Math.sin(a) * st; pts.push([x, y]); if (goal && Math.hypot(goal[0] - x, goal[1] - y) < st * 1.2) { pts.push(goal); break } }
-  for (let i = 0; i + 1 < pts.length; i += 7) { const seg = pts.slice(i, i + 9), k = i / pts.length; addLayer({ id: id + '-' + i, mat, line: wanderLine(seg, 0, sd), w: w * (goal ? 1 : 1 - .45 * k), rough: 1 }) } return pts[pts.length - 1] }
+  // (in short pieces, so a road that narrows as it peters out does so a pixel at a time; a forest road has grass down its middle)
+  const st2 = taper && !goal ? 3 : 7; for (let i = 0; i + 1 < pts.length; i += st2) { const seg = pts.slice(i, i + st2 + 2), k = i / pts.length; addLayer({ id: id + '-' + i, mat, line: wanderLine(seg, 0, sd), w: w * (goal || !taper ? 1 : 1 - .45 * k), rough: 1, grassy: 1 }) } return pts[pts.length - 1] }
 
 // a road from one point to another, leaving the first and reaching the second in the given directions (a smooth curve)
 function bendRoad(id, a, da, b, db, w) { const la = Math.hypot(...da) || 1, lb = Math.hypot(...db) || 1, D = Math.hypot(b[0] - a[0], b[1] - a[1]) * .45, p1 = [a[0] + da[0] / la * D, a[1] + da[1] / la * D], p2 = [b[0] - db[0] / lb * D, b[1] - db[1] / lb * D], pts = [];
@@ -6634,7 +6649,7 @@ function worldRoad(Rd, A, B) { const LA = LAYER[A.pre + Rd.from[1]], LB = LAYER[
   let lo = 0, hi = 2000, P = C; if (Rd.abs) { P = bend(Rd.wander || 0); lo = Rd.wander || 0 } else if (lenOf(C) < Rd.len) for (let it = 0; it < 22; it++) { const mid = (lo + hi) / 2; P = bend(mid); if (lenOf(P) < Rd.len) lo = mid; else hi = mid } Rd.reach = lo;
   // every 24 px, in pieces (each overlapping the next by two points, so the ruts run on unbroken)
   const RP = [P[0]]; let acc = 0; for (let i = 1; i < P.length; i++) { acc += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); if (acc >= 24 || i === P.length - 1) { RP.push(P[i]); acc = 0 } } Rd.pts = RP; Rd.L = lenOf(RP);
-  for (let i = 0; i + 1 < RP.length; i += 7) { const seg = RP.slice(i, i + 9), f = i / (RP.length - 1); addLayer({ id: Rd.id + '-' + i, mat: 'road', line: seg, w: Rd.w[0] + (Rd.w[1] - Rd.w[0]) * f, rough: 1, wroad: Rd.id }) }
+  for (let i = 0; i + 1 < RP.length; i += 7) { const seg = RP.slice(i, i + 9), f = i / (RP.length - 1); addLayer({ id: Rd.id + '-' + i, mat: 'road', grassy: 1, line: seg, w: Rd.w[0] + (Rd.w[1] - Rd.w[0]) * f, rough: 1, wroad: Rd.id }) }
   if (Rd.sign) { const G = Rd.sign; let d = 0, i = 1; for (; i < RP.length - 1 && d < G.at; i++) d += Math.hypot(RP[i][0] - RP[i - 1][0], RP[i][1] - RP[i - 1][1]); const dx = RP[i][0] - RP[i - 1][0], dy = RP[i][1] - RP[i - 1][1], l = Math.hypot(dx, dy) || 1;
     WORLD_SIGNS.push({ id: 'sign-' + Rd.id, p: 'signpost', x: RP[i][0] - dy / l * G.side, y: RP[i][1] + dx / l * G.side, params: { dir: G.dir, text: G.text } }) } }
 // ---- the dam over the bay (an old stone embankment of the northern lakes, ~2 km): its line on the map (cells); the half-widths of its
@@ -6712,7 +6727,7 @@ function worldPlan() {
   // the other ways out wander off and end in the forest
   // (a road goes on from whichever of its ends lies further from the place's middle)
   for (const W of PLW) { const cx = W.cx, cy = W.cy;
-    for (const e of (W.P.trail || {}).side || []) { if (joined.has(W.pre + e)) continue; const L = LAYER[W.pre + e], n = L.line.length, far = Math.hypot(L.line[0][0] - cx, L.line[0][1] - cy) > Math.hypot(L.line[n - 1][0] - cx, L.line[n - 1][1] - cy), a = far ? L.line[0] : L.line[n - 1], b = far ? L.line[1] : L.line[n - 2]; roadOn(W.pre + e + '-on', a, [a[0] - b[0], a[1] - b[1]], 520, L.w * .9, hashStr(e) % 997) } } }
+    for (const e of (W.P.trail || {}).side || []) { if (joined.has(W.pre + e)) continue; const L = LAYER[W.pre + e], n = L.line.length, far = Math.hypot(L.line[0][0] - cx, L.line[0][1] - cy) > Math.hypot(L.line[n - 1][0] - cx, L.line[n - 1][1] - cy), a = far ? L.line[0] : L.line[n - 1], b = far ? L.line[1] : L.line[n - 2]; const ex = (W.P.exits || []).find(q => q.road === e), far2 = !!(ex && ex.km); roadOn(W.pre + e + '-on', a, [a[0] - b[0], a[1] - b[1]], far2 ? 1600 : 520, L.w, hashStr(e) % 997, null, 'road', !far2) } } }
 
 // ---- the forest: stands everywhere, a tree (or undergrowth) per cell of a jittered grid ----
 // A cell's tree stands where its own hash puts it; it gives way to any stronger neighbour whose crown would merge with
@@ -6729,11 +6744,21 @@ const FCELL = 22, CROWN_R = { spruce: 16, pine: 20, larch: 15, birch: 15, aspen:
 const forestAt = (x, y) => { for (let i = 1; i < PLW.length; i++) { const W = PLW[i], F = W.P.forest; if (!F.reach) continue; const d = Math.hypot(x - W.cx, y - W.cy); if (d < F.reach * (.8 + .4 * vn(x * .0015, y * .0015, SEED + 510))) return F } return PLW[0].P.forest };
 const standAt = (x, y) => { const F = forestAt(x, y), z = vn(x * F.zone, y * F.zone, SEED + 500) + (vn(x * .03, y * .03, SEED + 501) - .5) * .12; let acc = 0; for (const S of F.stands) { acc += S.share; if (z < acc) return S } return F.stands[F.stands.length - 1] };
 function inPlace(x, y, pad) { for (const W of PLW) if (layerD(W.C, x, y) < pad) return true; return false }
+// how far a point lies outside the nearest place's clearing (px; less than nought inside it)
+const edgeD = (x, y) => { let m = 1e9; for (const W of PLW) { const d = layerD(W.C, x, y); if (d < m) m = d } return m };
+// how far from the edge of the nearest way: any (a road, a path, gravel, a brook, a bridge, a river), or a road or a path only
+const WAYS = new Set(['path', 'road', 'gravel', 'brook', 'bridge', 'river']), WAYS_R = new Set(['path', 'road']);
+const wayD = (x, y, set = WAYS) => { let m = 1e9; for (const L of layersNear(x, y)) if (set.has(L.mat)) { const d = layerD(L, x, y); if (d < m) m = d } return m };
+// at a clearing's rim: young birches, aspens and rowans, and bushes, briar, saplings and tall grass between them (the edge of a wood)
+const EDGE_KINDS = [['birch', 3], ['aspen', 1.6], ['rowan', 1.4], ['pine', .8], ['spruce', .4]], EDGE_UNDER = [['bush', 2], ['rosehip', 1.2], ['sapling', 2], ['grass', 2.2], ['barebush', 1.2], ['lowshrub', 1], ['fern', .6], ['juniper', .6]];
 function cellCand(i, j) { const key = lkey(i, j); if (FMEMO.has(key)) return FMEMO.get(key);
   const x = i * FCELL + FCELL * (.15 + .7 * h2(i, j, SEED + 301)), y = j * FCELL + FCELL * (.15 + .7 * h2(i, j, SEED + 302)), S = matAt(x, y) === 'bog' ? BOG_STAND : isleAt(x, y) ? ISLE_STAND : standAt(x, y), r = mulberry((SEED ^ Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0);
-  let c = null; if (!(inPlace(x, y, 10) || nearPath(x, y, 16) || inPond(x, y, 8) || nearPlaceThing(x, y, 18) || damSpot(x, y))) {
-    if (h2(i, j, SEED + 300) < S.keep) { const t = wpick(r, S.kinds), u = r(), sz = (u < .2 ? .7 + .15 * r() : u > .8 ? 1.15 + .2 * r() : .9 + .22 * r()) * (S.size || 1); c = { x, y, t, sz, seed: (r() * 1e9) | 0, rr: (CROWN_R[t] || 14) * sz, pr: h2(i, j, SEED + 309), S, tree: true } }
-    else if (h2(i, j, SEED + 305) < (S.underKeep ?? .45)) c = { x, y, t: wpick(r, S.under), sz: 1, seed: (r() * 1e9) | 0, S } }
+  // (a tree stands back from a road, its crown over the verge, not over the road; at a clearing's rim the wood thins out into
+  // young trees and bushes: rim 1 at its edge, nought from 80 px in)
+  const wd = wayD(x, y), ed = edgeD(x, y), rim = clamp(1 - (ed - 10) / 70, 0, 1);
+  let c = null; if (!(ed < 10 || wd < 12 || inPond(x, y, 8) || nearPlaceThing(x, y, 18) || damSpot(x, y))) {
+    if (wd >= 26 && h2(i, j, SEED + 300) < S.keep * (1 - .45 * rim)) { const young = rim > .25 && r() < rim * .75, t = young ? wpick(r, EDGE_KINDS) : wpick(r, S.kinds), u = r(), sz = (u < .2 ? .7 + .15 * r() : u > .8 ? 1.15 + .2 * r() : .9 + .22 * r()) * (S.size || 1) * (young ? .62 + .25 * r() : 1); c = { x, y, t, sz, seed: (r() * 1e9) | 0, rr: (CROWN_R[t] || 14) * sz, pr: h2(i, j, SEED + 309), S, tree: true } }
+    else if (h2(i, j, SEED + 305) < (S.underKeep ?? .45) + .4 * rim) c = { x, y, t: rim > .2 && r() < rim * .7 ? wpick(r, EDGE_UNDER) : wpick(r, S.under), sz: 1, seed: (r() * 1e9) | 0, S } }
   if (c && hides(x, y)) c = null; // (nothing just in front of a building of a place: it would hide it)
   if (c && c.tree && (underLine(x, y, 16) || placeTreeNear(x, y, c.rr))) c = { x, y, t: wpick(r, S.under), sz: 1, seed: c.seed, S };
   if (c && !c.tree && BEACHLESS.has(c.t) && matAt(x, y) === 'beach') c = null;
@@ -6838,8 +6863,9 @@ function layerD(L, x, y) { if (L.mapw) return mapwD(x, y);
   if (L.rect) { const [x0, y0, x1, y1] = L.rect; return Math.max(x0 - x, x - x1, y0 - y, y - y1) + (vn(x * .1, y * .1, L.sd) - .5) * 8 * (L.rough || 0) }
   return 1e9 }
 const HIT = { L: null, d: 0 };
-function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { if (SKIPS.length && SKIPS.includes(A[i])) continue; const d = layerD(A[i], x, y); if (d < 0) {
-      if (A[i].soft && MAPW.on && A[A.length - 1] === MWL) { const w = mapwD(x, y); if (w < 0) { HIT.L = MWL; HIT.d = w; HIT.w = 0; return HIT } } /* (a clearing's grass or a place's sand, a path, a yard: the map's water lies over it; only a road or a dam goes out over it) */ if (A[i].mat === 'dam' && damPart(A[i], x, y) === 0) continue; HIT.L = A[i]; HIT.d = d; HIT.w = A[i].ws ? LW : A[i].w;
+function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { if (SKIPS.length && SKIPS.includes(A[i])) continue; let d = layerD(A[i], x, y); if (d < 0) {
+      if (A[i].soft && MAPW.on && A[A.length - 1] === MWL) { const w = mapwD(x, y); if (w < 0) { HIT.L = MWL; HIT.d = w; HIT.w = 0; return HIT } } /* (a clearing's grass or a place's sand, a path, a yard: the map's water lies over it; only a road or a dam goes out over it) */
+      if (A[i].soft) for (let j = i + 1; j < A.length; j++) { const B = A[j]; if ((B.mat === 'road' || B.mat === 'path' || B.mat === 'bridge') && !B.soft) { const d2 = layerD(B, x, y); if (d2 < 0) { i = j; d = d2; break } } } /* (and a road from outside going in over its grass) */ if (A[i].mat === 'dam' && damPart(A[i], x, y) === 0) continue; HIT.L = A[i]; HIT.d = d; HIT.w = A[i].ws ? LW : A[i].w;
       // roads and paths meeting (the branches of a fork, the pieces of the trail, a side road) are one surface: its edge
       // is the edge of all of them together, so the rounded end of one piece never shows as a line across another
       const m = A[i].mat; if (m === 'road' || m === 'path') for (let j = i + 1; j < A.length; j++) { const B = A[j]; if (B.mat !== m) continue; const d2 = layerD(B, x, y); if (d2 < HIT.d) { HIT.d = d2; HIT.L = B; HIT.w = B.ws ? LW : B.w } }
@@ -6847,13 +6873,24 @@ function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.lengt
 const matAt = (x, y) => { const h = layerAt(x, y); return h.L ? h.L.mat : PL.base };
 const inClearing = (x, y, pad = 0) => inPlace(x, y, pad);
 // the colour of the ground: the game's own palettes and dithering
+const ROADDUST = [150, 132, 104];
+// a glade's grass: green, with dry straw in drifts that thin out at their edges
+function gladeColor(x, y) { let c = G.grass[quant(fbm(x * .06, y * .06, SEED + 16) * .85 + .1, x, y, 5, .7)]; const v = vn(x * .045, y * .045, SEED + 14) + (vn(x * .2, y * .2, SEED + 15) - .5) * .2;
+  if (v > .56 && h2(x, y, SEED + 17) < (v - .56) * 3) c = BG.gladeS[h2(x, y, SEED + 18) < .5 ? 0 : 1]; return c }
 function groundColor(x, y) {
   const h = layerAt(x, y), L = h.L, mat = L ? L.mat : PL.base, d = h.d; let c;
   if (L && L.pier) return pierColor(L, x, y);
   if (mat === 'road' && L.trail && boggy(x, y)) { // a road through a bog: dark water standing in its ruts and hollows
     const lw = layerAt(x, y).w || L.w, cd = d + lw, rut = Math.abs(cd - lw * .42) < 2.2 || Math.abs(cd - lw * 1.58) < 2.2, v = vn(x * .04, y * .06, SEED + 565);
     if (v > .45 && (rut || v > .62)) return gDetail(GW.bog[quant(clamp(.3 + (v - .45) * 2, 0, 1), x, y, 4)], x, y) }
-  if (mat === 'road') { const lw = h.w || L.w, cd = d + lw; if (Math.abs(cd - lw * .42) < 1 || L.ws && Math.abs(cd - lw * 1.58) < 1) c = G.rut; else if (d > -1.6) c = G.edge[h2(x, y, 9) < .5 ? 0 : 1]; else c = quant ? G.road[quant(fbm(x * .1, y * .1, SEED + 8) * .9, x, y, 5, .7)] : G.road[2] }
+  if (mat === 'road') { const lw = h.w || L.w, u = clamp((d + lw) / lw, 0, 1.2); // (u: across the road, nought down its middle, 1 at its edge)
+    c = cmix(G.road[quant(fbm(x * .1, y * .1, SEED + 8) * .9, x, y, 5, .7)], ROADDUST, .32); // (packed, dusty: paler than any floor of the wood)
+    // the two wheel tracks: pressed smoother and a shade darker, here and there wet and dark
+    const tk = clamp(1 - Math.abs(u - .48) / .16, 0, 1); if (tk > 0) { c = cmix(c, G.road[0], tk * .5); if (tk > .5 && vn(x * .09, y * .09, SEED + 591) > .76) c = G.rut }
+    // grass down the middle of a forest road (none near a village, where more goes along it)
+    if (L.grassy && u < .26) { const g = (1 - u / .26) * clamp((vn(x * .04, y * .04, SEED + 590) - .3) * 2.5, 0, 1) * clamp((edgeD(x, y) - 20) / 80, 0, 1); if (h2(x, y, SEED + 592) < g) c = G.grass[quant(.25 + vn(x * .2, y * .2, SEED + 593) * .55, x, y, 5, .7)] }
+    // the shoulders: loose and lighter, the grass coming in over the edge (no dark rim: a dirt road has no kerb)
+    if (u > .74) { const e = Math.min(1, (u - .74) / .26); if (h2(x, y, SEED + 594) < e * e * (.6 + .5 * vn(x * .12, y * .12, SEED + 595))) c = G.grass[quant(.3 + vn(x * .2, y * .2, SEED + 596) * .5, x, y, 5, .7)]; else c = cmix(c, G.road[4], .25 * e) } }
   else if (mat === 'path') { if (d > -1.1) c = G.edge[h2(x, y, 12) < .5 ? 0 : 1]; else c = G.road[quant(fbm(x * .1, y * .1, SEED + 11) * .8 + .15 + (d < -L.w * .6 ? .08 : 0), x, y, 5, .7)] }
   else if (mat === 'brook') { // a spring brook: clear brown-green water over sand, darker down the middle, wet mud and pebbles at the edges
     if (d > -1.3) c = h2(x, y, SEED + 31) < .3 ? GW.peb[Math.floor(h2(x, y, SEED + 32) * 3)] : GW.mud[quant(vn(x * .3, y * .3, SEED + 33), x, y, 3)];
@@ -6865,14 +6902,22 @@ function groundColor(x, y) {
     c = cmix(PAL.stone[quant(.3 + vn(x * .2, y * .2, SEED + 19) * .2, x, y, 5, .5)], G.road[1], .4) }
   else if (mat === 'dirt') { // bare trodden earth before a door or a board
     c = G.road[quant(clamp(.35 + (fbm(x * .08, y * .08, SEED + 21) - .5) * .6, 0, 1), x, y, 5, .6)] }
+  else if (mat === 'bed') { // a kitchen garden dug over for the winter: ridges of dark earth in rows, the dead tops of the potatoes, a cabbage left
+    const row = ((y - L.rect[1]) % 7 + 7) % 7, ridge = row < 3.5, q = h2(x, y, SEED + 601); c = G.floor[quant(clamp((ridge ? .62 : .18) + (vn(x * .2, y * .2, SEED + 600) - .5) * .3, 0, 1), x, y, 5, .6)];
+    if (ridge && q < .045) c = [112, 104, 60]; else if (ridge && q < .06) c = [92, 118, 72] }
   else if (mat === 'trodden') c = G.grass[quant(.2 + vn(x * .2, y * .2, SEED + 13) * .4, x, y, 5, .7)];
-  else if (mat === 'glade') { if (vn(x * .06, y * .06, SEED + 14) > .62) c = BG.borL[quant(vn(x * .3, y * .3, SEED + 15), x, y, 3, .8)]; else c = G.grass[quant(fbm(x * .06, y * .06, SEED + 16) * .85 + .1, x, y, 5, .7)] }
-  else if (mat === 'forest') { // the floor of a mixed wood: fallen leaves, brown and russet; patches of green (herbs, moss) where light comes
-    // through; under the spruces darker, with their needles in it
-    const S = standAt(x, y), g = vn(x * .045, y * .045, SEED + 520) + (vn(x * .2, y * .2, SEED + 521) - .5) * .15;
-    if (g > (S && S.id === 'spruce' ? .74 : .66)) c = G.grass[quant(clamp((g - .6) * 2.2, 0, 1), x, y, 5, .7)];
-    else if (S && S.id === 'spruce' && vn(x * .08, y * .08, SEED + 522) > .6) c = BG.spruceN[quant(vn(x * .3, y * .3, SEED + 523), x, y, 3, .8)];
-    else c = biomeGround(S && S.id === 'bor' ? 'bor' : 'oak', x, y) }
+  else if (mat === 'glade') { c = gladeColor(x, y); const e = -edgeD(x, y); if (e > -1 && e < 16 && h2(x, y, SEED + 528) < (1 - e / 16) * .4) c = biomeGround('oak', x, y) } // (the wood's leaves blown a little way out onto the grass)
+  else if (mat === 'forest') { // the floor of the wood, as its stand has it: deep moss and needle drifts under the spruces, the pine wood's
+    // dry needles and lichen, elsewhere fallen leaves, brown and russet, with herbs and grass where light comes through (the edges of
+    // the stands dithered, not drawn)
+    const S = standAt(x + (h2(x, y, SEED + 524) - .5) * 16, y + (h2(x, y, SEED + 525) - .5) * 16), sid = S && S.id, g = vn(x * .045, y * .045, SEED + 520) + (vn(x * .2, y * .2, SEED + 521) - .5) * .15;
+    if (sid === 'spruce') c = g > .78 ? G.grass[quant(clamp((g - .6) * 2.2, 0, 1), x, y, 5, .7)] : biomeGround('spruce', x, y);
+    else if (sid === 'bor') c = biomeGround('bor', x, y);
+    else if (g > (sid === 'hazel' || sid === 'birch' ? .58 : .65)) c = G.grass[quant(clamp((g - .55) * 2.2, 0, 1), x, y, 5, .7)];
+    else c = biomeGround('oak', x, y);
+    // a clearing's rim: its grass goes on in under the first trees, thinning out; along a road or a path, a grassy verge
+    const e = edgeD(x, y); if (e < 50 && h2(x, y, SEED + 527) < Math.pow(1 - e / 50, 1.3) * (.7 + .6 * vn(x * .06, y * .06, SEED + 526))) c = gladeColor(x, y);
+    else { const r = wayD(x, y, WAYS_R); if (r < 14 && h2(x, y, SEED + 529) < Math.min(1, (1 - r / 14) * 1.3)) c = h2(x, y, SEED + 530) < .22 ? BG.gladeS[h2(x, y, SEED + 531) < .5 ? 0 : 1] : G.grass[quant(.3 + vn(x * .15, y * .15, SEED + 532) * .55, x, y, 5, .7)] } }
   else if (mat === 'pond') { // a forest pond: dark still water, the light of the sky in it toward the far side, duckweed and fallen leaves floating
     // on it near the edges, mud and sedge at the rim
     if (d > -1.5) c = GW.mud[quant(vn(x * .3, y * .3, SEED + 530), x, y, 3)];
@@ -6914,7 +6959,7 @@ const leafSpAt = (x, y, r) => { if (inClearing(x, y)) return r() < .55 ? 'birch'
 // how fast the bike goes on each surface (px a second at full pedalling) and how the tyres sound on it
 // (cruising speeds of a touring bike: 18 km/h on a dirt road, 16 on a path, 14 on gravel, 10-12 on grass, 9 on the soft
 // forest floor; 10 px/s = 3.6 km/h)
-const SURF = { forest: { v: 26, snd: 'grass' }, pond: { v: 6, snd: 'grass' }, track: { v: 42, snd: 'gravel' }, dirt: { v: 40, snd: 'road' }, road: { v: 50, snd: 'road' }, path: { v: 44, snd: 'road' }, gravel: { v: 39, snd: 'gravel' }, trodden: { v: 33, snd: 'grass' }, glade: { v: 28, snd: 'grass' }, bor: { v: 25, snd: 'grass' }, brook: { v: 14, snd: 'grass' }, bridge: { v: 46, snd: 'road' }, bog: { v: 16, snd: 'grass' }, beach: { v: 31, snd: 'gravel' }, dam: { v: 42, snd: 'gravel' }, rut: { v: 33, snd: 'gravel' }, hump: { v: 27, snd: 'grass' }, lake: { v: 4, snd: 'grass' }, river: { v: 4, snd: 'grass' } };
+const SURF = { bed: { v: 20, snd: 'grass' }, forest: { v: 26, snd: 'grass' }, pond: { v: 6, snd: 'grass' }, track: { v: 42, snd: 'gravel' }, dirt: { v: 40, snd: 'road' }, road: { v: 50, snd: 'road' }, path: { v: 44, snd: 'road' }, gravel: { v: 39, snd: 'gravel' }, trodden: { v: 33, snd: 'grass' }, glade: { v: 28, snd: 'grass' }, bor: { v: 25, snd: 'grass' }, brook: { v: 14, snd: 'grass' }, bridge: { v: 46, snd: 'road' }, bog: { v: 16, snd: 'grass' }, beach: { v: 31, snd: 'gravel' }, dam: { v: 42, snd: 'gravel' }, rut: { v: 33, snd: 'gravel' }, hump: { v: 27, snd: 'grass' }, lake: { v: 4, snd: 'grass' }, river: { v: 4, snd: 'grass' } };
 
 // ================= objects =================
 // Every thing in the place, the scattered undergrowth and the forest round it. Kinds of the game are grown with the
@@ -7961,7 +8006,7 @@ function drawDev() { if (!DEV.on) { if (devCv.hidden === false) { dctx.clearRect
   const X = sx(R.x), Y = sy(R.y); ctx.strokeStyle = '#7dff9a'; ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.moveTo(X, Y); ctx.lineTo(X + Math.sin(R.psi) * 22, Y - Math.cos(R.psi) * 22); ctx.stroke() }
 
 // ================= sizing =================
-function resize() { const cw = innerWidth, ch = innerHeight; SC = Math.max(2, Math.round(Math.min(cw, ch * .62) / 180)); W = Math.ceil(cw / SC) + 1; H = Math.ceil(ch / SC) + 1;
+function resize() { const cw = innerWidth, ch = innerHeight; { const hb = document.querySelector('.hud.bottom'); if (hb) document.documentElement.style.setProperty('--hudH', hb.offsetHeight + 'px') } SC = Math.max(2, Math.round(Math.min(cw, ch * .62) / 180)); W = Math.ceil(cw / SC) + 1; H = Math.ceil(ch / SC) + 1;
   cvs.width = W; cvs.height = H; cvs.style.width = W * SC + 'px'; cvs.style.height = H * SC + 'px'; ctx.imageSmoothingEnabled = false; devCv.width = W * SC; devCv.height = H * SC; fxSize(W * SC, H * SC); drops = []; buildFog(); stepCam(0, true) }
 addEventListener('resize', resize);
 
@@ -8020,7 +8065,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { DAMR, mapwD, MAPW, get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
