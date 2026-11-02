@@ -4489,7 +4489,7 @@ const K_q = (pal, v, x, y) => pal[quant(v, x, y, pal.length, .7)];
 // eye sees a raised deck: its top lies H px up from the plan footprint (the rider riding on it is drawn lifted by as much), the ramp running up to it from
 // the sand, the east side a little thick, a hard dark outline all round. Its sides are kerbs the bike cannot cross: it is got onto by the ramp only, and left
 // by it. (Coordinates: the place's own.)
-const PIER = { x: 1690, w: 14, y0: 194, y1: 338, ramp: 22, H: 6, bm: 3.5, ox: 1e9, oy: 1e9 }; // (ox, oy: where its place lies in the world, set when the place is laid down)
+const PIER = { x: 1690, w: 14, y0: 228, y1: 372, ramp: 22, H: 6, bm: 3.5, ox: 1e9, oy: 1e9 }; // (ox, oy: where its place lies in the world, set when the place is laid down)
 const PIERC = { gap: [40, 31, 24], line: [26, 19, 14], plank: [140, 115, 84], beam: [122, 98, 70], dark: [84, 66, 46] };
 // the decking: boards across the deck (one board across, a joint now and then over the middle joist), one weathered tone with only a faint difference from
 // board to board, a very few replaced ones a shade lighter, the grain along each; a nail at each end of every board and one at the joist on every other row
@@ -6197,7 +6197,7 @@ const PLACES = {};
     ...[[26, 64, 1.1], [960, 32, 1.15], [13, 336, 1.05], [198, 19, 1]].map(([x, y, sz], i) => ({ id: 'spruce-' + (i + 1), t: 'spruce', x, y, sz, seed: 2300 + i * 7 })),
   ];
   PLACES.kluchi = {
-    id: 'kluchi', name: 'Турбаза «Студёный ключ»', mapAt: [213, 243], // where it lies on the map (map cells of 4.67 m)
+    id: 'kluchi', name: 'Турбаза «Студёный ключ»', mapAt: [213, 243], mapAnchor: [528, 272], // where it lies on the map (map cells of 4.67 m), and which of its own points (px) that is
     size: [960, 544], margin: [240, 220], base: 'forest',
     // in the world: the trail goes on north from the end of trail-east; trail-west and the road south wander off into the forest
     trail: { out: 'trail-east', side: ['trail-west', 'road'] },
@@ -6296,11 +6296,11 @@ const PLACES = {};
     { id: 'logpile', p: 'logpile', x: 168, y: 340, seed: 11 },
     // nets and fish drying on the shore side
     { id: 'netrack-1', p: 'netrack', x: 142, y: 300, len: 58, nets: 2, seed: 7 }, { id: 'netrack-2', p: 'netrack', x: 706, y: 254, len: 50, nets: 2, seed: 17, col: [70, 92, 84] },
-    { id: 'fishrack-1', p: 'fishrack', x: 372, y: 272, len: 46, rows: 3, seed: 11 }, { id: 'fishrack-2', p: 'fishrack', x: 864, y: 262, len: 40, rows: 3, seed: 23, gold: .3 },
+    { id: 'fishrack-1', p: 'fishrack', x: 386, y: 318, len: 46, rows: 3, seed: 11 }, { id: 'fishrack-2', p: 'fishrack', x: 864, y: 262, len: 40, rows: 3, seed: 23, gold: .3 },
     { id: 'crates-1', p: 'crates', x: 540, y: 298, seed: 4 }, { id: 'barrels-1', p: 'barrels', x: 690, y: 290, seed: 3, n: 3 }, { id: 'barrels-2', p: 'barrels', x: 1418, y: 352, seed: 9, n: 2 },
     // boats: two turned over on the sand, one on its keel, two afloat by the jetty
     { id: 'mtp', p: 'mtp', x: 84, y: 438 },
-    { id: 'boat-1', p: 'boat', x: 300, y: 276, col: [66, 112, 150], seed: 2 }, { id: 'boat-2', p: 'boat', x: 214, y: 272, col: [168, 60, 48], up: true, seed: 3 },
+    { id: 'boat-1', p: 'boat', x: 296, y: 302, col: [66, 112, 150], seed: 2 }, { id: 'boat-2', p: 'boat', x: 204, y: 310, col: [168, 60, 48], up: true, seed: 3 },
     { id: 'boat-5', p: 'boat', x: 1792, y: 372, col: [60, 120, 104], up: true, flip: true, seed: 5 },
     { id: 'boat-3', p: 'boat', x: 1748, y: 248, col: [214, 210, 196], kind: 'motor', water: true, seed: 4 }, { id: 'boat-4', p: 'boat', x: 1630, y: 266, col: [60, 120, 104], water: true, flip: true, seed: 6 },
     // the jetty's pilings, both sides
@@ -6328,33 +6328,33 @@ const PLACES = {};
     { id: 'sign-west', p: 'signpost', dir: -1, text: 'КЛЮЧ 1,7', x: 736, y: 560 },
   ];
   PLACES.buhta = {
-    id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222], pier: PIER, gullBeach: [1520, 335, 1860, 395], // (the jetty; the sand the gulls walk on)
+    id: 'buhta', name: 'Рыбацкая деревушка', mapAt: [450, 222], mapAnchor: [669.1, 373], /* (as the world lays it out from the camp: so the sandbox's shore is the game's) */ pier: PIER, gullBeach: [1520, 335, 1860, 395], // (the jetty; the sand the gulls walk on)
     size: [1280, 720], margin: [240, 220], base: 'forest',
     trail: { side: ['road-west', 'road-south'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [950, 400, 1080, 300], rough: .3 },
       // the sand at the heads of the two inlets of the bay that come up to the street (the water is the map's: where it lies, the sand gives way)
-      { id: 'beach-w', mat: 'beach', ellipse: [300, 262, 250, 62], rough: .15 },
-      { id: 'beach-e', mat: 'beach', ellipse: [1680, 345, 330, 56], rough: .15 },
+      { id: 'beach-w', mat: 'beach', ellipse: [345, 250, 300, 110], shore: 72, rough: .15 },
+      { id: 'beach-e', mat: 'beach', ellipse: [1690, 330, 340, 100], shore: 84, rough: .15 },
       // the yards, trodden bare, and the paths to the doors and down to the jetty
       { id: 'yard-1', mat: 'trodden', ellipse: [252, 392, 70, 34], rough: .2 }, { id: 'yard-2', mat: 'trodden', ellipse: [482, 372, 66, 32], rough: .2 }, { id: 'yard-3', mat: 'trodden', ellipse: [762, 358, 62, 30], rough: .2 },
       { id: 'yard-shed', mat: 'trodden', ellipse: [1470, 374, 64, 22], rough: .2 }, { id: 'yard-fish', mat: 'trodden', ellipse: [620, 268, 120, 30], rough: .3 },
       { id: 'path-1', mat: 'path', line: [[252, 392], [254, 428]], w: 6 }, { id: 'path-2', mat: 'path', line: [[482, 374], [482, 414]], w: 6 }, { id: 'path-3', mat: 'path', line: [[762, 358], [764, 396]], w: 6 },
       { id: 'jetty-apron', mat: 'dirt', ellipse: [PIER.x, PIER.y1 + PIER.ramp + 6, 22, 8], rough: .35 }, { id: 'path-shed', mat: 'path', line: [[1470, 378], [1474, 398]], w: 7 },
-      { id: 'path-beach', mat: 'path', line: [[250, 300], [330, 258], [420, 252], [560, 262], [640, 246], [760, 232], [900, 250]], w: 5 },
+      { id: 'path-beach', mat: 'path', line: [[110, 334], [200, 340], [300, 344], [400, 342], [480, 332], [552, 310], [610, 282], [670, 254], [760, 236], [900, 250]], w: 5 }, // (round the head of the inlet, on the sand's back)
       { id: 'dirt-1', mat: 'dirt', ellipse: [252, 394, 14, 6], rough: .4 }, { id: 'dirt-2', mat: 'dirt', ellipse: [482, 375, 14, 6], rough: .4 }, { id: 'dirt-3', mat: 'dirt', ellipse: [762, 359, 14, 6], rough: .4 },
       { id: 'dirt-well', mat: 'dirt', ellipse: [388, 399, 18, 7], rough: .4 },
       // the way into the village from the forest, the street and the embankment out over the bay
       { id: 'road-west', mat: 'road', line: [[-100, 492], [120, 456]], w: 13 },
       { id: 'road-south', mat: 'road', line: [[770, 394], [778, 500], [790, 640]], w: 13 }, // (the way in, up from the turning below the village)
-      { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 398], [1050, 404], [1300, 410], [1520, 402], [1640, 386], [PIER.x, PIER.y1 + PIER.ramp + 10]], w: 13 }, // (east along the houses to the jetty)
+      { id: 'street', mat: 'road', line: [[120, 456], [330, 428], [560, 410], [800, 398], [1050, 404], [1300, 410], [1520, 406], [1630, 402], [PIER.x, PIER.y1 + PIER.ramp + 10]], w: 13 }, // (east along the houses to the jetty)
       // the jetty: a broad raised pier, a ramp up to it from the sand (PIER in pf.js)
       { id: 'jetty', mat: 'bridge', pier: true, rect: [PIER.x - PIER.w - 1, PIER.y0 - PIER.H - 1, PIER.x + PIER.w + 3.6, PIER.y1 + PIER.ramp], rough: 0, bridge: { ux: 0, uy: -1 } },
       // the old wheel tracks to the cars: two ruts and the hump of grass between them, overgrown, lumpy
       ...CARWAYS.flatMap(W => [{ id: 'hump-' + W.id, mat: 'hump', line: W.L, w: 4.4, rough: .6, relief: { h: 1, lump: true } },
         ...[-7, 7].map(o => ({ id: 'rut-' + W.id + (o < 0 ? 'a' : 'b'), mat: 'rut', line: side(W.L, o), w: 2.6, rough: .5, grow: W.grow, relief: { h: -1, lump: true } }))]),
       // wheel tracks to the shed, the boats' way down to the water
-      ...[[[1470, 374], [1462, 340]], [[440, 300], [436, 270]], [[330, 300], [326, 272]]].flatMap((L, i) => [-3, 3].map(o => ({ id: `track-${i}${o < 0 ? 'a' : 'b'}`, mat: 'track', line: L.map(([x, y]) => [x + o, y]), w: 1.5, rough: .4 }))),
+      ...[[[1470, 374], [1462, 340]], [[440, 334], [434, 270]], [[322, 338], [316, 276]]].flatMap((L, i) => [-3, 3].map(o => ({ id: `track-${i}${o < 0 ? 'a' : 'b'}`, mat: 'track', line: L.map(([x, y]) => [x + o, y]), w: 1.5, rough: .4 }))),
     ],
     objects,
     scatter: [
@@ -6375,7 +6375,7 @@ const PLACES = {};
     // the people: an old fisherman between the boats and the jetty, a man mending a net by the first house, a woman with a bucket to the well
     npcs: [
       { id: 'fisher-1', look: { id: 'fisher-1', sex: 'm', age: 'old', h: 17.2, build: 1.1, skin: 1, hair: [150, 148, 142], cut: 'short', beard: [150, 148, 142], hat: 'cap', hatCol: [70, 70, 64], top: [58, 84, 74], topKind: 'jacket', legs: [78, 84, 70], boots: [40, 52, 40], carry: 'bucket' },
-        route: [[1560, 376, 20, 0], [1640, 372, 0], [PIER.x, PIER.y1 + 14, 0], [PIER.x, PIER.y1 - 50, 0], [PIER.x + 4, PIER.y0 + 40, 35, 10], [PIER.x, PIER.y1 - 50, 0], [PIER.x, PIER.y1 + 14, 0], [1640, 372, 0], [1550, 380, 25, 340]] },
+        route: [[1560, 388, 20, 0], [1640, 396, 0], [PIER.x, PIER.y1 + 14, 0], [PIER.x, PIER.y1 - 50, 0], [PIER.x + 4, PIER.y0 + 40, 35, 10], [PIER.x, PIER.y1 - 50, 0], [PIER.x, PIER.y1 + 14, 0], [1640, 396, 0], [1550, 390, 25, 340]] },
       { id: 'fisher-2', look: { id: 'fisher-2', sex: 'm', h: 18.6, build: 1.0, skin: 2, hair: [60, 44, 32], cut: 'short', hat: 'hood', top: [96, 110, 140], topKind: 'hoodie', legs: [70, 74, 86], boots: [40, 36, 34] },
         route: [[250, 400, 30, 0], [196, 396, 0], [166, 390, 0], [160, 350, 0], [170, 326, 55, 315], [160, 350, 0], [166, 390, 0], [196, 396, 0]] }, // (round the west end of the clothes line, not through its post)
       // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the barrier on the side away from the booth
@@ -6390,7 +6390,7 @@ const PLACES = {};
       { id: 'fire', name: 'Костровище', hint: 'вечерами здесь сидят, глядя на воду', x: 1392, y: 298, r: 28 },
       { id: 'barn', name: 'Коровник', hint: 'пахнет сеном и парным молоком', x: 925, y: 486, r: 46 },
       { id: 'well', name: 'Колодец', hint: 'вода из ключа, ледяная', x: 386, y: 401, r: 24 },
-      { id: 'fishrack-1', name: 'Вешала для рыбы', hint: 'вялятся лещ и плотва, рядом ящик с уловом', x: 372, y: 274, r: 36 },
+      { id: 'fishrack-1', name: 'Вешала для рыбы', hint: 'вялятся лещ и плотва, рядом ящик с уловом', x: 386, y: 320, r: 36 },
       { id: 'fishrack-2', name: 'Вешала для рыбы', hint: 'здесь вялят улов, пока держится сухая погода', x: 864, y: 264, r: 30 },
       { id: 'nets-1', name: 'Сети сушатся', hint: 'развешены после лова, ветер качает их', x: 142, y: 302, r: 36 },
       { id: 'nets-2', name: 'Сети сушатся', hint: 'развешены после лова, ветер качает их', x: 706, y: 256, r: 32 },
@@ -6437,7 +6437,8 @@ function layerBox(o) {
   if (o.ellipse) { const [wx, wy, rx, ry] = o.ellipse, m = (o.rough || 0) * Math.max(rx, ry) + 4; o.bb = [wx - rx - m, wy - ry - m, wx + rx + m, wy + ry + m] }
   if (o.rect) { const [x0, y0, x1, y1] = o.rect; o.bb = [x0 - 4, y0 - 4, x1 + 4, y1 + 4] } }
 // a layer in world coordinates: filed in every cell its box (and a margin, for the "near a road" questions) touches
-function addLayer(o, k) { o.k = k ?? LAYER_K++; if (o.mat === 'glade' || o.mat === 'beach') o.soft = 1; if (o.sd === undefined) o.sd = hashStr(o.id || 'L' + o.k) % 9973; layerBox(o); LAYERS.push(o); if (o.id) LAYER[o.id] = o;
+const MW_YIELD = new Set(['glade', 'beach', 'path', 'trodden', 'dirt', 'track', 'rut', 'hump']);
+function addLayer(o, k) { o.k = k ?? LAYER_K++; if (MW_YIELD.has(o.mat)) o.soft = 1; if (o.sd === undefined) o.sd = hashStr(o.id || 'L' + o.k) % 9973; layerBox(o); LAYERS.push(o); if (o.id) LAYER[o.id] = o;
   const M = 28; for (let j = Math.floor((o.bb[1] - M) / LGC); j <= Math.floor((o.bb[3] + M) / LGC); j++) for (let i = Math.floor((o.bb[0] - M) / LGC); i <= Math.floor((o.bb[2] + M) / LGC); i++) {
     const key = lkey(i, j); let a = LGRID.get(key); if (!a) LGRID.set(key, a = []); a.push(o); a.sort((p, q) => q.k - p.k) } return o }
 const layersNear = (x, y) => LGRID.get(lkey(Math.floor(x / LGC), Math.floor(y / LGC))) || NOLAYERS;
@@ -6559,26 +6560,32 @@ const MAPW = { W: 1500, H: 1737, m: null, sum: null, tiles: new Map(), ox: 0, oy
 const MWL = { id: 'map-water', mat: 'lake', pal: 'bay', mapw: 1, rough: 0, k: -5, sd: 77, bb: [0, 0, 0, 0] };
 function mapwInit() { const { W, H } = MAPW, m = new Uint8Array(W * H); MAPW_RLE.split(';').forEach((row, y) => { let x = 0, v = 0; for (const n of row.split(',')) { const k = +n; if (v) m.fill(1, y * W + x, y * W + x + k); x += k; v ^= 1 } });
   const S = new Int32Array((W + 1) * (H + 1)); for (let y = 0; y < H; y++) { let r = 0; for (let x = 0; x < W; x++) { r += m[y * W + x]; S[(y + 1) * (W + 1) + x + 1] = S[y * (W + 1) + x + 1] + r } }
-  const W0 = PLW[0]; MAPW.m = m; MAPW.sum = S; MAPW.ox = W0.cx - W0.P.mapAt[0] * MAP_CELL; MAPW.oy = W0.cy - W0.P.mapAt[1] * MAP_CELL; MAPW.on = true;
+  const W0 = PLW[0], [ax, ay] = W0.P.mapAnchor ? W0.toW(...W0.P.mapAnchor) : [W0.cx, W0.cy]; MAPW.m = m; MAPW.sum = S; MAPW.ox = ax - W0.P.mapAt[0] * MAP_CELL; MAPW.oy = ay - W0.P.mapAt[1] * MAP_CELL; MAPW.on = true;
   MWL.bb = [MAPW.ox, MAPW.oy, MAPW.ox + W * MAP_CELL, MAPW.oy + H * MAP_CELL] }
 // how many water cells in the cells from (x0, y0) to (x1, y1) (inclusive; clamped to the map)
 function mwCount(x0, y0, x1, y1) { const { W, H, sum: S } = MAPW; x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W - 1, x1); y1 = Math.min(H - 1, y1); if (x1 < x0 || y1 < y0) return 0;
   return S[(y1 + 1) * (W + 1) + x1 + 1] - S[y0 * (W + 1) + x1 + 1] - S[(y1 + 1) * (W + 1) + x0] + S[y0 * (W + 1) + x0] }
 // whether the map has water within the world box (with a margin, px)
 const mwNear = (x0, y0, x1, y1, M = 0) => MAPW.on && mwCount(Math.floor((x0 - M - MAPW.ox) / MAP_CELL) - 1, Math.floor((y0 - M - MAPW.oy) / MAP_CELL) - 1, Math.floor((x1 + M - MAPW.ox) / MAP_CELL) + 1, Math.floor((y1 + M - MAPW.oy) / MAP_CELL) + 1) > 0;
-// each cell's signed distance to the shore (cells; negative in the water; at most MWR), made a tile at a time as it is asked for
-function mwTile(ti, tj) { const key = ti * 8192 + tj; let T = MAPW.tiles.get(key); if (T) return T; T = new Float32Array(MWT * MWT); const { W, H, m } = MAPW, R2 = MWR * MWR, at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? m[y * W + x] : 0);
+// each cell's signed distance to the shore (cells; negative in the water; at most MWR), made a tile at a time as it is asked for;
+// and after it (at MWT²) the cell's water blurred over its neighbours (0..1), whose half-way line is the shore drawn smooth: the
+// map's cells are 4.7 m, and the shore of whole cells would be steps and flat ends
+const MWG = (() => { const K = [], s = .72; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) K.push(Math.exp(-(dx * dx + dy * dy) / (2 * s * s))); const S = K.reduce((a, b) => a + b); return K.map(k => k / S) })(), MWGK = .72 * Math.sqrt(2 * Math.PI);
+function mwTile(ti, tj) { const key = ti * 8192 + tj; let T = MAPW.tiles.get(key); if (T) return T; T = new Float32Array(MWT * MWT * 2); const { W, H, m } = MAPW, R2 = MWR * MWR, at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? m[y * W + x] : 0);
   for (let j = 0; j < MWT; j++) for (let i = 0; i < MWT; i++) { const x = ti * MWT + i, y = tj * MWT + j, v = at(x, y); let best = R2;
     if (mwCount(x - MWR, y - MWR, x + MWR, y + MWR) % ((2 * MWR + 1) * (2 * MWR + 1)) !== 0 || (v === 0) !== (mwCount(x - MWR, y - MWR, x + MWR, y + MWR) === 0))
       for (let dy = -MWR; dy <= MWR; dy++) for (let dx = -MWR; dx <= MWR; dx++) { const d2 = dx * dx + dy * dy; if (d2 < best && at(x + dx, y + dy) !== v) best = d2 }
-    const d = Math.sqrt(best) - .5; T[j * MWT + i] = v ? -d : d }
+    const d = Math.sqrt(best) - .5; T[j * MWT + i] = v ? -d : d;
+    let g = v; if (best < 9) { g = 0; for (let dy = -2, k = 0; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++, k++) g += MWG[k] * at(x + dx, y + dy) } T[MWT * MWT + j * MWT + i] = g }
   MAPW.tiles.set(key, T); return T }
-const mwCell = (x, y) => { const ti = Math.floor(x / MWT), tj = Math.floor(y / MWT); return mwTile(ti, tj)[(y - tj * MWT) * MWT + (x - ti * MWT)] };
+const mwCell = (x, y, g = 0) => { const ti = Math.floor(x / MWT), tj = Math.floor(y / MWT); return mwTile(ti, tj)[g + (y - tj * MWT) * MWT + (x - ti * MWT)] };
 // the signed distance (px) from the map's shore at a world point: the cells' distances smoothed between their middles, the line of the
 // shore wandering a little as a real one does
 function mapwD(x, y) { if (!MAPW.on) return 1e9; const fx = (x - MAPW.ox) / MAP_CELL - .5, fy = (y - MAPW.oy) / MAP_CELL - .5, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j;
-  const s = (mwCell(i, j) * (1 - u) + mwCell(i + 1, j) * u) * (1 - v) + (mwCell(i, j + 1) * (1 - u) + mwCell(i + 1, j + 1) * u) * v;
-  if (Math.abs(s) > MWR - 1.2) return s * MAP_CELL; return s * MAP_CELL + (vn(x * .018, y * .018, SEED + 900) - .5) * 30 + (vn(x * .07, y * .07, SEED + 901) - .5) * 7 }
+  let s = (mwCell(i, j) * (1 - u) + mwCell(i + 1, j) * u) * (1 - v) + (mwCell(i, j + 1) * (1 - u) + mwCell(i + 1, j + 1) * u) * v;
+  if (Math.abs(s) > MWR - 1.2) return s * MAP_CELL;
+  if (Math.abs(s) < 2.2) { const G = MWT * MWT, g = (mwCell(i, j, G) * (1 - u) + mwCell(i + 1, j, G) * u) * (1 - v) + (mwCell(i, j + 1, G) * (1 - u) + mwCell(i + 1, j + 1, G) * u) * v,
+    w = ssm(1.2, 2.2, Math.abs(s)); s = (.5 - g) * MWGK * (1 - w) + s * w } return s * MAP_CELL + (vn(x * .018, y * .018, 7900) - .5) * 30 + (vn(x * .07, y * .07, 7901) - .5) * 7 } // (the same shore every time: the things on it are set by it)
 // laid: into the layer grid wherever there is water near
 function mapwLayers() { mapwInit(); LAYERS.push(MWL); LAYER[MWL.id] = MWL; const [bx0, by0, bx1, by1] = MWL.bb;
   for (let j = Math.floor(by0 / LGC); j <= Math.floor(by1 / LGC); j++) for (let i = Math.floor(bx0 / LGC); i <= Math.floor(bx1 / LGC); i++) {
@@ -6825,12 +6832,15 @@ function layerD(L, x, y) { if (L.mapw) return mapwD(x, y);
   if (L.line) { let w = L.w; if (L.mat === 'path') { w *= .82 + .36 * vn(x * .035, y * .035, L.sd + 5); for (const [jx, jy] of JUNCT) { const d = Math.hypot(x - jx, y - jy); if (d < 18) w += (1 - d / 18) * 4 } }
     if (L.ws) { const dd = segDW(L, x, y); w = LW; return dd - w + (vn(x * .17, y * .17, L.sd) - .5) * 3.2 * (L.rough ?? 1) }
     return (L.open0 || L.open1 ? segDOpen(L, x, y) : segD(L.line, x, y)) - w + (vn(x * .17, y * .17, L.sd) - .5) * (L.mat === 'road' ? 3.2 : 2) * (L.rough ?? 1) } // the game's own ragged verge
-  if (L.ellipse) { const [cx, cy, rx, ry] = L.ellipse, e = Math.hypot((x - cx) / rx, (y - cy) / ry) + (vn(x * .025, y * .025, L.sd) - .5) * (L.rough || 0) + (vn(x * .1, y * .1, L.sd + 1) - .5) * .02; return (e - 1) * Math.min(rx, ry) }
+  if (L.ellipse) { const [cx, cy, rx, ry] = L.ellipse, e = Math.hypot((x - cx) / rx, (y - cy) / ry) + (vn(x * .025, y * .025, L.sd) - .5) * (L.rough || 0) + (vn(x * .1, y * .1, L.sd + 1) - .5) * .02;
+    // a strip of sand along the map's shore (shore: its width, px), only within the ellipse and narrowing to nothing at its rim
+    if (L.shore && MAPW.on) { if (e >= 1) return Math.max(1, (e - 1) * Math.min(rx, ry)); return mapwD(x, y) - L.shore * Math.min(1, (1 - e) * 2.4) * (.7 + .6 * vn(x * .022, y * .022, L.sd + 2)) }
+    return (e - 1) * Math.min(rx, ry) }
   if (L.rect) { const [x0, y0, x1, y1] = L.rect; return Math.max(x0 - x, x - x1, y0 - y, y - y1) + (vn(x * .1, y * .1, L.sd) - .5) * 8 * (L.rough || 0) }
   return 1e9 }
 const HIT = { L: null, d: 0 };
 function layerAt(x, y) { const A = layersNear(x, y); for (let i = 0; i < A.length; i++) { if (SKIPS.length && SKIPS.includes(A[i])) continue; const d = layerD(A[i], x, y); if (d < 0) {
-      if (A[i].soft && MAPW.on && A[A.length - 1] === MWL) { const w = mapwD(x, y); if (w < 0) { HIT.L = MWL; HIT.d = w; HIT.w = 0; return HIT } } /* (a clearing's grass or a place's sand: the map's water lies over it) */ if (A[i].mat === 'dam' && damPart(A[i], x, y) === 0) continue; HIT.L = A[i]; HIT.d = d; HIT.w = A[i].ws ? LW : A[i].w;
+      if (A[i].soft && MAPW.on && A[A.length - 1] === MWL) { const w = mapwD(x, y); if (w < 0) { HIT.L = MWL; HIT.d = w; HIT.w = 0; return HIT } } /* (a clearing's grass or a place's sand, a path, a yard: the map's water lies over it; only a road or a dam goes out over it) */ if (A[i].mat === 'dam' && damPart(A[i], x, y) === 0) continue; HIT.L = A[i]; HIT.d = d; HIT.w = A[i].ws ? LW : A[i].w;
       // roads and paths meeting (the branches of a fork, the pieces of the trail, a side road) are one surface: its edge
       // is the edge of all of them together, so the rounded end of one piece never shows as a line across another
       const m = A[i].mat; if (m === 'road' || m === 'path') for (let j = i + 1; j < A.length; j++) { const B = A[j]; if (B.mat !== m) continue; const d2 = layerD(B, x, y); if (d2 < HIT.d) { HIT.d = d2; HIT.L = B; HIT.w = B.ws ? LW : B.w } }
@@ -8011,7 +8021,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { DAMR, get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { DAMR, mapwD, MAPW, get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
