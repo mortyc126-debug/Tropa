@@ -84,7 +84,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 <div id="heroPick" hidden><div class="plate"><div class="pt">Кто едет?</div><div class="pk"><button type="button" data-h="roma"><b>Рома</b></button><button type="button" data-h="dasha"><b>Даша</b></button></div></div></div>
 <div id="loading"><div class="plate" id="loadTxt">Строю дамбу…</div></div>
 <script>
-const AT_DAM = 1; // (the sandbox: on the bike at the turning onto the dam)
+const AT_DAM = 1, SANDBOX_DAM = 1; // (the sandbox: the dam alone, without the places; on the bike at its checkpoint)
 const GAMEMODE = true;
 (() => {
 "use strict";
@@ -6569,6 +6569,15 @@ function bendRoad(id, a, da, b, db, w) { const la = Math.hypot(...da) || 1, lb =
 // some 1.1 km east of it and 100 m north (the map's cells are 4.67 m: the camp at 213, 243, the village at 450, 222).
 // The sandbox has its one place only, at its own margin.
 const WORLD_AT = { kluchi: [240, 220], buhta: [11159, -861] }, MAP_CELL = 46.667; // (the map's cell, px)
+// The dam's sandbox (ONLY_DAM, set by its build): the world without the places, the dam laid where the game lays it (the same world
+// coordinates, so that what is made there goes back into the game as it is). Its stand-in place holds nothing but the guard at the
+// checkpoint; its clearing lies far off, out of the way.
+const ONLY_DAM = typeof SANDBOX_DAM !== 'undefined';
+PLACES.dam = { id: 'dam', name: 'Дамба через залив', size: [0, 0], margin: [0, 0], base: 'forest', spawn: { x: 0, y: 0, heading: 120 },
+  ground: [{ id: 'clearing', mat: 'glade', ellipse: [-1e6, -1e6, 1, 1] }], objects: [], npcs: [], forest: PLACES.buhta.forest };
+// the woods round the places as the game has them (also where a place is not laid down): the first place's everywhere, another's
+// within its reach of its clearing's middle
+const FWS = Object.keys(WORLD_AT).map(id => { const P = PLACES[id], C = P.ground.find(g => g.id === P.forest.clearing).ellipse; return { F: P.forest, cx: WORLD_AT[id][0] + C[0], cy: WORLD_AT[id][1] + C[1] } });
 // ---- the map's water: the bay, the lakes and the rivers where the map has them (its 1500 × 1737 cells, each row as runs: land, water,
 // land..; the roads drawn across the water taken out, the dam is the game's own). Lying under the places: where a place's clearing or
 // sand lies over it, the water wins; the shore's distance as the bays' (negative in the water), so the waves, the foam and the shallows
@@ -6578,7 +6587,9 @@ const MAPW = { W: 1500, H: 1737, m: null, sum: null, tiles: new Map(), ox: 0, oy
 const MWL = { id: 'map-water', mat: 'lake', pal: 'bay', mapw: 1, rough: 0, k: -5, sd: 77, bb: [0, 0, 0, 0] };
 function mapwInit() { const { W, H } = MAPW, m = new Uint8Array(W * H); MAPW_RLE.split(';').forEach((row, y) => { let x = 0, v = 0; for (const n of row.split(',')) { const k = +n; if (v) m.fill(1, y * W + x, y * W + x + k); x += k; v ^= 1 } });
   const S = new Int32Array((W + 1) * (H + 1)); for (let y = 0; y < H; y++) { let r = 0; for (let x = 0; x < W; x++) { r += m[y * W + x]; S[(y + 1) * (W + 1) + x + 1] = S[y * (W + 1) + x + 1] + r } }
-  const W0 = PLW[0], [ax, ay] = W0.P.mapAnchor ? W0.toW(...W0.P.mapAnchor) : [W0.cx, W0.cy]; MAPW.m = m; MAPW.sum = S; MAPW.ox = ax - W0.P.mapAt[0] * MAP_CELL; MAPW.oy = ay - W0.P.mapAt[1] * MAP_CELL; MAPW.on = true;
+  // (laid from the first place the map has, by its anchor; in the dam's sandbox, where the camp would be)
+  const W0 = PLW.find(W => W.P.mapAt), K = W0 ? W0.P : PLACES.kluchi, [ax, ay] = W0 ? (K.mapAnchor ? W0.toW(...K.mapAnchor) : [W0.cx, W0.cy]) : [WORLD_AT.kluchi[0] + K.mapAnchor[0], WORLD_AT.kluchi[1] + K.mapAnchor[1]];
+  MAPW.m = m; MAPW.sum = S; MAPW.ox = ax - K.mapAt[0] * MAP_CELL; MAPW.oy = ay - K.mapAt[1] * MAP_CELL; MAPW.on = true;
   MWL.bb = [MAPW.ox, MAPW.oy, MAPW.ox + W * MAP_CELL, MAPW.oy + H * MAP_CELL] }
 // how many water cells in the cells from (x0, y0) to (x1, y1) (inclusive; clamped to the map)
 function mwCount(x0, y0, x1, y1) { const { W, H, sum: S } = MAPW; x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W - 1, x1); y1 = Math.min(H - 1, y1); if (x1 < x0 || y1 < y0) return 0;
@@ -6667,8 +6678,9 @@ const DAMK = { top: 17, vg: 20, ns: 25, st: 34 }, DAMR = { pts: null, S: null, r
 // both ends, its slopes growing out of the ground), the road all along under it; the culverts (a triple one over the strait, singles
 // along the rest), the lamp posts every ~36 m along the north verge with their wire, the checkpoint where it leaves the land, the
 // leading-light tower on the pine islet with a bench and a fire ring by the road, the signpost at the turning
-function damPlan() { const Rk = WORLD_ROADS.find(r => r.id === 'road-kb'); if (!Rk || !Rk.pts || !MAPW.on) return;
-  const V = DAM_MAP.map(([x, y]) => [MAPW.ox + x * MAP_CELL, MAPW.oy + y * MAP_CELL]); let j0 = 0, bd = 1e9; Rk.pts.forEach((p, i) => { const d = Math.hypot(p[0] - V[0][0], p[1] - V[0][1]); if (d < bd) { bd = d; j0 = i } }); V[0] = Rk.pts[j0].slice();
+function damPlan() { const Rk = WORLD_ROADS.find(r => r.id === 'road-kb'); if (!MAPW.on) return;
+  // (it leaves the village road where that comes nearest the map's line; in the dam's sandbox, where the village road is not, at the map's own point)
+  const V = DAM_MAP.map(([x, y]) => [MAPW.ox + x * MAP_CELL, MAPW.oy + y * MAP_CELL]); let j0 = 0, bd = 1e9; if (Rk && Rk.pts) { Rk.pts.forEach((p, i) => { const d = Math.hypot(p[0] - V[0][0], p[1] - V[0][1]); if (d < bd) { bd = d; j0 = i } }); V[0] = Rk.pts[j0].slice() }
   let Q = V; for (let it = 0; it < 4; it++) { const N = [Q[0]]; for (let i = 0; i + 1 < Q.length; i++) { const p = Q[i], q = Q[i + 1]; N.push([p[0] * .75 + q[0] * .25, p[1] * .75 + q[1] * .25], [p[0] * .25 + q[0] * .75, p[1] * .25 + q[1] * .75]) } N.push(Q[Q.length - 1]); Q = N }
   const P = [Q[0]]; for (let i = 1; i < Q.length; i++) { const p = P[P.length - 1], q = Q[i], d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d >= 12 || i === Q.length - 1) { const n = Math.max(1, Math.round(d / 12)); for (let k = 1; k <= n; k++) P.push([p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n]) } }
   const n = P.length, S = [0]; for (let i = 1; i < n; i++) S.push(S[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1])); DAMR.pts = P; DAMR.S = S;
@@ -6713,11 +6725,11 @@ function damPlan() { const Rk = WORLD_ROADS.find(r => r.id === 'road-kb'); if (!
   { const i = 4, [nx, ny] = NN(i); WORLD_SIGNS.push({ id: 'sign-dam', p: 'signpost', x: P[i][0] - nx * 28, y: P[i][1] - ny * 28, params: { dir: 1, text: 'ДАМБА 2,0' } }) }
   // the guard: an old man in the uniform of the guard firm (a dark jacket with the yellow patch of the firm, a peaked cap), smoking by the
   // barrier on the side away from the booth (one of the village's people: it is the village's dam)
-  const Wb = PLACES.buhta.W; if (Wb && DAMR.guard) PLACES.buhta.npcs.push({ id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] },
+  const Wb = PLACES.buhta.W || PLACES.dam.W; if (Wb && DAMR.guard) Wb.P.npcs.push({ id: 'guard', smoker: true, dir: 3, look: { id: 'guard', sex: 'm', age: 'old', h: 17, build: 1.02, skin: 0, hair: [200, 198, 194], cut: 'short', beard: [198, 196, 190], hat: 'cap', hatCol: [28, 34, 48], top: [34, 42, 60], topKind: 'jacket', badge: [226, 190, 58], legs: [38, 40, 48], boots: [26, 26, 28] },
     route: [[...Wb.toL(...DAMR.guard), 0]] }) }
 function worldPlan() {
-  const list = GAMEMODE ? Object.keys(WORLD_AT).map(id => PLACES[id]) : [PL];
-  list.forEach((P, i) => { const at = GAMEMODE ? WORLD_AT[P.id] : P.margin; addPlace(P, at[0], at[1], i ? P.id + '/' : '') });
+  const list = ONLY_DAM ? [PLACES.dam] : GAMEMODE ? Object.keys(WORLD_AT).map(id => PLACES[id]) : [PL];
+  list.forEach((P, i) => { const at = GAMEMODE ? WORLD_AT[P.id] || P.margin : P.margin; addPlace(P, at[0], at[1], i ? P.id + '/' : '') });
   // the trail: from the exit road of the place that has one
   const TP = PLW.find(W => W.P.trail && W.P.trail.out), out = TP ? LAYER[TP.pre + TP.P.trail.out] : null; NOTRAIL = !out;
   if (out) { const end = out.line[out.line.length - 1], prev = out.line[out.line.length - 2];
@@ -6745,7 +6757,7 @@ const damSpot = (x, y) => (DAMR.spots || []).some(([sx, sy, r]) => Math.hypot(x 
 const FCELL = 22, CROWN_R = { spruce: 16, pine: 20, larch: 15, birch: 15, aspen: 13, rowan: 11, decid: 28, bare: 27 }, FMEMO = new Map();
 // the wood: the first place's stands everywhere, another place's round it (within its forest.reach of its middle, the
 // edge between the two woods wandering)
-const forestAt = (x, y) => { for (let i = 1; i < PLW.length; i++) { const W = PLW[i], F = W.P.forest; if (!F.reach) continue; const d = Math.hypot(x - W.cx, y - W.cy); if (d < F.reach * (.8 + .4 * vn(x * .0015, y * .0015, SEED + 510))) return F } return PLW[0].P.forest };
+const forestAt = !GAMEMODE ? (x, y) => PLW[0].P.forest : (x, y) => { for (let i = 1; i < FWS.length; i++) { const W = FWS[i], F = W.F; if (!F.reach) continue; const d = Math.hypot(x - W.cx, y - W.cy); if (d < F.reach * (.8 + .4 * vn(x * .0015, y * .0015, SEED + 510))) return F } return FWS[0].F };
 const standAt = (x, y) => { const F = forestAt(x, y), z = vn(x * F.zone, y * F.zone, SEED + 500) + (vn(x * .03, y * .03, SEED + 501) - .5) * .12; let acc = 0; for (const S of F.stands) { acc += S.share; if (z < acc) return S } return F.stands[F.stands.length - 1] };
 function inPlace(x, y, pad) { for (const W of PLW) if (layerD(W.C, x, y) < pad) return true; return false }
 // how far a point lies outside the nearest place's clearing (px; less than nought inside it)
@@ -6761,7 +6773,8 @@ function cellCand(i, j) { const key = lkey(i, j); if (FMEMO.has(key)) return FME
   // young trees and bushes: rim 1 at its edge, nought from 80 px in)
   const wd = wayD(x, y), ed = edgeD(x, y), rim = clamp(1 - (ed - 10) / 70, 0, 1);
   let c = null; if (!(ed < 10 || wd < 12 || inPond(x, y, 8) || nearPlaceThing(x, y, 18) || damSpot(x, y))) {
-    if (wd >= 26 && h2(i, j, SEED + 300) < S.keep * (1 - .45 * rim)) { const young = rim > .25 && r() < rim * .75, t = young ? wpick(r, EDGE_KINDS) : wpick(r, S.kinds), u = r(), sz = (u < .2 ? .7 + .15 * r() : u > .8 ? 1.15 + .2 * r() : .9 + .22 * r()) * (S.size || 1) * (young ? .62 + .25 * r() : 1); c = { x, y, t, sz, seed: (r() * 1e9) | 0, rr: (CROWN_R[t] || 14) * sz, pr: h2(i, j, SEED + 309), S, tree: true } }
+    // (a tree just south of a way stands its crown up over it, as the view sees it: such a one stands further back)
+    if (wd >= 26 && wayD(x, y - 34) >= 10 && h2(i, j, SEED + 300) < S.keep * (1 - .45 * rim)) { const young = rim > .25 && r() < rim * .75, t = young ? wpick(r, EDGE_KINDS) : wpick(r, S.kinds), u = r(), sz = (u < .2 ? .7 + .15 * r() : u > .8 ? 1.15 + .2 * r() : .9 + .22 * r()) * (S.size || 1) * (young ? .62 + .25 * r() : 1); c = { x, y, t, sz, seed: (r() * 1e9) | 0, rr: (CROWN_R[t] || 14) * sz, pr: h2(i, j, SEED + 309), S, tree: true } }
     else if (h2(i, j, SEED + 305) < (S.underKeep ?? .45) + .4 * rim) c = { x, y, t: rim > .2 && r() < rim * .7 ? wpick(r, EDGE_UNDER) : wpick(r, S.under), sz: 1, seed: (r() * 1e9) | 0, S } }
   if (c && hides(x, y)) c = null; // (nothing just in front of a building of a place: it would hide it)
   if (c && c.tree && (underLine(x, y, 16) || placeTreeNear(x, y, c.rr))) c = { x, y, t: wpick(r, S.under), sz: 1, seed: c.seed, S };
@@ -6846,7 +6859,7 @@ const segD = (pts, x, y) => { let best = 1e9; for (let i = 0; i < pts.length - 1
 const hashStr = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0 };
 
 // ================= the place =================
-const PL = PLACES[(new URLSearchParams(location.search)).get('place') || 'kluchi'] || PLACES.kluchi;
+const PL = PLACES[(new URLSearchParams(location.search)).get('place') || 'dam'] || PLACES.dam;
 // (the place the ride starts in: its frame is the one these give; every place has its own, P.W.toW and P.W.toL)
 const PLAT = GAMEMODE && WORLD_AT[PL.id] || PL.margin, OX = PLAT[0], OY = PLAT[1];
 const toW = (x, y) => [x + OX, y + OY], toL = (x, y) => [x - OX, y - OY];
@@ -7215,7 +7228,8 @@ const R = { autoRev: 0, blockT: 0, forceTurn: 0, x: 0, y: 0, psi: 0, v: 0, steer
 { const [x, y] = toW(PL.spawn.x, PL.spawn.y); R.x = x; R.y = y; R.psi = (PL.spawn.heading || 0) * D2R; R.yi = Math.round(PL.spawn.heading / YSTEP) % NY }
 // the dam's page (or ?at=dam): on the bike at the turning onto the dam, facing along it, to ride it through
 const START_DAM = (typeof AT_DAM !== 'undefined' || /[?&]at=dam\b/.test(location.search)) && GAMEMODE && DAMR.pts;
-if (START_DAM) { const P = DAMR.pts, a = P[0], b = P[Math.min(P.length - 1, 10)], h = Math.atan2(b[0] - a[0], -(b[1] - a[1])); R.x = a[0]; R.y = a[1]; R.psi = h; R.foot = false; R.yi = ((Math.round(h / D2R / YSTEP) % NY) + NY) % NY }
+if (START_DAM) { const P = DAMR.pts, G = DAMR.gate || P[0]; let g = 0, gd = 1e9; P.forEach((p, i) => { const d = Math.hypot(p[0] - G[0], p[1] - G[1]); if (d < gd) { gd = d; g = i } }); // (a few metres short of the checkpoint's boom, the embankment ahead)
+  const i0 = Math.max(0, g - 6), a = P[i0], b = P[Math.min(P.length - 1, i0 + 10)], h = Math.atan2(b[0] - a[0], -(b[1] - a[1])); R.x = a[0]; R.y = a[1]; R.psi = h; R.foot = false; R.yi = ((Math.round(h / D2R / YSTEP) % NY) + NY) % NY }
 const BIKE_L = 14; // wheelbase, px
 // ---- input: the arrows or WASD say where to go (screen directions, north up); the bike steers there as a bicycle
 // does. On a touch screen a stick appears where the thumb lands. Space brakes. ----
