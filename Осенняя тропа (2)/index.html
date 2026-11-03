@@ -1142,9 +1142,9 @@ function drawPost(){fxInit();const sun=sunAmt(),wm=LT.warm||0,on=!GFXLOW,glow=on
 
 // ---- from the game: weather, clock and light (lines 1583-1678) ----
 // ================= weather =================
-const STATES={clear:{n:'Ясно',rain:0,fog:0,cloud:0},overcast:{n:'Пасмурно',rain:0,fog:.08,cloud:.75},drizzle:{n:'Морось',rain:.32,fog:.18,cloud:.8},
+const STATES={clear:{n:'Ясно',rain:0,fog:0,cloud:0},cloudy:{n:'Облачно',rain:0,fog:.03,cloud:.55},mist:{n:'Дымка',rain:0,fog:.35,cloud:.75},downpour:{n:'Ливень',rain:1,fog:.1,cloud:1},overcast:{n:'Пасмурно',rain:0,fog:.08,cloud:.75},drizzle:{n:'Морось',rain:.32,fog:.18,cloud:.8},
   rain:{n:'Дождь',rain:.95,fog:.05,cloud:1},fog:{n:'Туман',rain:0,fog:.9,cloud:.45},rainfog:{n:'Дождь и туман',rain:.5,fog:.65,cloud:.9}};
-const ORDER=['auto','clear','overcast','drizzle','rain','fog','rainfog'];
+const ORDER=['auto','clear','cloudy','overcast','mist','drizzle','rain','downpour','fog','rainfog'];
 // Autumn weather runs on the game's clock, as it does in the middle of Russia in October: a clear spell holds for half
 // a day or more, grey skies for hours, rain for one to five hours, drizzle a little longer. Each kind gives way to the
 // kinds that really follow it (rain thins to drizzle or grey sky, clear sky clouds over), and fog forms only in calm
@@ -1162,6 +1162,66 @@ const WX={rain:0,fog:0,cloud:0,wind:.3,mode:'auto',cur:'clear',timer:3+Math.rand
 // how long a kind of weather holds from now, in game hours (fog lifts by mid-morning whenever it began)
 function wxLen(kind){const L=WXLEN[kind];let h=L[0]+Math.random()*(L[1]-L[0]);
   if(kind==='fog'){const lift=((clockH(9.5+Math.random()*1.5)-DAY.h)%24+24)%24;if(lift>.5)h=Math.min(h,lift)}return h}
+// The autumn weather of the Ladoga skerries (Sortavala, Karelia), early October, as the weather really goes there: lows passing from the
+// south-west one after another (a warm front's long rain, the warm sector's grey drizzle and murk, the cold front's downpour with the
+// wind veering north-west and freshening, then clearer cold air with showers by day) and now and then a high between them (clear cold
+// nights, fog at dawn, frost, light wind). Over that, the day's own round: cold dawns, cloud building by day in cold air, the wind
+// dropping at night. All of it a pure function of the game's hours since its first day (wxAt(h)), so the days never repeat and what
+// is coming is known (the hidden forecast).
+// Calibrated against the norms (Sortavala, Petrozavodsk, St Petersburg, October): mean cloud ~8/10, 17-19 overcast days, 1-3 clear,
+// 55-100 mm of rain on 12-16 days, fog on ~3, wind ~4 m/s mostly SW-W, days +8..+11 and nights +2..+4 at the start of the month.
+const WXSEED = 19610;
+function wxRng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+function wxHash(x, s) { let h = Math.imul(x | 0, 374761393) + Math.imul(s | 0, 668265263); h = Math.imul(h ^ h >>> 13, 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296 }
+function wxVn(x, s) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return wxHash(i, s) + (wxHash(i + 1, s) - wxHash(i, s)) * u }
+const WXK = {
+  H:  { n: 'антициклон', d: [30, 84] },
+  WF: { n: 'тёплый фронт', d: [6, 12] },
+  WS: { n: 'тёплый сектор', d: [14, 40] },
+  CF: { n: 'холодный фронт', d: [2, 5] },
+  PF: { n: 'за холодным фронтом', d: [10, 26] },
+  OC: { n: 'окклюзия', d: [14, 34] } };
+const WXNX = { H: [['WF', .75], ['OC', .25]], WF: [['WS', .8], ['OC', .2]], WS: [['CF', 1]], OC: [['PF', .6], ['CF', .4]], CF: [['PF', 1]], PF: [['H', .48], ['WF', .37], ['OC', .15]] };
+const WXEP = []; // the episodes, from the first: { k, a, b, p: their own numbers }
+function wxEpisodes(upto) { if (!WXEP.length) { const r = wxRng(WXSEED); WXEP.push({ k: 'PF', a: -20, b: 14, r: r(), r2: r(), r3: r() }) }
+  while (WXEP[WXEP.length - 1].b < upto) { const L = WXEP[WXEP.length - 1], r = wxRng(WXSEED + WXEP.length * 7919), nx = WXNX[L.k]; let x = r() * nx.reduce((s, q) => s + q[1], 0), k = nx[0][0]; for (const [kk, w] of nx) { x -= w; if (x <= 0) { k = kk; break } }
+    const D = WXK[k].d, d = D[0] + (D[1] - D[0]) * r(); WXEP.push({ k, a: L.b, b: L.b + d, r: r(), r2: r(), r3: r() }) } }
+function wxEp(h) { wxEpisodes(h + 200); let lo = 0, hi = WXEP.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (WXEP[m].a <= h) lo = m; else hi = m - 1 } return lo }
+// what one episode brings at hour h (u: how far through it, 0..1; hd: the hour of the day)
+function wxOf(E, h, hd) { const u = (h - E.a) / (E.b - E.a), day = Math.exp(-((hd - 14) ** 2) / 18), dawn = Math.exp(-((hd - 6.5) ** 2) / 8), night = hd < 7 || hd > 20 ? 1 : 0;
+  const n1 = wxVn(h / 3.5, 11), n2 = wxVn(h / 1.3, 12), q = { cloud: 0, mm: 0, wind: 0, dir: 0, tA: 0, damp: 0, kind: E.k };
+  switch (E.k) {
+    case 'H': q.cloud = E.r > .5 ? wxC(.72 + .25 * wxVn(h / 7, 16) - .12 * night * (E.r < .7 ? 1 : 0)) /* (the grey high of autumn: low stratus, still, dry) */ : wxC(.06 + 1.6 * E.r * E.r * (.55 + .8 * wxVn(h / 9, 13)) + .22 * day * E.r2 - .2 * night); q.wind = .8 + 2.2 * E.r2 * (.4 + .8 * day); q.dir = 40 + 110 * E.r3; q.tA = -2.2 + 1.2 * E.r; q.damp = .7; break;
+    case 'WF': q.cloud = wxC(.55 + .6 * u); q.mm = u > .45 ? (.3 + 1.2 * E.r * n1) * Math.min(1, (u - .4) * 4) : 0; q.wind = 4 + 3 * E.r2; q.dir = 150 + 40 * E.r3; q.tA = .6; q.damp = .85; break;
+    case 'WS': q.cloud = .88 + .12 * n1; q.mm = n2 > .86 - .16 * E.r ? .02 + .1 * (n2 - .5) : 0; q.wind = 4 + 3.5 * E.r2 * (.7 + .5 * day); q.dir = 200 + 45 * E.r3; q.tA = 2.2; q.damp = 1; break;
+    case 'CF': q.cloud = 1; q.mm = (1.2 + 3.6 * E.r * n1) * Math.sin(Math.PI * Math.min(1, u * 1.1)) + .2; q.wind = 7 + 4 * E.r2 + 2.5 * n2; q.dir = 225 + 75 * u; q.tA = 1 - 3 * u; q.damp = .9; break;
+    case 'PF': { const shower = day * (n2 > .88 - .1 * E.r ? 1 : 0) * (1 - u * .6); q.cloud = wxC(.5 + .38 * day + .25 * n1 - .25 * night + .2 * shower); q.mm = shower * (.5 + 2 * (n2 - .5)); q.wind = (6.5 - 3.5 * u) * (.75 + .4 * day) + 1.5 * n2; q.dir = 265 + 55 * E.r3; q.tA = -1.8 + .8 * u; q.damp = .6; break }
+    case 'OC': q.cloud = .95 + .05 * n1; q.mm = n1 > .64 ? (.2 + 1.1 * E.r * (n1 - .64) * 2.8) : 0; q.wind = 3 + 3 * E.r2 + 1.5 * n2; q.dir = 160 + 150 * E.r3; q.tA = .3; q.damp = .95; break }
+  return q }
+const wxC = v => v < 0 ? 0 : v > 1 ? 1 : v;
+// the weather at game hour h (since the first day's midnight): the episodes blended over three hours at their joins, then the day's round
+function wxAt(h) { const i = wxEp(h), E = WXEP[i], hd = ((h % 24) + 24) % 24; let q = wxOf(E, h, hd);
+  const blend = (F, w) => { const p = wxOf(F, h, hd); for (const k of ['cloud', 'mm', 'wind', 'tA', 'damp']) q[k] = q[k] * (1 - w) + p[k] * w; let dd = ((p.dir - q.dir + 540) % 360) - 180; q.dir = (q.dir + dd * w + 360) % 360 };
+  if (h - E.a < 1.5 && i > 0) blend(WXEP[i - 1], .5 - (h - E.a) / 3); else if (E.b - h < 1.5) blend(WXEP[i + 1], .5 - (E.b - h) / 3);
+  // the temperature: early October; the day's swing big under a clear sky, small under cloud; the air of each episode warmer or colder
+  const amp = 1.8 + 5.6 * (1 - q.cloud), tod = Math.cos((hd - 14.5) / 24 * 2 * Math.PI), temp = 6 + q.tA + amp * (tod * .58 + .08) + (wxVn(h / 30, 14) - .5) * 2.5;
+  // fog: in still clear nights it forms toward dawn and burns off by mid-morning; in the warm sector's damp air a murk, thicker at night
+  const calm = wxC((3 - q.wind) / 2), clear = wxC((.55 - q.cloud) / .4), tfog = hd < 10.5 ? wxC(1 - Math.abs(hd - 6.8) / 4) : hd > 21 ? wxC((hd - 21) / 4) * .6 : 0;
+  let fog = calm * clear * tfog * q.damp * (.75 + 1.15 * wxVn(h / 20, 15)); if (q.kind === 'WS') fog = Math.max(fog, (.18 + .25 * (1 - wxC(q.wind / 7))) * (hd < 9 || hd > 19 ? 1.3 : .8));
+  const mm = Math.max(0, q.mm); if (mm > .4) fog *= .6;
+  return { h, kind: q.kind, cloud: wxC(q.cloud + (mm > .05 ? .1 : 0)), mm, wind: Math.max(.3, q.wind), dir: q.dir, temp, fog: wxC(fog) } }
+
+// The game's days: each opening of the game is the next day (kept in the browser), and the clock's midnight turns it over too, so a
+// day never comes twice; the weather is the model's at that day and hour (and, a manual kind aside, the wind too). What is to come is
+// known: wxAt of a later hour (the dev panel shows it).
+const WXD = { day: 0 }; try { const s = localStorage.getItem('trail.wxday'); WXD.day = s === null ? 0 : (+s || 0) + 1; localStorage.setItem('trail.wxday', WXD.day) } catch (e) { }
+const wxHour = () => WXD.day * 24 + DAY.h;
+const WXRAIN = [[.03, .1], [.15, .28], [.4, .45], [1, .62], [2, .78], [3.5, .9], [6, 1]], WXWIND = [[0, .03], [1.5, .12], [3, .24], [5, .42], [7, .6], [9, .75], [12, .92]];
+const lerpT = (T, v) => { if (v <= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (v <= T[i][0]) { const [a, A] = T[i - 1], [b, B] = T[i]; return A + (B - A) * (v - a) / (b - a) } return T[T.length - 1][1] };
+const dirToA = from => { const b = (from + 180) * Math.PI / 180; return Math.atan2(-Math.cos(b), Math.sin(b)) }; // (the way the wind blows, on the screen)
+function wxName(w) { return w.mm >= 3 ? 'downpour' : w.mm >= .3 ? (w.fog > .5 ? 'rainfog' : 'rain') : w.mm >= .03 ? 'drizzle' : w.fog > .5 ? 'fog' : w.fog > .22 ? 'mist' : w.cloud > .78 ? 'overcast' : w.cloud > .38 ? 'cloudy' : 'clear' }
+function wxNow(h = wxHour()) { const w = wxAt(h); w.rain = w.mm < .03 ? 0 : lerpT(WXRAIN, w.mm); w.name = wxName(w); return w }
+const tempText = v => (v >= .5 ? '+' : v <= -.5 ? '−' : '') + Math.abs(Math.round(v)) + '°';
 function autoNext(){const calmNight=(SH>17.5||SH<8.5?1:.06)*(WIND.s<.5?1:.2); // fog only when the air is calm and cool
   WX.cur=wpick(Math.random,WXNEXT[WX.cur].map(([k,w,f])=>[k,f?w*calmNight:w]));WX.timer=wxLen(WX.cur)}
 
@@ -1211,10 +1271,10 @@ let FROST=0;
 function stepDay(dt){const h0=DAY.h;
   if(DAY.mode==='cycle')DAY.h+=dt/60*(DAY.k||1)
   else{const tg=clockH(DAYMODES.find(m=>m[0]===DAY.mode)[2]),d=((tg-DAY.h)%24+24)%24;if(d>.002&&d<23.99)DAY.h+=Math.min(d,dt*(.6+d*.45))}
-  DAY.h=(DAY.h%24+24)%24;const dH=((DAY.h-h0)%24+24)%24;
+  DAY.h=(DAY.h%24+24)%24;const dH=((DAY.h-h0)%24+24)%24;if(DAY.h<h0&&dH>0&&dH<12){WXD.day++;try{localStorage.setItem('trail.wxday',WXD.day)}catch(e){}}
   // game minutes for the weather: the clock's own while it runs; while a time of day is held, a minute a second
   const gm=DAY.mode==='cycle'?dH*60:dt;
-  {const calmClear=LT.day<.3&&WX.cloud<.45&&WX.fog<.75&&WX.rain<.02&&WIND.s<.42&&WET<.35;
+  {const tC=WX.now?WX.now.temp:1,calmClear=LT.day<.3&&WX.cloud<.45&&WX.fog<.75&&WX.rain<.02&&WIND.s<.42&&WET<.35&&tC<2.5;
    if(calmClear)FROST=Math.min(1,FROST+dH*.32*(.15+.85*SE.cold));
    FROST=Math.max(0,FROST-dH*(.75*LT.sunUp*(1-WX.cloud*.5)+.12*WX.cloud*(1-LT.day))-gm*WX.rain/25)}
   const want=R.foot?0:clamp(Math.max((LT.murk-.12)/.3,(LT.dark-.18)/.25),0,1);LT.lamp+=(want-LT.lamp)*Math.min(1,dt*(R.foot?3:.8)); // the lamp comes on at dusk and in murk
@@ -1371,8 +1431,7 @@ function windNext(){const r=Math.random,rain=WX.rain,fog=WX.fog;
   const turn=r()<.15?Math.PI*(.8+.4*r()):(r()<.5?-1:1)*(.35+r()*1.3);WIND.ta=WIND.a+turn;
   WIND.timer=.8+r()*1.6} // game hours
 // (gm: game minutes this frame; the wind's mood follows the game clock, its gusts and flutter real seconds)
-function stepWind(dt,gm){WIND.timer-=gm/60;if(WIND.timer<=0)windNext();
-  const man=WIND.mode!=='auto';if(man)WIND.ts=WINDS[WIND.mode][1];
+function stepWind(dt,gm){const man=WIND.mode!=='auto';if(man)WIND.ts=WINDS[WIND.mode][1];else if(WX.now){WIND.ts=lerpT(WXWIND,WX.now.wind);WIND.ta=WIND.a+wrapA(dirToA(WX.now.dir)-WIND.a)}else{WIND.timer-=gm/60;if(WIND.timer<=0)windNext()}
   WIND.s+=(WIND.ts-WIND.s)*Math.min(1,(man?dt:gm)*.08);
   const da=WIND.ta-WIND.a;WIND.a+=clamp(da*gm*.04,-gm*.05,gm*.05); // at most some 3 degrees a game minute
   const a=WIND.a+(vn(t*.02,9,SEED+800)-.5)*.6;WINDX=Math.cos(a);WINDY=Math.sin(a);
@@ -1387,9 +1446,9 @@ const SWAYK={decid:1,rowan:1,aspen:1.1,birch:1.2,bush:.9,juniper:.6,grass:1.3,fe
 // the pose as a continuous number (0..NF-1), eased toward the wind's call with a little inertia: drawSway blends the two nearest poses
 function frameF(o){if(!o.fcv)return 0;const a=SWAYK[o.type]||1;
   const w=windAt(o.x,o.wy),ph=o.x*.11+o.wy*.05,fr=(a>1.25?1.45:a>1?.95:.78)*(.6+.7*WIND.s);
-  const lean=WINDX*clamp(w*1.15,0,1)*.82;
-  const osc=a*(.07+.42*w)*(Math.sin(t*fr+ph)*.72+Math.sin(t*fr*1.61+ph*1.3)*.28)+a*.05*w*w*Math.sin(t*fr*2.7+ph*2.7);
-  const c=(clamp(lean+osc+.07*Math.sin(t*.37+ph*2),-1,1)+1)/2*(NF-1);if(o.fc===undefined||Math.abs(c-o.fc)>3)o.fc=c;else o.fc+=(c-o.fc)*Math.min(1,LASTDT*5);return o.fc}
+  const lean=WINDX*clamp(w*1.15,0,1)*.88;
+  const osc=a*(.08+.46*w)*(Math.sin(t*fr+ph)*.72+Math.sin(t*fr*1.61+ph*1.3)*.28)+a*.05*w*w*Math.sin(t*fr*2.7+ph*2.7);
+  const c=(clamp(lean+osc+.07*Math.sin(t*.37+ph*2),-1,1)+1)/2*(o.fcv.length-1);if(o.fc===undefined||Math.abs(c-o.fc)>3)o.fc=c;else o.fc+=(c-o.fc)*Math.min(1,LASTDT*5);return o.fc}
 function frameIdx(o){if(!o.fcv)return 0;const a=SWAYK[o.type]||1;
   const w=windAt(o.x,o.wy),ph=o.x*.11+o.wy*.05,fr=(a>1.25?1.6:a>1?1.05:.85)*(.65+.75*WIND.s);
   const lean=WINDX*clamp(w*1.15,0,1)*.82;
@@ -7126,19 +7185,20 @@ const sprOf = (w, h, d) => { const s = new Spr(w, h); s.d.set(d); return s };
 function libSetRest(E, w, h, ax, ay, d, leafPts, H, caps) { E.caps = caps || null; const s = sprOf(w, h, d); Object.assign(E, { ax, ay, w, h, cv: s.canvas(), mask: maskOf(s), pix: s.d, leafPts, canopy: Math.round(H * .3), fr: [], fcv: null, asked: false });
   for (const o of E.users) libUse(o, E) }
 function libUse(o, E) { if (E.caps) o.caps = E.caps.map(([X0, N0, X1, N1, r]) => [o.x + X0 + T3S * N0, o.y - N0, o.x + X1 + T3S * N1, o.y - N1, r]); Object.assign(o, { E, ax: E.ax, ay: E.ay, cv: E.cv, mask: E.mask, mw: E.w, mh: E.h, pix: E.pix, leafPts: E.leafPts, canopy: E.canopy, csv: E.csv, fcv: E.fcv, ready: true }); shadowDirty(o) }
-function libSetFrames(E, F) { E.fcv = LIB_MAP.map(i => F[i]); E.fasked = false; for (const o of E.users) o.fcv = E.fcv; TLIB_ST.frames++ }
+function libSetFrames(E, F) { E.fcv = F; E.fasked = false; for (const o of E.users) o.fcv = E.fcv; TLIB_ST.frames++ }
 const PC = { tw: 0, twMs: 0, chunk: 0, chunkMs: 0, sh: 0, shMs: 0 };
 function twDone(m) { const t0 = performance.now(); twDone0(m); PC.tw++; PC.twMs += performance.now() - t0 }
 function twDone0(m) { const E = TWJ.get(m.id); TWJ.delete(m.id); if (!E) return;
-  if (m.frames) { if (!E.cv) return; const F = m.frames.map(d => sprOf(E.w, E.h, d).canvas()); libSetFrames(E, [F[0], F[1], E.cv, F[2], F[3]]) }
+  if (m.frames) { if (!E.cv) return; const F = m.frames.map(d => sprOf(E.w, E.h, d).canvas()); libSetFrames(E, F) }
   else { libSetRest(E, m.w, m.h, m.ax, m.ay, m.d, m.leafPts, m.H, m.caps); TLIB_ST.rest++ } }
 // here, on the main thread (no workers)
 function libRest(E) { const T = libGrow(E), R0 = renderTree(T, 0), P = Math.ceil(T.H * .13) + 1, w = R0.s.w + 2 * P, h = R0.s.h + 2, d = new Uint8ClampedArray(w * h * 4);
   for (let y = 0; y < R0.s.h; y++) d.set(R0.s.d.subarray(y * R0.s.w * 4, (y + 1) * R0.s.w * 4), (y * w + P) * 4);
   libSetRest(E, w, h, R0.ax + P, R0.ay, d, R0.leafPts.map(([x, y]) => [x + P, y]), T.H, treeCaps(T)); E.T = T; TLIB_ST.rest++ }
-const LIB_B = [-1, -.5, .5, 1], LIB_MAP = [0, 1, 1, 2, 3, 3, 4, 4];
+// the sway poses of the grown trees and bushes: sixteen bends, evenly from far left to far right, each its own (drawSway blends the two nearest)
+const LIB_B = Array.from({ length: 16 }, (_, k) => (k - 7.5) / 7.5);
 function libFrame(E) { if (!E.T) E.T = libGrow(E); if (!E.frm) E.frm = []; const R = renderTree(E.T, LIB_B[E.frm.length], { ax: E.ax, ay: E.ay, w: E.w, h: E.h }); E.frm.push(R.s.canvas());
-  if (E.frm.length === LIB_B.length) { const F = E.frm; E.frm = null; E.T = null; libSetFrames(E, [F[0], F[1], E.cv, F[2], F[3]]) } }
+  if (E.frm.length === LIB_B.length) { const F = E.frm; E.frm = null; E.T = null; libSetFrames(E, F) } }
 // a tree wanted: its rest pose asked of a worker (or grown here at once); true when it is there
 function libAsk(E) { if (E.cv) return true; if (E.asked) return false; E.asked = true; if (TW.length && twSend(E, {})) return false; FBQ.push(E); return false }
 // without workers the trees are grown here one at a time, nearest first, one a frame (so the ride never stops for them)
@@ -7542,12 +7602,25 @@ function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT
     if (stop && d <= Math.max(.3, s)) { P.x = tx; P.y = ty; P.i = nx; P.wait = tw; P.v = 0; P.fa = P.route[nx][3] !== undefined ? P.route[nx][3] * D2R : undefined; P.it = .5 + Math.random(); P.settle = Math.floor(P.gp) % (NPC_WALKN / 2) !== 0; P.moving = P.settle; continue }
     // the feet: a cycle of two steps to 1.28 m, so they do not slide
     P.x += mx * s; P.y += my * s; P.dist += s; P.gp += s / 12.8 * NPC_WALKN; P.gf = Math.floor(P.gp) % NPC_WALKN; P.moving = true }
-  SITS.length = 0; for (const F of FIRES) { if (F.I < .35) continue; const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue; list.forEach(([ox, oy, face], j) => { const look = SITLOOK[(F.k * 2 + j) % SITLOOK.length], T = F.tend && F.tend.i === j ? F.tend : null;
-      if (!T) { SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look }); return }
+  // (the people at the fires: they come to a fire when it is lit and go off to their tents or houses when it is let die or the rain puts it
+  // out, walking there and back each in their own time; while one tends the fire, see stepFireRain)
+  SITS.length = 0; for (const F of FIRES) { const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue;
+    const want = F.I >= .35 || !!F.tend, St = F.sit || (F.sit = list.map(() => ({ st: want ? 'sit' : 'away', t: 0, d: Math.random() * 3 }))), Hm = F.home || (F.home = sitHomes(F, list));
+    list.forEach(([ox, oy, face], j) => { const look = SITLOOK[(F.k * 2 + j) % SITLOOK.length], q = St[j], sx = F.x + ox, sy = F.y + oy + 2, [hx, hy] = Hm[j]; q.t += dt;
+      if (q.st === 'away' && want && q.t > q.d) { q.st = 'come'; q.t = 0 } else if (q.st === 'sit' && !want && q.t > q.d) { q.st = 'go'; q.t = 0 }
+      if (q.st === 'come' || q.st === 'go') { const D = Math.hypot(hx - sx, hy - sy) || 1, u = Math.min(1, q.t * 11 / D);
+        if (u >= 1) { q.st = q.st === 'come' ? 'sit' : 'away'; q.t = 0; q.d = .5 + Math.random() * 4 }
+        else { const [ax, ay, bx, by] = q.st === 'come' ? [hx, hy, sx, sy] : [sx, sy, hx, hy]; SITS.push({ x: ax + (bx - ax) * u, y: ay + (by - ay) * u, dir: dirOf(bx - ax, by - ay), sit: false, moving: true, gf: Math.floor(q.t * 9) % NPC_WALKN, look }); return } }
+      if (q.st !== 'sit') return; const T = F.tend && F.tend.i === j ? F.tend : null;
+      if (!T) { SITS.push({ x: sx, y: sy, dir: Math.round(face / 45) % 8, sit: true, look }); return }
       // (tending it: up from the seat to the fire's side, squatting there to put the wood on, and back)
-      const sx = F.x + ox, sy = F.y + oy + 2, fx = F.x + ox * .42, fy = F.y + oy * .42 + 3, u = T.t < .8 ? T.t / .8 : T.t < 2.9 ? 1 : Math.max(0, 1 - (T.t - 2.9) / .8), walk = T.t < .8 || T.t > 2.9 && T.t < 3.7;
+      const fx = F.x + ox * .42, fy = F.y + oy * .42 + 3, u = T.t < .8 ? T.t / .8 : T.t < 2.9 ? 1 : Math.max(0, 1 - (T.t - 2.9) / .8), walk = T.t < .8 || T.t > 2.9 && T.t < 3.7;
       const x = sx + (fx - sx) * u, y = sy + (fy - sy) * u; SITS.push(walk ? { x, y, dir: T.t < .8 ? dirOf(fx - sx, fy - sy) : dirOf(sx - fx, sy - fy), sit: false, moving: true, gf: Math.floor(T.t * 10) % NPC_WALKN, look } : { x, y, dir: dirOf(F.x - x, F.y - y), sit: true, look }) }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
+// where each of a fire's people goes off to: the tents, houses and vans about it, nearest first (each their own while there are enough),
+// a door's step in front of it; with none near, off into the wood away from the fire
+function sitHomes(F, list) { const H = objsIn(F.x - 260, F.y - 260, F.x + 260, F.y + 260).filter(o => o.kind === 'prefab' && /^(tent|house|lodge|shelter|van|car|woodshed|booth|boatshed)$/.test(o.p)).sort((a, b) => Math.hypot(a.x - F.x, a.y - F.y) - Math.hypot(b.x - F.x, b.y - F.y));
+  return list.map(([ox, oy], j) => { const o = H[j % Math.max(1, Math.min(H.length, 3))]; if (o) return [o.x + (j % 2 ? 3 : -3), o.y + 5]; const l = Math.hypot(ox, oy) || 1; return [F.x + ox / l * 150, F.y + oy / l * 110] }) }
 function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, P.gf);
   return npcSprite(P.look, P.ia === 'look' ? 'look' : 'idle', P.dir, P.ib) }
 const npcBlocks = (x, y, rad) => { for (const P of NPCS) if (Math.hypot(P.x - x, P.y - y) < 3.6 + rad) return P; for (const P of SITS) if (Math.hypot(P.x - x, P.y - y) < 4 + rad) return P; return null };
@@ -7752,7 +7825,7 @@ function drawWorld() {
 // a swaying thing: its two nearest poses blended by how far between them it is, so it moves smoothly; pushed by the bike, it leans
 // away from it too (further over, and the sprite sheared about its foot). clipY: only what is below that line (the front of a bush
 // the bike is in, drawn again over its wheels)
-function drawSway(o, x, y, clipY) { let c = o.fcv ? frameF(o) : 0, sh = 0; if (o.bp && Math.abs(o.bp) > .02) { c += o.bp * 3.5; sh = o.bp * (SOFT[o.t].sh || .3) }
+function drawSway(o, x, y, clipY) { let c = o.fcv ? frameF(o) : 0, sh = 0; if (o.bp && Math.abs(o.bp) > .02) { c += o.bp * 3.5 * (o.fcv ? o.fcv.length / 8 : 1); sh = o.bp * (SOFT[o.t].sh || .3) }
   const fy = Math.round(o.y + (o.ky || 0)); if (sh || clipY !== undefined) { ctx.save(); if (clipY !== undefined) { ctx.beginPath(); ctx.rect(x - 20, clipY, o.mw + 40, o.mh + 20); ctx.clip() } if (sh) ctx.transform(1, 0, -sh, 1, sh * fy, 0) }
   if (!o.fcv) ctx.drawImage(o.cv, x, y);
   else { c = clamp(c, 0, o.fcv.length - 1); const k = Math.floor(c), f = c - k; ctx.drawImage(o.fcv[k], x, y); if (f > .1 && k + 1 < o.fcv.length) { ctx.globalAlpha = Math.min(1, f * 1.1); ctx.drawImage(o.fcv[k + 1], x, y); ctx.globalAlpha = 1 } }
@@ -7857,7 +7930,8 @@ function stepFireRain(dt, gm) { const r = WX.rain, down = r > .85;
     if (!(F.Ib > .02)) { F.wet = 0; F.tend = null; continue }
     if (r > .08) F.wet = (F.wet || 0) + gm * (r * r * .028 + (down ? .036 : 0)); else F.wet = Math.max(0, (F.wet || 0) - gm * .012);
     const sit = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id];
-    if (sit && r > .08 && !F.tend && F.wet > .22 && F.I >= .2 && Math.random() < dt * .45) F.tend = { i: Math.floor(Math.random() * sit.length), t: 0, done: false };
+    const here = sit && F.sit ? sit.map((_, j) => j).filter(j => F.sit[j] && F.sit[j].st === 'sit') : [];
+    if (here.length && r > .08 && !F.tend && F.wet > .22 && F.I >= .2 && Math.random() < dt * .45) F.tend = { i: here[Math.floor(Math.random() * here.length)], t: 0, done: false };
     if (F.tend) { const T = F.tend; T.t += dt; if (!T.done && T.t > 1.9) { T.done = true; F.wet = Math.max(0, F.wet - (down ? .05 : .4)); F.flare = 1; sparkAt(F, 8 + Math.round(8 * F.size)); if (near) twigSnap(clamp((F.x - R.x) / 80, -.8, .8), .45) } if (T.t > 3.7) F.tend = null }
     if (F.wet >= 1) { F.outN = F.k * 1000 + F.night; F.steam = 1; F.wet = 0; F.tend = null; for (let k = 0; k < 16; k++) steamAt(F, 1.6); continue }
     if (r > .08 && F.I > .02 && near) { F.stAcc = (F.stAcc || 0) + dt * r * (3 + 6 * F.size) * (.5 + F.I); while (F.stAcc >= 1) { F.stAcc--; steamAt(F, 1) } if (Math.random() < dt * r * 3.5 * F.I) sparkAt(F, 1 + (Math.random() * 2 | 0)) } } }
@@ -8051,7 +8125,7 @@ const elPlace = $('placeName'); let PLACEK = '';
 function placeHud() { let n; const isle = DAMR.pts ? isleAt(R.x, R.y) : 0; if (inPlace(R.x, R.y, 30)) n = placeOf(R.x, R.y).P.name; else if (matAt(R.x, R.y) === 'dam') n = 'Дамба через залив'; else if (isle) n = isle === 1 ? 'Сосновый островок' : 'Второй остров'; else { const m = matAt(R.x, R.y), S = standAt(R.x, R.y); n = m === 'bridge' ? 'Мост' : m === 'bog' ? 'Болото' : m === 'brook' ? 'Ручей' : m === 'road' ? (layerAt(R.x, R.y).L?.trail || layerAt(R.x, R.y).L?.wroad ? 'Лесная дорога' : 'Просёлок') : m === 'path' ? 'Тропинка' : ({ spruce: 'Ельник', mixed: 'Смешанный лес', hazel: 'Орешник', bor: 'Сосновый бор', birch: 'Березняк' })[S.id] || 'Лес' }
   if (n !== PLACEK) { PLACEK = n; elPlace.textContent = n } }
 const ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
-function windText() { const i = WINDS.reduce((b, w, k) => Math.abs(w[1] - WIND.s) < Math.abs(WINDS[b][1] - WIND.s) ? k : b, 0), ar = ARROWS[((Math.round(Math.atan2(WINDY, WINDX) / (Math.PI / 4)) % 8) + 8) % 8]; return i === 0 ? 'штиль' : '<b>' + ar + '</b> ' + WINDS[i][0] + ' ветер' }
+function windText() { const i = WINDS.reduce((b, w, k) => Math.abs(w[1] - WIND.s) < Math.abs(WINDS[b][1] - WIND.s) ? k : b, 0), ar = ARROWS[((Math.round(Math.atan2(WINDY, WINDX) / (Math.PI / 4)) % 8) + 8) % 8], tt = WX.now ? ' · ' + tempText(WX.now.temp) : ''; return (i === 0 ? 'штиль' : '<b>' + ar + '</b> ' + WINDS[i][0] + ' ветер') + tt }
 const bSnd = $('bSound'), bP = $('bPause'), bW = $('bWeather'), bT = $('bTime'), bWd = $('bWind'), bDev = $('bDev');
 function togglePause() { paused = !paused; bP.textContent = paused ? 'Дальше' : 'Пауза' }
 bP.onclick = togglePause;
@@ -8112,7 +8186,8 @@ function devPick(e) { const r = cvs.getBoundingClientRect(), x = CAM.x + (e.clie
 $('devCopy').onclick = () => { const txt = $('devPick').textContent; try { navigator.clipboard.writeText(txt) } catch (e) { } $('devCopy').textContent = 'Скопировано'; setTimeout(() => $('devCopy').textContent = 'Скопировать', 1200) };
 function devPanel(force) { if (!DEV.on) return; const RW = placeOf(R.x, R.y), [lx, ly] = RW.toL(R.x, R.y), deg = ((Math.round(R.psi / D2R) % 360) + 360) % 360;
   const dr = damRef(R.x, R.y); $('devRider').textContent = (dr ? 'велосипед, ' + damTxt(dr) : `велосипед (${RW.P.id}): x ${m1(lx)} м, y ${m1(ly)} м`) + ` · курс ${deg}° · ${(R.v * .36).toFixed(1).replace('.', ',')} км/ч · ${R.surf}`;
-  $('devStats').textContent = `${Math.round(DEV.fps)} кадр/с · объектов на экране ${visCount} · готово ${OBJS.filter(o => o.ready).length}/${OBJS.length} · спрайтов велосипеда ${[...RSETS.values()].filter(a => a.n === RIDER_N).length}/${NY * 3} · костров горит ${FIRES.filter(F => F.I > .05).length} из ${FIRES.length} · ${clockText()}${GFXLOW ? ' · упрощённая графика' : ''} · деревья: ${twAlive() ? 'потоков ' + TW.filter(w => !w.dead).length : 'в основном потоке'}, библиотека ${[...TLIB.values()].filter(E => E.cv).length}/${TLIB.size}${BGBUSY ? ' · догружается' : ''} · подвисаний ${LONGF}, после загрузки ${LONGF2}${LONGF ? ' (' + Object.entries(WHY).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''}`;
+  const fc = WX.now ? `день ${WXD.day + 1} · ${WXK[WX.now.kind].n}, ${WX.now.mm.toFixed(1).replace('.', ',')} мм/ч, облачность ${Math.round(WX.now.cloud * 10)}/10, ветер ${WX.now.wind.toFixed(1).replace('.', ',')} м/с · прогноз: ` + [3, 6, 12, 24].map(d => { const w = wxNow(wxHour() + d); return '+' + d + ' ч ' + STATES[w.name].n.toLowerCase() + ' ' + tempText(w.temp) }).join(', ') + ' · ' : '';
+  $('devStats').textContent = fc + `${Math.round(DEV.fps)} кадр/с · объектов на экране ${visCount} · готово ${OBJS.filter(o => o.ready).length}/${OBJS.length} · спрайтов велосипеда ${[...RSETS.values()].filter(a => a.n === RIDER_N).length}/${NY * 3} · костров горит ${FIRES.filter(F => F.I > .05).length} из ${FIRES.length} · ${clockText()}${GFXLOW ? ' · упрощённая графика' : ''} · деревья: ${twAlive() ? 'потоков ' + TW.filter(w => !w.dead).length : 'в основном потоке'}, библиотека ${[...TLIB.values()].filter(E => E.cv).length}/${TLIB.size}${BGBUSY ? ' · догружается' : ''} · подвисаний ${LONGF}, после загрузки ${LONGF2}${LONGF ? ' (' + Object.entries(WHY).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''}`;
   const p = DEV.pick, pd = p && damRef(p.x, p.y), od = p && p.o && damRef(p.o.x, p.o.y); $('devPick').textContent = p ? (pd ? 'точка: ' + damTxt(pd) : `${p.W.P.id}: точка x ${m1(p.lx)} м, y ${m1(p.ly)} м`) + (p.o ? ` · ${p.o.pid || p.o.id} (${p.o.type}${p.o.from === 'place' ? '' : ', ' + (p.o.from === 'forest' ? 'лес вокруг' : p.o.from === 'world' ? 'в мире' : 'рассыпано')}) ` + (od ? 'на ' + damTxt(od).replace('дамба: ', '') : `в x ${m1(p.o.x - p.W.ox)} м, y ${m1(p.o.y - p.W.oy)} м`) : '') : 'кликните (или коснитесь) места на земле, чтобы узнать его координаты и ближайший объект'; $('devCopy').hidden = !p }
 function drawDev() { if (!DEV.on) { if (devCv.hidden === false) { dctx.clearRect(0, 0, devCv.width, devCv.height); devCv.hidden = true } return } devCv.hidden = false; const ctx = dctx; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, devCv.width, devCv.height); const cx = Math.floor(CAM.x) * SC, cy = Math.floor(CAM.y) * SC, sx = x => x * SC - cx, sy = y => y * SC - cy;
   ctx.lineWidth = 1; ctx.font = '11px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'top';
@@ -8159,7 +8234,7 @@ async function startUp() { resize(); placeLights(); placeWires(); regionsAbout(R
   { elLoadT.textContent = 'Земля…'; const cx0 = R.x - W / 2, cy0 = R.y - H / 2; for (let cj = Math.floor((cy0 - CK) / CK); cj <= Math.floor((cy0 + H + CK) / CK); cj++) for (let ci = Math.floor((cx0 - CK) / CK); ci <= Math.floor((cx0 + W + CK) / CK); ci++) { bakeChunk(ci, cj); await new Promise(r => setTimeout(r, 0)) } }
   if (R.foot) { elLoadT.textContent = HERO.name + '…'; R.hd16 = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; heroWarm(60) }
   else { elLoadT.textContent = 'Велосипедист…'; const t0 = performance.now(); while (!rReady(R.yi, 0) && performance.now() - t0 < 6000) { rWarm(); await new Promise(r => setTimeout(r, 16)) } }
-  elLoad.hidden = true; if (GAMEMODE && !HERO0) heroPick(true); DAY.h = 10.2; WX.cur = 'clear'; WX.timer = wxLen('clear'); WX.rain = 0; WX.fog = 0; WX.cloud = STATES.clear.cloud; WET = 0; computeLight(); last = performance.now(); requestAnimationFrame(frame) }
+  elLoad.hidden = true; if (GAMEMODE && !HERO0) heroPick(true); DAY.h = 10.2; { const w = wxNow(); WX.now = w; WX.cur = w.name; WX.timer = 1; WX.rain = w.rain; WX.fog = w.fog; WX.cloud = w.cloud; WIND.s = WIND.ts = lerpT(WXWIND, w.wind); WIND.a = WIND.ta = dirToA(w.dir) } WET = 0; computeLight(); last = performance.now(); requestAnimationFrame(frame) }
 
 // ================= the loop =================
 let last = performance.now(), hudT = 0, FDT = 1 / 60; const PERF = { n: 0, t: 0, slow: 0 };
@@ -8173,9 +8248,8 @@ const WHY = {}, FT = {}, LONGLOG = []; let ftT = 0; const ft = k => { const n = 
 function frame(now) {
   if (now - last > 100 && last > 0) { LONGF++; if (!BGBUSY) LONGF2++; let bk = 'gc/браузер', bv = 25; for (const k in FT) if (FT[k] > bv) { bv = FT[k]; bk = k } WHY[bk] = (WHY[bk] || 0) + 1; LONGLOG.push([Math.round(now - last), Math.round(R.x), Math.round(R.y), Object.entries(FT).filter(e => e[1] > 8).map(e => e[0] + ' ' + Math.round(e[1])).join(', ')]); if (LONGLOG.length > 80) LONGLOG.shift() } for (const k in FT) FT[k] = 0; ftT = performance.now(); const rdt = clamp((now - last) / 1000, 0, .05); last = now; FDT += (rdt - FDT) * .05; const dt = Math.abs(rdt - FDT) < FDT * .3 ? FDT : rdt; LASTDT = paused ? 0 : dt; DEV.fps += (1 / Math.max(.001, rdt) - DEV.fps) * .05;
   if (!paused) { t += dt;
-    const gm = stepDay(dt); if (WX.mode === 'auto') { WX.timer -= gm / 60; if (WX.timer <= 0) autoNext() }
-    const auto = WX.mode === 'auto', tgt = STATES[auto ? WX.cur : WX.mode], kk = tc => Math.min(1, auto ? gm / tc : dt * .22);
-    const mist = auto && tgt.fog < .5 ? .34 * bump(SH, 4.6, 6, 7.8, 9.6) * (1 - tgt.rain) * (WIND.s < .5 ? 1 : .4) : 0;
+    const gm = stepDay(dt), auto = WX.mode === 'auto'; WX.now = wxNow(); if (auto) WX.cur = WX.now.name;
+    const tgt = auto ? WX.now : STATES[WX.mode], kk = tc => Math.min(1, auto ? gm / tc : dt * .22), mist = 0;
     WX.rain += (tgt.rain - WX.rain) * kk(10); WX.fog += (Math.max(tgt.fog, tgt.fog + mist) - WX.fog) * kk(30); WX.cloud += (tgt.cloud - WX.cloud) * kk(25);
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
