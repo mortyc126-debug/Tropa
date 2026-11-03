@@ -1385,6 +1385,12 @@ function windAt(x,wy){const gf=vn((x-WINDX*GUSTPOS)*.022,(wy+WINDY*GUSTPOS)*.022
 
 // ---- from the game: sway poses (lines 2117-2123) ----
 const SWAYK={decid:1,rowan:1,aspen:1.1,birch:1.2,bush:.9,juniper:.6,grass:1.3,fern:1.1,reed:1.4,rosehip:.9,bare:.9,barebush:1};
+// the pose as a continuous number (0..NF-1), eased toward the wind's call with a little inertia: drawSway blends the two nearest poses
+function frameF(o){if(!o.fcv)return 0;const a=SWAYK[o.type]||1;
+  const w=windAt(o.x,o.wy),ph=o.x*.11+o.wy*.05,fr=(a>1.25?1.45:a>1?.95:.78)*(.6+.7*WIND.s);
+  const lean=WINDX*clamp(w*1.15,0,1)*.82;
+  const osc=a*(.07+.42*w)*(Math.sin(t*fr+ph)*.72+Math.sin(t*fr*1.61+ph*1.3)*.28)+a*.05*w*w*Math.sin(t*fr*2.7+ph*2.7);
+  const c=(clamp(lean+osc+.07*Math.sin(t*.37+ph*2),-1,1)+1)/2*(NF-1);if(o.fc===undefined||Math.abs(c-o.fc)>3)o.fc=c;else o.fc+=(c-o.fc)*Math.min(1,LASTDT*5);return o.fc}
 function frameIdx(o){if(!o.fcv)return 0;const a=SWAYK[o.type]||1;
   const w=windAt(o.x,o.wy),ph=o.x*.11+o.wy*.05,fr=(a>1.25?1.6:a>1?1.05:.85)*(.65+.75*WIND.s);
   const lean=WINDX*clamp(w*1.15,0,1)*.82;
@@ -7337,7 +7343,7 @@ const SOFT = { bush: { r: 7, drag: 1.1, sh: .32, snd: 1, lv: 1 }, barebush: { r:
   rosehip: { r: 6, drag: 1.3, sh: .3, snd: 1, lv: 1, twig: 1 }, lowshrub: { r: 5, drag: .45, sh: .4, snd: 1 }, sapling: { r: 4, drag: .5, sh: .45, snd: 1, lv: 1 },
   fern: { r: 6, drag: .3, sh: .5, snd: .6 }, grass: { r: 5, drag: .15, sh: .55, snd: .35 }, reed: { r: 5, drag: .2, sh: .5, snd: .5 },
   mush: { r: 2.5, drag: 0, sh: .5, crush: 1 }, branch: { r: 9, drag: .25, sh: 0, snap: 1 } };
-const BRUSH = new Set(); let kickAcc = 0;
+const BRUSH = new Set(), INB = new Set(); let kickAcc = 0; // (INB: the bushes the bike is in, till it is well clear of them)
 function brushSnd(o, S, sp) { if (!SND.on || !SND.ctx || !SX.ready || !SX.buf.leaves) return; const pan = clamp((o.x - R.x) / 40, -.8, .8);
   if (S.snd && t - (o.sndT || -9) > .22) { o.sndT = t; const b = SX.buf.leaves; shot(b, Math.random() * (b.duration - .6), .28 + Math.random() * .25, clamp(.08 + sp * .012, 0, .45) * S.snd, { rate: .9 + Math.random() * .3, pan, hp: 600 });
     if (S.twig && Math.random() < .5) twigSnap(pan, .5) } }
@@ -7348,7 +7354,7 @@ function stepBrush(dt) { const sp = Math.abs(R.v), sx = Math.sin(R.psi), sy = -M
   if (sp > 1) for (const o of objsIn(R.x - 24, R.y - 24, R.x + 24, R.y + 24)) { const S = SOFT[o.t]; if (!S || !o.ready) continue;
     // nearest of the bike's length (back wheel to front wheel) to the thing's foot
     const px = o.x + (o.kx || 0) - R.x, py = o.y + (o.ky || 0) - R.y, u = clamp(px * sx + py * sy, -5, 9.5), dx = px - sx * u, dy = (py - sy * u) * 1.6, d = Math.hypot(dx, dy), rr = Math.max(S.r * Math.sqrt(o.sz || 1), o.nk && o.mw ? Math.min(16, o.mw * .3) : 0); if (d > rr) continue;
-    const deep = 1 - d / rr; BRUSH.add(o); o.touchT = t;
+    const deep = 1 - d / rr; BRUSH.add(o); o.touchT = t; if (!S.snap && !S.crush && o.mh > 6) { o.inB = rr; INB.add(o) }
     if (S.snap) { // a branch: cracks once or twice as the wheel goes over, then lies broken; kicked a little aside
       if (d < 4 && t - (o.snapT || -9) > .4 && (o.snaps || 0) < 3) { o.snapT = t; o.snaps = (o.snaps || 0) + 1; twigSnap(clamp(px / 40, -.8, .8), o.snaps === 1 ? 1.3 : .8); R.v *= .9; o.kvx = (o.kvx || 0) + (sx * .6 + Math.sign(dx || 1) * .8) * Math.min(sp, 30) * .25; o.kvy = (o.kvy || 0) + sy * Math.min(sp, 30) * .12 } }
     else if (S.crush) { if (!o.crushed && d < 2.5) { o.crushed = true; o.cv = squash(o.cv) } }
@@ -7357,6 +7363,7 @@ function stepBrush(dt) { const sp = Math.abs(R.v), sx = Math.sin(R.psi), sy = -M
       o.bv = (o.bv || 0) + push * deep * Math.min(sp, 40) * dt * 1.7; R.v -= R.v * S.drag * deep * dt * 2.2;
       brushSnd(o, S, sp);
       if (S.lv && o.leafPts && o.leafPts.length && Math.random() < dt * sp * .12) shakeLeaf(o) } }
+  for (const o of INB) { const px = o.x - R.x, py = (o.y - R.y) * 1.6; if (Math.hypot(px, py) > o.inB * 1.7 + 3) { o.inB = 0; INB.delete(o) } }
   // the springs: a pushed thing leans, swings back past upright and settles
   for (const o of BRUSH) { const S = SOFT[o.t];
     if (S.snap) { o.kx = (o.kx || 0) + (o.kvx || 0) * dt; o.ky = (o.ky || 0) + (o.kvy || 0) * dt; o.kvx = (o.kvx || 0) * Math.exp(-dt * 8); o.kvy = (o.kvy || 0) * Math.exp(-dt * 8); if (Math.abs(o.kvx) + Math.abs(o.kvy) < .05) BRUSH.delete(o); continue }
@@ -7536,7 +7543,11 @@ function stepNpcs(dt) { stepGSM(dt); GBUILD = 0; for (const P of NPCS) { P.idleT
     if (stop && d <= Math.max(.3, s)) { P.x = tx; P.y = ty; P.i = nx; P.wait = tw; P.v = 0; P.fa = P.route[nx][3] !== undefined ? P.route[nx][3] * D2R : undefined; P.it = .5 + Math.random(); P.settle = Math.floor(P.gp) % (NPC_WALKN / 2) !== 0; P.moving = P.settle; continue }
     // the feet: a cycle of two steps to 1.28 m, so they do not slide
     P.x += mx * s; P.y += my * s; P.dist += s; P.gp += s / 12.8 * NPC_WALKN; P.gf = Math.floor(P.gp) % NPC_WALKN; P.moving = true }
-  SITS.length = 0; for (const F of FIRES) { if (F.I < .35) continue; const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue; for (const [ox, oy, face] of list) SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look: SITLOOK[(F.k * 2 + list.indexOf(list.find(q => q[0] === ox && q[1] === oy))) % SITLOOK.length] }) } }
+  SITS.length = 0; for (const F of FIRES) { if (F.I < .35) continue; const list = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id]; if (!list) continue; list.forEach(([ox, oy, face], j) => { const look = SITLOOK[(F.k * 2 + j) % SITLOOK.length], T = F.tend && F.tend.i === j ? F.tend : null;
+      if (!T) { SITS.push({ x: F.x + ox, y: F.y + oy + 2, dir: Math.round(face / 45) % 8, sit: true, look }); return }
+      // (tending it: up from the seat to the fire's side, squatting there to put the wood on, and back)
+      const sx = F.x + ox, sy = F.y + oy + 2, fx = F.x + ox * .42, fy = F.y + oy * .42 + 3, u = T.t < .8 ? T.t / .8 : T.t < 2.9 ? 1 : Math.max(0, 1 - (T.t - 2.9) / .8), walk = T.t < .8 || T.t > 2.9 && T.t < 3.7;
+      const x = sx + (fx - sx) * u, y = sy + (fy - sy) * u; SITS.push(walk ? { x, y, dir: T.t < .8 ? dirOf(fx - sx, fy - sy) : dirOf(sx - fx, sy - fy), sit: false, moving: true, gf: Math.floor(T.t * 10) % NPC_WALKN, look } : { x, y, dir: dirOf(F.x - x, F.y - y), sit: true, look }) }) } }
 const SITLOOK = Array.from({ length: 10 }, (_, i) => camperLook(9100 + i * 37));
 function npcSpr(P) { if (P.smoker) return P.gspr || npcSprite(P.look, 'guard', P.dir, '0,0,0,0,0,0,0'); if (P.sit) return npcSprite(P.look, 'sit', P.dir, 0); if (P.moving) return npcSprite(P.look, 'walk', P.dir, P.gf);
   return npcSprite(P.look, P.ia === 'look' ? 'look' : 'idle', P.dir, P.ib) }
@@ -7706,7 +7717,7 @@ function drawWorld() {
   ctx.beginPath(); ctx.ellipse(R.x + .5, R.y + .5 - RLIFT, R.foot ? 3.6 : 4.8, R.foot ? 1.6 : 2.1, 0, 0, TAU); ctx.fill();
   drawLeaves(true);
   // everything standing, back to front, the rider among them; flat things (decks) first
-  const rkey = riderKey(), list = VIS.map(o => [o.flat ? o.y - 1e4 : o.touchT !== undefined && t - o.touchT < .25 ? Math.min(o.y, rkey - .05) : o.y, o]); list.push([rkey, null]); // (undergrowth the bike is in is pressed under it)
+  const rkey = riderKey(), list = VIS.map(o => [o.flat ? o.y - 1e4 : o.inB ? Math.min(o.y, rkey - .05) : o.y, o]); list.push([rkey, null]); // (undergrowth the bike is in is pressed under it; its foot is drawn again over the wheels)
   for (const o of FIGOBJ) o._figs = null; FIGOBJ.length = 0; const HF = R.foot ? heroNow() : null, RF = { fy: R.y, w: HF ? HF.w : RW, h: HF ? HF.h : RH, img: null }; for (const o of OCC) { (o._figs || (o._figs = [], FIGOBJ.push(o), o._figs)).push(RF) }
   for (const C of COWS) if (C.x > cx0 - 30 && C.x < cx0 + W + 30 && C.y > cy0 - 10 && C.y < cy0 + H + 40) list.push([C.y, { cow: C }]);
   for (const B of BIRDS) if (B.x > cx0 - 20 && B.x < cx0 + W + 20 && B.y - B.z > cy0 - 20 && B.y < cy0 + H + 30) { if ((B.st === 'fly' || B.st === 'flit') && B.z >= 2.5) { list.push([B.y - .2, { bsh: B }]); if (B.z < BHIGH) list.push([B.y + .3, { bird: B }]) } else list.push([B.st === 'perch' && B.dk !== undefined ? B.dk : B.y + (B.st === 'perch' ? .6 : 0), { bird: B }]) }
@@ -7723,13 +7734,12 @@ function drawWorld() {
     if (o && o.bsh) { drawBirdShadow(o.bsh); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }
-    if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay; ctx.drawImage(HF.cv, x, y); RF.img = HF.cv; RF.rx = x; RF.ry = y; continue }
-    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS } continue }
+    if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay; ctx.drawImage(HF.cv, x, y); RF.img = HF.cv; RF.rx = x; RF.ry = y;
+      for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 2); continue }
+    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS }
+      for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 3); continue }
     const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));
-    // pushed by the bike: leaning away from it (the next sway pose over, and the sprite sheared about its foot)
-    if (o.bp && Math.abs(o.bp) > .02) { const sh = o.bp * (SOFT[o.t].sh || .3), fy = Math.round(o.y + (o.ky || 0)); ctx.save(); ctx.transform(1, 0, -sh, 1, sh * fy, 0);
-      const img = o.fcv ? o.fcv[clamp(Math.round(frameIdx(o) + o.bp * 3.5), 0, o.fcv.length - 1)] : o.cv; ctx.drawImage(img, x, y); ctx.restore() }
-    else if (o.fcv) { const k = frameIdx(o); ctx.drawImage(o.fcv[k], x, y) } else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
+    if (o.fcv || o.bp && Math.abs(o.bp) > .02) drawSway(o, x, y); else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
   // the rider behind a crown: his shape shows faintly through it, so he is never lost in the wood
   { const rx = Math.round(R.x) - ROXS, ry = Math.round(R.y) - ROYS; if (VIS.some(o => o.nk && o.y > R.y && R.x > o.x - o.ax && R.x < o.x - o.ax + o.mw && R.y - 10 > o.y - o.ay && R.y - 10 < o.y - o.ay + o.mh && o.mask[Math.round(R.y - 10 - o.y + o.ay) * o.mw + Math.round(R.x - o.x + o.ax)])) {
     if (HF) { ctx.globalAlpha = .42; ctx.drawImage(HF.cv, Math.round(R.x) - HF.ax, Math.round(R.y - RLIFT) - HF.ay); ctx.globalAlpha = 1; GHOSTN++ }
@@ -7740,6 +7750,14 @@ function drawWorld() {
   if (drops.length) { ctx.fillStyle = 'rgba(176,196,220,.55)'; for (const d of drops) { const x = Math.round(d.x), y = Math.round(d.y); ctx.fillRect(x, y, 1, 1); ctx.fillRect(Math.round(d.x - RAINSL * 2), y - 1, 1, 1); ctx.fillRect(Math.round(d.x - RAINSL * 4), y - 2, 1, 1) } }
   ctx.fillStyle = 'rgba(200,214,232,.7)'; for (const s of splashes) { const x = Math.round(s.x), y = Math.round(s.y); if (s.t < .1) ctx.fillRect(x, y, 1, 1); else { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1) } }
 }
+// a swaying thing: its two nearest poses blended by how far between them it is, so it moves smoothly; pushed by the bike, it leans
+// away from it too (further over, and the sprite sheared about its foot). clipY: only what is below that line (the front of a bush
+// the bike is in, drawn again over its wheels)
+function drawSway(o, x, y, clipY) { let c = o.fcv ? frameF(o) : 0, sh = 0; if (o.bp && Math.abs(o.bp) > .02) { c += o.bp * 3.5; sh = o.bp * (SOFT[o.t].sh || .3) }
+  const fy = Math.round(o.y + (o.ky || 0)); if (sh || clipY !== undefined) { ctx.save(); if (clipY !== undefined) { ctx.beginPath(); ctx.rect(x - 20, clipY, o.mw + 40, o.mh + 20); ctx.clip() } if (sh) ctx.transform(1, 0, -sh, 1, sh * fy, 0) }
+  if (!o.fcv) ctx.drawImage(o.cv, x, y);
+  else { c = clamp(c, 0, o.fcv.length - 1); const k = Math.floor(c), f = c - k; ctx.drawImage(o.fcv[k], x, y); if (f > .1 && k + 1 < o.fcv.length) { ctx.globalAlpha = Math.min(1, f * 1.1); ctx.drawImage(o.fcv[k + 1], x, y); ctx.globalAlpha = 1 } }
+  if (sh || clipY !== undefined) ctx.restore() }
 // ---- smoke from chimneys, fires burning at night ----
 const SMOKERS = [], FIRES = [], LIGHTS = [];
 function placeLights() { SMOKERS.length = FIRES.length = LIGHTS.length = 0; for (const o of OBJS) { if (o.kind !== 'prefab') continue; const r = pfBuild(o); for (const [x, y] of r.smoke || []) SMOKERS.push([o.x + x, o.y + y]); if (r.fire) { const P2 = p => p ? [o.x + p[0], o.y + p[1]] : null; FIRES.push({ x: o.x + r.fire[0], y: o.y + r.fire[1], size: r.fire[2], raised: r.fire[3], coals: r.fire[4], kind: r.kind, pot: P2(r.pot), potLow: P2(r.potLow), grill: r.grill ? r.grill.map(P2) : null, o, k: FIRES.length, I: 0, sm: 0, flame: 0, coal: 0, grow: 0, dying: 0 }); o.fireI = 0 } for (const L of r.lights || []) LIGHTS.push(Object.assign({}, L, { x: o.x + L.x, y: o.y + L.y, o, dly: h2(Math.round(o.x), Math.round(o.y), 91) * .09 })) } }
@@ -7801,7 +7819,9 @@ function fireSched() { if (LASTH !== null && DAY.h < LASTH - 12) DAYC++; if (LAS
     const lit = r() < .55, st = 18 + r() * 3.5, en = 22 + r() * 5, morn = r() < .3, ms = 7 + r() * 1.6, me = ms + .6 + r() * 1.1;
     let I = 0, sm = 0, age = 0, left = 9; if (lit) { I = ramp(hn, st, en); if (hn > en) sm = clamp(1 - (hn - en) / 1.2, 0, 1); if (hn >= st && hn < en) { age = hn - st; left = en - hn } }
     if (morn && DAY.h < 12) { const h = DAY.h, Im = ramp(h, ms, me); if (Im > I) { I = Im; age = h - ms; left = me - h } if (h > me) sm = Math.max(sm, clamp(1 - (h - me), 0, 1)) }
-    if (WX.rain > .5) I *= .4; // in heavy rain a fire hardly holds
+    // the rain: a fire it has drowned stays out (and steams) till its next lighting; a wet one burns low (stepFireRain)
+    F.night = night; if (F.outN === F.k * 1000 + night) { sm = Math.max(sm, F.steam || 0); I = 0 }
+    F.Ib = I; if (I > .02) I *= 1 - .72 * clamp(F.wet || 0, 0, 1) * (1 - .6 * (F.flare || 0));
     // the life of a fire: it catches small and smoky, blazes up, then sinks to a bed of coals before it is left to die
     F.I = I; F.sm = I > .05 ? 0 : sm; F.grow = clamp(age / .3, 0, 1); F.dying = clamp(1 - left / .7, 0, 1);
     F.flame = I * (.3 + .7 * F.grow) * (1 - .65 * F.dying); F.coal = Math.max(I * (.25 + .75 * Math.max(F.grow * .6, F.dying)), F.sm * .8);
@@ -7827,14 +7847,31 @@ function drawFlame(F) { if (F.flame < .02 && F.coal < .02) return; const C = fir
   // a pot on the tripod steaming, skewers of meat over the brazier through the evening
   if (F.grill && F.flame > .15) { const [a, b2] = F.grill, hn = DAY.h < 12 ? DAY.h + 24 : DAY.h; if (hn > 18 && hn < 22.5) for (let k = 0; k < 4; k++) { const yk = Math.round(a[1] - 1 + k * .7), x0 = Math.round(a[0] + 1), x1 = Math.round(b2[0] - 1);
       ctx.fillStyle = 'rgb(150,154,158)'; ctx.fillRect(x0 - 1, yk, x1 - x0 + 3, 1); for (let x = x0 + 1; x < x1; x += 2) { ctx.fillStyle = (x + k) % 4 ? 'rgb(132,62,36)' : 'rgb(170,96,60)'; ctx.fillRect(x, yk - 1, 2, 1) } } } }
-let SPARKS = [], POPT = 0;
+let SPARKS = [], POPT = 0, STEAM = [];
+// A fire in the rain: the drops soak it little by little (in a downpour fast), it burns lower and hisses, steam rising off it and sparks
+// thrown up where drops strike the coals. Somebody sitting by it gets up, squats at it and puts on more wood (it flares up); in a
+// downpour that is no use, the wood is soaked, and the fire drowns: out till its next lighting, steaming a long while. Dry, it dries.
+function stepFireRain(dt, gm) { const r = WX.rain, down = r > .85;
+  for (const F of FIRES) { F.flare = Math.max(0, (F.flare || 0) - dt * .7); if (F.steam) F.steam = Math.max(0, F.steam - gm / 70);
+    const near = F.x > CAM.x - 60 && F.x < CAM.x + W + 60 && F.y > CAM.y - 60 && F.y < CAM.y + H + 80;
+    if (F.steam > .02 && near) { F.st2 = (F.st2 || 0) + dt * F.steam * 7; while (F.st2 >= 1) { F.st2--; steamAt(F, 1.4) } }
+    if (!(F.Ib > .02)) { F.wet = 0; F.tend = null; continue }
+    if (r > .08) F.wet = (F.wet || 0) + gm * (r * r * .028 + (down ? .036 : 0)); else F.wet = Math.max(0, (F.wet || 0) - gm * .012);
+    const sit = ((F.o.W || PL.W).P.sitters || {})[F.o.pid || F.o.id];
+    if (sit && r > .08 && !F.tend && F.wet > .22 && F.I >= .2 && Math.random() < dt * .45) F.tend = { i: Math.floor(Math.random() * sit.length), t: 0, done: false };
+    if (F.tend) { const T = F.tend; T.t += dt; if (!T.done && T.t > 1.9) { T.done = true; F.wet = Math.max(0, F.wet - (down ? .05 : .4)); F.flare = 1; sparkAt(F, 8 + Math.round(8 * F.size)); if (near) twigSnap(clamp((F.x - R.x) / 80, -.8, .8), .45) } if (T.t > 3.7) F.tend = null }
+    if (F.wet >= 1) { F.outN = F.k * 1000 + F.night; F.steam = 1; F.wet = 0; F.tend = null; for (let k = 0; k < 16; k++) steamAt(F, 1.6); continue }
+    if (r > .08 && F.I > .02 && near) { F.stAcc = (F.stAcc || 0) + dt * r * (3 + 6 * F.size) * (.5 + F.I); while (F.stAcc >= 1) { F.stAcc--; steamAt(F, 1) } if (Math.random() < dt * r * 3.5 * F.I) sparkAt(F, 1 + (Math.random() * 2 | 0)) } } }
+function steamAt(F, k) { const s = F.size; STEAM.push({ x: F.x + (Math.random() - .5) * 5 * s, y: F.y - 2 - Math.random() * 3, vx: (Math.random() - .5) * 4, vy: -(7 + Math.random() * 7) * k, t: 0, life: (1.3 + Math.random() * 1.5) * k }) }
 function stepSparks(dt) { for (const F of FIRES) { if (F.flame < .05 || F.x < CAM.x - 60 || F.x > CAM.x + W + 60 || F.y < CAM.y - 60 || F.y > CAM.y + H + 60) continue;
     F.sAcc = (F.sAcc || 0) + dt * F.flame * (2 + 7 * F.size * F.size); while (F.sAcc >= 1) { F.sAcc--; sparkAt(F, 1) } }
   const g = gustNow(), wv = WINDX * (6 + 28 * WIND.s * (.6 + .7 * g));
   for (const p of SPARKS) { p.t += dt; p.vx += (wv - p.vx) * dt * 1.5 + (Math.random() - .5) * 40 * dt; p.vy += (-26 - p.vy) * dt * .8; p.x += p.vx * dt; p.y += p.vy * dt }
-  SPARKS = SPARKS.filter(p => p.t < p.life) }
+  SPARKS = SPARKS.filter(p => p.t < p.life);
+  for (const p of STEAM) { p.t += dt; p.vx += (wv * .7 - p.vx) * dt * 1.2; p.vy *= 1 - dt * .5; p.x += p.vx * dt; p.y += p.vy * dt } STEAM = STEAM.filter(p => p.t < p.life) }
 function sparkAt(F, n) { const s = F.size; for (let i = 0; i < n; i++) SPARKS.push({ x: F.x + (Math.random() - .5) * 4 * s, y: F.y - 3 - Math.random() * 8 * s * F.flame, vx: (Math.random() - .5) * 14, vy: -14 - Math.random() * 22, t: 0, life: .5 + Math.random() * 1.4 }) }
-function drawSparks() { for (const p of SPARKS) { const u = p.t / p.life; if (Math.random() < .12) continue; ctx.globalAlpha = 1 - u * .8; ctx.fillStyle = u < .3 ? 'rgb(255,236,170)' : u < .65 ? 'rgb(255,160,60)' : 'rgb(210,70,30)'; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1) } ctx.globalAlpha = 1 }
+function drawSparks() { for (const p of STEAM) { const u = p.t / p.life, a = .62 * (1 - u) * Math.min(1, p.t * 6); ctx.fillStyle = `rgba(222,224,226,${a.toFixed(2)})`; const s = u > .45 ? 2 : 1; ctx.fillRect(Math.round(p.x), Math.round(p.y), s, s) }
+  for (const p of SPARKS) { const u = p.t / p.life; if (Math.random() < .12) continue; ctx.globalAlpha = 1 - u * .8; ctx.fillStyle = u < .3 ? 'rgb(255,236,170)' : u < .65 ? 'rgb(255,160,60)' : 'rgb(210,70,30)'; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1) } ctx.globalAlpha = 1 }
 
 // ================= light: the hour's light, the bike's lamp, the lit windows and lanterns =================
 const litCv = document.createElement('canvas'), litCtx = litCv.getContext('2d'), beamCv = document.createElement('canvas'), beamCtx = beamCv.getContext('2d');
@@ -8144,7 +8181,7 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
   sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
   if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
@@ -8190,9 +8227,19 @@ function drawFrost(cx0, cy0) { if (FROST < .02) return; ctx.globalAlpha = smst(F
 // ---- rain on the water: rings spreading where the drops fall ----
 let RINGS = [];
 function stepRings(dt) { if (WX.rain < .06) { RINGS = RINGS.filter(r => r.t < r.life); for (const r of RINGS) r.t += dt; return } const cx0 = CAM.x, cy0 = CAM.y;
-  for (let k = 0; k < WX.rain * 40 * dt * 6; k++) { const x = cx0 + Math.random() * W, y = cy0 + Math.random() * H, m = matAt(x, y); if (m === 'river' || m === 'lake' || m === 'pond' || m === 'brook' || m === 'bog' && vn(x * .05, y * .05, SEED + 561) < .38) RINGS.push({ x, y, t: 0, life: .5 + Math.random() * .4 }) }
-  for (const r of RINGS) r.t += dt; RINGS = RINGS.filter(r => r.t < r.life); if (RINGS.length > 300) RINGS.splice(0, RINGS.length - 300) }
-function drawRings() { for (const r of RINGS) { const u = r.t / r.life, rad = 1 + u * 3.5, a = (1 - u) * .5; ctx.fillStyle = `rgba(200,220,228,${a})`; for (let i = 0; i < 8; i++) { const ang = i / 8 * TAU; ctx.fillRect(Math.round(r.x + Math.cos(ang) * rad), Math.round(r.y + Math.sin(ang) * rad * .5), 1, 1) } } }
+  // the drops on the water, as the rain is: in a drizzle a fine pricking and a few tiny rings, in rain rings and the splash at their middle,
+  // in a downpour the water boiling with them, big rings crowding (how many by the screen's area; only where it is water)
+  const r = WX.rain, heavy = r > .85, rate = W * H / 126000 * (r < .4 ? 70 + 140 * r : 120 + 420 * (r - .4) * (r - .4) / .36 + (heavy ? 220 : 0)), pr = r < .4 ? .7 : heavy ? .35 : .2;
+  RINGS.acc = (RINGS.acc || 0) + rate * dt; while (RINGS.acc >= 1) { RINGS.acc--; const x = cx0 + Math.random() * W, y = cy0 + Math.random() * H, m = matAt(x, y);
+    if (!(m === 'river' || m === 'lake' || m === 'pond' || m === 'brook' || m === 'bog' && vn(x * .05, y * .05, SEED + 561) < .38)) continue;
+    if (Math.random() < pr) RINGS.push({ x, y, t: 0, life: .12 + Math.random() * .12, k: 0 }); // (a prick: a glint where a drop goes in)
+    else RINGS.push({ x, y, t: 0, life: .45 + Math.random() * .4 + (heavy ? .2 : 0), k: 1, R: r < .4 ? 1.6 + Math.random() * 1.2 : heavy ? 3.2 + Math.random() * 2.6 : 2.4 + Math.random() * 2 }) }
+  for (const q of RINGS) q.t += dt; RINGS = RINGS.filter(q => q.t < q.life); if (RINGS.length > 900) RINGS.splice(0, RINGS.length - 900) }
+function drawRings() { for (const q of RINGS) { const u = q.t / q.life;
+    if (q.k === 0) { ctx.fillStyle = `rgba(224,236,240,${(.7 * (1 - u)).toFixed(2)})`; ctx.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); continue }
+    const R0 = q.R || 4.5, rad = .8 + u * R0, a = (1 - u) * (q.k ? .6 : .5), n = rad > 3 ? 14 : rad > 1.8 ? 10 : 6; ctx.fillStyle = `rgba(206,224,232,${a.toFixed(2)})`;
+    for (let i = 0; i < n; i++) { const ang = i / n * TAU; ctx.fillRect(Math.round(q.x + Math.cos(ang) * rad), Math.round(q.y + Math.sin(ang) * rad * .5), 1, 1) }
+    if (q.k && q.t < .1) { ctx.fillStyle = 'rgba(236,244,246,.85)'; ctx.fillRect(Math.round(q.x), Math.round(q.y) - (q.t < .05 ? 1 : 2), 1, 1) } } } // (the splash thrown up in the middle)
 
 function stepLife(dt) { stepMoths(dt); stepRings(dt); stepGulls(dt); stepBirds(dt); stepTracks(dt) }
 // over the lit picture: the moths (in the lamplight they shine), the foxfire's specks; the birds over everything
