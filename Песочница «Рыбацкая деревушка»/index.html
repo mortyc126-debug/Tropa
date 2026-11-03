@@ -1583,6 +1583,15 @@ function t3roll(M, x0, x1, n, r, col, o = {}) { const seg = 8, zc = (o.z0 || 0) 
   const cap = x => { const pts = []; for (let i = 0; i < seg; i++) { const a = i / seg * TAU; pts.push([x, n + Math.cos(a) * r, zc + Math.sin(a) * r]) } t3face(M, pts, o.endCol || cmul(col, 1.15), ctr, Object.assign({}, o, { tex: o.endTex ? (xx, nn, zz) => o.endTex(Math.hypot(nn - n, zz - zc) / r, nn - n, zz - zc) : null })) }; cap(x0); cap(x1) }
 // Draw the model on a sprite: visible faces back to front, each shaded by its slope to the light in four tones with a
 // little dither, then ropes and poles, then dots. `glow` (0..1) lights the fabric from inside (a lantern in the tent).
+// A tent's wear (M.wear 0..1, M.tint: its own cast): the sun has bleached what faces up, each panel has faded to a shade of its own, the
+// foot is grimed with earth splashed up by rain, there are scuffs where things rubbed, and on an old one a patch sewn on in other cloth
+function tentWear(c, M, mx, mn, mz, N, seed) { const w = M.wear, T = M.tint || [1, 1, 1]; c = [c[0] * T[0], c[1] * T[1], c[2] * T[2]];
+  const lum = (c[0] + c[1] + c[2]) / 3; c = cmix(c, [lum * 1.08 + 18, lum * 1.06 + 16, lum + 12], w * (.12 + .3 * clamp(N[2], 0, 1))); // (bleached)
+  const pv = vn(mx * .09 + 3, mz * .13 - mn * .05, seed + 41) - .5; c = cmul(c, 1 + pv * .2 * (.4 + w)); // (the panels)
+  if (mz < 4.5) c = cmix(c, [74, 62, 46], (1 - mz / 4.5) * (.18 + .4 * w)); // (the grime at the foot)
+  const sc = vn(mx * .5, mz * .7 + mn * .3, seed + 43); if (sc > .85 - .08 * w) c = cmix(c, [lum + 40, lum + 38, lum + 32], .3 + .3 * w); else if (sc < .1 && w > .4) c = cmul(c, .82); // (scuffs, stains)
+  if (M.patch) { const [px, pz, pw, ph, pc] = M.patch, u = mx - px, v = mz - pz; if (u > 0 && u < pw && v > 0 && v < ph) c = u < .6 || u > pw - .6 || v < .5 || v > ph - .5 ? cmul(pc, .62) : cmix(pc, c, .1) }
+  return c.map(v => clamp(Math.round(v), 0, 255)) }
 function t3draw(s, M, ax, ay, glow = 0, seed = 1) {
   // a depth buffer: of all the surfaces under a pixel the one highest up the line of sight is seen (in this projection a
   // pixel's line of sight runs n + K z = const, so the nearest point is simply the highest)
@@ -1605,6 +1614,7 @@ function t3draw(s, M, ax, ay, glow = 0, seed = 1) {
       if (!f.flat && !base.flat && !f.inside && !f.clean) { const blot = vn((mx + mn) * .22, mz * .3, seed + 23); if (blot > .7) k *= .92; if (mz < 3 && !f.fabric) k *= .88 + .04 * mz }
       let c = f.flat || base.flat ? base : cmul(base, k);
       if (!f.flat && !f.inside && !f.clean && N[2] > .45) { const mo = vn(mx * .18, mn * .18, seed + 29); if (mo > .7 && !f.fabric) c = cmix(c, [84, 104, 52], .45); const lf = h2(x * 3 + 1, y * 5 + 2, seed + 31); if (lf < .018) c = lf < .007 ? [206, 104, 42] : lf < .013 ? [222, 172, 64] : [168, 64, 40] }
+      if (f.fabric && !f.inside && M.wear !== undefined) c = tentWear(c, M, mx, mn, mz, N, seed);
       if (fab) c = cmix(c, [255, 196, 120], glow * (f.inside ? .9 : .42)); else if (f.inside && glow) c = cmix(c, [255, 210, 140], glow);
       s.set(x, y, c); DN[zi] = mn } }
   // ropes, poles, seams and dots: hidden where a surface stands in front of them
@@ -1732,7 +1742,8 @@ const TENT_ITEMS = {
 };
 // The prefab: a tent of any kind, its things, a night version (warm inside when the lantern is lit), its footprint.
 PF.tent = (o = {}) => { const kind = TENT_KINDS[o.kind] ? o.kind : 'dome', seed = o.seed || hashStrT(o.id || kind);
-  const build = () => { const r = TENT_KINDS[kind](o); r.M.seed = seed; const lift = o.lift || 0; for (const it of o.items || []) { const [name, ...args] = it; if (TENT_ITEMS[name]) TENT_ITEMS[name](r.M, ...args) } if (lift) { const up = p => { p[2] += lift }; const seen = new Set(); for (const f of r.M.faces) for (const p of f.pts) if (!seen.has(p)) { seen.add(p); up(p) } for (const f of r.M.faces) f.c[2] += lift; for (const L of r.M.lines) { if (!seen.has(L.a)) { seen.add(L.a); up(L.a) } if (!seen.has(L.b)) { seen.add(L.b); up(L.b) } } for (const d of r.M.dots) if (!seen.has(d[0])) { seen.add(d[0]); up(d[0]) } } PF_TENT_LAST = r; return r.M };
+  const build = () => { const r = TENT_KINDS[kind](o); r.M.seed = seed; { const q = mulberry(seed ^ 0x5eed), w = .15 + .85 * q(); r.M.wear = o.wear ?? w; r.M.tint = [1 + (q() - .5) * .12, 1 + (q() - .5) * .1, 1 + (q() - .5) * .14];
+      if (r.M.wear > .55 && q() < .75) { const F = r.foot || [-10, -10, 10, 0]; r.M.patch = [F[0] + 2 + q() * Math.max(1, F[2] - F[0] - 8), 1.5 + q() * 6, 3 + q() * 2.5, 2.5 + q() * 2, tfab(['khaki', 'olive', 'blue', 'green', 'red', 'yellow'][Math.floor(q() * 6)])] } } const lift = o.lift || 0; for (const it of o.items || []) { const [name, ...args] = it; if (TENT_ITEMS[name]) TENT_ITEMS[name](r.M, ...args) } if (lift) { const up = p => { p[2] += lift }; const seen = new Set(); for (const f of r.M.faces) for (const p of f.pts) if (!seen.has(p)) { seen.add(p); up(p) } for (const f of r.M.faces) f.c[2] += lift; for (const L of r.M.lines) { if (!seen.has(L.a)) { seen.add(L.a); up(L.a) } if (!seen.has(L.b)) { seen.add(L.b); up(L.b) } } for (const d of r.M.dots) if (!seen.has(d[0])) { seen.add(d[0]); up(d[0]) } } PF_TENT_LAST = r; return r.M };
   const glows = [0, .55], FR = t3frames(build, glows, .7), sp = FR[2], r = PF_TENT_LAST, [fx0, fn0, fx1] = r.foot;
   const lights = [{ x: r.door[0], y: -r.door[1] - 4, r: Math.max(16, (fx1 - fx0) * .7), c: '255,176,96', a: .42, k: 'window', tent: true }];
   // the things about the pitch stop a bike too (the flat ones, a mat or a sleeping bag, it rolls over)
@@ -7918,7 +7929,22 @@ function drawFlame(F) { if (F.flame < .02 && F.coal < .02) return; const C = fir
   // a pot on the tripod steaming, skewers of meat over the brazier through the evening
   if (F.grill && F.flame > .15) { const [a, b2] = F.grill, hn = DAY.h < 12 ? DAY.h + 24 : DAY.h; if (hn > 18 && hn < 22.5) for (let k = 0; k < 4; k++) { const yk = Math.round(a[1] - 1 + k * .7), x0 = Math.round(a[0] + 1), x1 = Math.round(b2[0] - 1);
       ctx.fillStyle = 'rgb(150,154,158)'; ctx.fillRect(x0 - 1, yk, x1 - x0 + 3, 1); for (let x = x0 + 1; x < x1; x += 2) { ctx.fillStyle = (x + k) % 4 ? 'rgb(132,62,36)' : 'rgb(170,96,60)'; ctx.fillRect(x, yk - 1, 2, 1) } } } }
-let SPARKS = [], POPT = 0, STEAM = [];
+let SPARKS = [], POPT = 0, STEAM = [], BREATH = [];
+// breath in the cold: below some +6 degrees every one out of doors breathes out a little cloud, every few seconds (faster when walking,
+// faster still on the bike), from the mouth, out the way they face, carried off by the wind; plainer the colder and the damper it is
+const BRTOP = new WeakMap();
+function sprTop(cv) { let v = BRTOP.get(cv); if (v !== undefined) return v; v = 0; try { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; outer: for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 100) { v = y; break outer } } catch (e) { } BRTOP.set(cv, v); return v }
+function breathOf(key, x, y, th, per, k, dt) { const ph = (key * .618) % 1, u = ((t / per + ph) % 1); if (u > .2) return; if (Math.random() > dt * 60 * .7) return;
+  const fx = Math.sin(th), fy = -Math.cos(th), sp = 3 + Math.random() * 3; BREATH.push({ x: x + fx * 1.5, y: y + fy * .8, vx: fx * sp + (Math.random() - .5) * 2, vy: fy * sp * .5 - 1.2 - Math.random(), t: 0, life: .9 + Math.random() * .9, a: k }) }
+function stepBreath(dt) { const T = WX.now ? WX.now.temp : 8, k = clamp((6.5 - T) / 6, 0, 1) * (.75 + .25 * clamp(WX.fog + WX.rain, 0, 1)) * (1 - .4 * clamp(WIND.s - .5, 0, 1));
+  if (k > .03) { const vis = (x, y) => x > CAM.x - 20 && x < CAM.x + W + 20 && y > CAM.y - 20 && y < CAM.y + H + 40;
+    for (const P of NPCS.concat(SITS)) { if (!vis(P.x, P.y)) continue; const S = npcSpr(P); if (!S) continue; const top = Math.round(P.y) - S.ay + sprTop(S.cv); breathOf(hashStr(P.look && P.look.id || 'p') + Math.round(P.sit ? P.x : 0), P.x, top + 4.5, P.dir * Math.PI / 4, P.moving ? 2.6 : 3.8, k, dt) }
+    if (R.foot) { const H = heroNow(); breathOf(7, R.x, Math.round(R.y - RLIFT) - H.ay + sprTop(H.cv) + 4.5, R.psi, R.v > 30 ? 1.7 : R.v > 1 ? 2.5 : 3.6, k, dt) }
+    else { const pk = rPick(R.yi, R.li), a = pk && RSETS.get(rk(pk[0], pk[1])), c = a && (STAND.cv || a[R.f] || a.find(Boolean)); if (c) breathOf(7, R.x + Math.sin(R.psi) * 2, Math.round(R.y - RLIFT) - ROYS + sprTop(c) + 4.5, R.psi, R.v > 25 ? 1.6 : R.v > 3 ? 2.2 : 3.6, k, dt) } }
+  const wv = WINDX * (2 + 14 * WIND.s), wy = WINDY * (1 + 6 * WIND.s);
+  for (const p of BREATH) { p.t += dt; p.vx += (wv - p.vx) * dt * 1.4; p.vy += (wy * .5 - .8 - p.vy) * dt * 1.2; p.x += p.vx * dt; p.y += p.vy * dt } BREATH = BREATH.filter(p => p.t < p.life) }
+function drawBreath() { for (const p of BREATH) { const u = p.t / p.life, a = .85 * p.a * Math.pow(1 - u, 1.3) * Math.min(1, p.t * 10); if (a < .03) continue; const x = Math.round(p.x), y = Math.round(p.y);
+    ctx.fillStyle = `rgba(236,240,244,${a.toFixed(2)})`; ctx.fillRect(x, y, 1, 1); if (u > .2) { ctx.fillStyle = `rgba(236,240,244,${(a * .55).toFixed(2)})`; ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1) } if (u > .5) { ctx.fillStyle = `rgba(236,240,244,${(a * .3).toFixed(2)})`; ctx.fillRect(x - 1, y - 1, 3, 1); ctx.fillRect(x - 2, y, 1, 1); ctx.fillRect(x + 2, y, 1, 1) } } }
 // A fire in the rain: the drops soak it little by little (in a downpour fast), it burns lower and hisses, steam rising off it and sparks
 // thrown up where drops strike the coals. Somebody sitting by it gets up, squats at it and puts on more wood (it flares up); in a
 // downpour that is no use, the wood is soaked, and the fire drowns: out till its next lighting, steaming a long while. Dry, it dries.
@@ -7942,7 +7968,7 @@ function stepSparks(dt) { for (const F of FIRES) { if (F.flame < .05 || F.x < CA
   SPARKS = SPARKS.filter(p => p.t < p.life);
   for (const p of STEAM) { p.t += dt; p.vx += (wv * .7 - p.vx) * dt * 1.2; p.vy *= 1 - dt * .5; p.x += p.vx * dt; p.y += p.vy * dt } STEAM = STEAM.filter(p => p.t < p.life) }
 function sparkAt(F, n) { const s = F.size; for (let i = 0; i < n; i++) SPARKS.push({ x: F.x + (Math.random() - .5) * 4 * s, y: F.y - 3 - Math.random() * 8 * s * F.flame, vx: (Math.random() - .5) * 14, vy: -14 - Math.random() * 22, t: 0, life: .5 + Math.random() * 1.4 }) }
-function drawSparks() { for (const p of STEAM) { const u = p.t / p.life, a = .62 * (1 - u) * Math.min(1, p.t * 6); ctx.fillStyle = `rgba(222,224,226,${a.toFixed(2)})`; const s = u > .45 ? 2 : 1; ctx.fillRect(Math.round(p.x), Math.round(p.y), s, s) }
+function drawSparks() { drawBreath(); for (const p of STEAM) { const u = p.t / p.life, a = .62 * (1 - u) * Math.min(1, p.t * 6); ctx.fillStyle = `rgba(222,224,226,${a.toFixed(2)})`; const s = u > .45 ? 2 : 1; ctx.fillRect(Math.round(p.x), Math.round(p.y), s, s) }
   for (const p of SPARKS) { const u = p.t / p.life; if (Math.random() < .12) continue; ctx.globalAlpha = 1 - u * .8; ctx.fillStyle = u < .3 ? 'rgb(255,236,170)' : u < .65 ? 'rgb(255,160,60)' : 'rgb(210,70,30)'; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1) } ctx.globalAlpha = 1 }
 
 // ================= light: the hour's light, the bike's lamp, the lit windows and lanterns =================
@@ -8253,7 +8279,7 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
   sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
   if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
