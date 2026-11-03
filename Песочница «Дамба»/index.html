@@ -1444,7 +1444,7 @@ const POLE_H = 72;
 // concrete pole with a crossarm and three insulators). lean: how far the top has gone over (px, + east), as old poles
 // do in soft ground. Extras: lamp (dir: the arm's side), dead (a lamp that no longer lights: its glass broken), flick
 // (a worn lamp that flickers), strut (a slanting prop), sign (the enamel «не влезай — убьёт» plate), bird (a nest box).
-PF.pole = ({ kind = 'wood', lamp = false, dir = 1, strut = 0, seed = 1, flick = false, dead = false, lean = 0, sign = false, bird = false } = {}) => {
+PF.pole = ({ kind = 'wood', lamp = false, dir = 1, strut = 0, seed = 1, flick = false, dead = false, lean = 0, sign = false, bird = false, nest = false, foul = false, rust = false, guano = false } = {}) => {
   const hv = kind === 'hv', H = hv ? 86 : POLE_H, PAD = 16, W = PAD * 2 + 1 + Math.abs(lean), cx = PAD + Math.max(0, -lean), r = mulberry(seed), tone = .82 + r() * .3, top = 2;
   const off = y => Math.round(lean * (H + 1 - y) / (H - top)); // the lean, at a height
   const draw = night => s => {
@@ -1461,8 +1461,14 @@ PF.pole = ({ kind = 'wood', lamp = false, dir = 1, strut = 0, seed = 1, flick = 
     if (strut) for (let k = 0; k < 34; k++) { const y = H + 1 - k, x = cx + strut * Math.round(12 - k * 12 / 34) + off(y); s.set(x, y, wood[1]); s.set(x + strut, y, wood[0]) }
     if (sign) { const y0 = H - 30, o = off(y0); for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) s.set(cx - 2 + x + o, y0 + y, y === 0 || y === 4 || x === 0 || x === 4 ? [60, 60, 64] : [234, 232, 224]); s.set(cx + o, y0 + 1, [200, 30, 30]); s.set(cx - 1 + o, y0 + 2, [200, 30, 30]); s.set(cx + o, y0 + 2, [200, 30, 30]); s.set(cx + 1 + o, y0 + 2, [200, 30, 30]); s.set(cx + o, y0 + 3, [200, 30, 30]) }
     if (bird) { const y0 = 26, o = off(y0); for (let y = 0; y < 7; y++) for (let x = 0; x < 5; x++) s.set(cx + 2 + x + o, y0 + y, x === 4 ? wood[0] : wood[2]); for (let x = -1; x < 6; x++) s.set(cx + 2 + x + o, y0 - 1, [70, 60, 50]); s.set(cx + 4 + o, y0 + 2, [30, 24, 20]) }
+    // (by the water: weed and slime up the foot of the post and its concrete stub, black mussels where the waves keep it wet)
+    if (foul) { for (let y = H - 10; y < H + 2; y++) { const o = off(y), k = (y - (H - 10)) / 12; for (let x = -1; x <= 4; x++) { if (x > 1 && y < H - 14) continue; const q = h2(x * 7 + y, seed, 11); if (q < .2 + k * .6) s.set(cx + x + (x < 2 ? o : 0), y, q < .1 + k * .3 ? [36, 40, 54] : q < .3 ? [52, 78, 50] : [80, 104, 60]) } } }
+    if (guano) for (let y = 11; y < H - 4; y++) if (h2(y, seed, 14) < .1 + (y < 22 ? .25 : 0)) s.set(cx + (h2(y, seed, 15) < .5 ? 0 : -1) + off(y), y, [226, 224, 214]); // (droppings down the post from the lamp head)
     if (lamp) { const ly = 12, o = off(ly), ax = cx + dir + o; for (let k = 0; k < 9; k++) s.set(ax + dir * k, ly - Math.round(k * .35), [64, 64, 68]); s.set(ax + dir, ly + 1, [64, 64, 68]); s.set(ax + dir * 2, ly + 2, [64, 64, 68]);
-      const hx = cx + dir * 10 + o; for (let x = -2; x <= 2; x++) { s.set(hx + x, 8, [90, 92, 96]); s.set(hx + x, 9, [70, 72, 76]) }
+      const hx = cx + dir * 10 + o, hc = rust ? [[132, 84, 52], [100, 62, 40]] : [[90, 92, 96], [70, 72, 76]]; for (let x = -2; x <= 2; x++) { s.set(hx + x, 8, h2(x, seed, 16) < .3 && rust ? [90, 92, 96] : hc[0]); s.set(hx + x, 9, hc[1]) }
+      if (nest) { // a herring gull's nest of twigs and weed on the lamp head, the gull sitting on it, facing out along the arm
+        for (let x = -3; x <= 3; x++) { s.set(hx + x, 7, h2(x, seed, 17) < .5 ? [104, 88, 64] : [76, 66, 50]); if (Math.abs(x) < 3) s.set(hx + x, 6, h2(x, seed, 18) < .5 ? [128, 112, 84] : [92, 84, 66]) } s.set(hx - 4 * dir, 8, [120, 104, 78]); s.set(hx + 4 * dir, 7, [96, 84, 62]);
+        for (let x = -2; x <= 1; x++) for (let y = 3; y <= 5; y++) s.set(hx + x * dir, y, y === 3 && x > -2 ? [156, 162, 168] : [236, 236, 230]); s.set(hx + 2 * dir, 4, [40, 40, 44]); s.set(hx - 2 * dir, 2, [236, 236, 230]); s.set(hx - 3 * dir, 2, [236, 236, 230]); s.set(hx - 4 * dir, 3, [226, 186, 60]); s.set(hx - 3 * dir, 1, [236, 236, 230]); s.set(hx - 3 * dir, 2, [40, 40, 44]) }
       for (let x = -1; x <= 1; x++) s.set(hx + x, 10, dead ? (x === 0 ? [40, 40, 44] : [150, 156, 150]) : night ? [255, 236, 190] : [176, 180, 170]);
       for (let y = 15; y < 20; y++) s.set(cx + (dir < 0 ? 1 : -1) + off(y), y, [84, 86, 90]) } };
   const d = pfMake(W, H + 4, cx, H + 1, draw(false)), n = lamp && !dead ? pfMake(W, H + 4, cx, H + 1, draw(true)) : null, lx = dir * 10 + lean, ty = -(H - 5);
@@ -4468,17 +4474,32 @@ const CULV_OFF = { 1: [0], 3: [-10, 0, 10] };
 function culvertMouth(a, k) { let m = 1e9; for (const o of CULV_OFF[k]) m = Math.min(m, Math.abs(a - o)); return m }
 function damColor(L, x, y, d) { const part = damPart(L, x, y), g = DAMG, best = g.best, sd = g.sd, e = g.e, sw = g.sw, K = L.dam || DAM, TOP = K.top, VG = TOP + (K.vg - TOP) * sw, ST = TOP + (K.st - TOP) * sw, gf = DP.gf;
   if (part === 0) { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c }
-  if (part === 1) { if (Math.abs(best - 5.4) < 1 && gf > .6) return G.rut; const v = .55 + (fbm(x * .05, y * .05, SEED + 9) - .5) * .3 + (vn(x * .18, y * .18, SEED + 12) - .5) * .1; let c = PAL.stone[quant(clamp(v, 0, 1), x, y, 5, .35)]; const st = h2(x, y, SEED + 10); if (st < .012) c = PAL.stone[4]; else if (st < .03) c = PAL.stone[2]; return c }
+  if (part === 1) { // the gravel top: two wheel tracks, and what the wind, the water and the birds leave on it, each on stretches of its own (F)
+    const F = vn(x * .006, y * .006, SEED + 954);
+    // (potholes: small, round, mostly in the wheel tracks, more of them on the worse stretches; the puddle in one, the sky in the water)
+    if (gf > .6 && best > 2.5 && best < 9) { const gx = Math.floor(x / 9), gy = Math.floor(y / 7), ph = h2(gx, gy, SEED + 950); if (ph < .1 + .25 * F) { const px = gx * 9 + 2 + h2(gx, gy, SEED + 951) * 5, py = gy * 7 + 2 + h2(gx, gy, SEED + 952) * 3, r = 1.2 + 1.6 * h2(gx, gy, SEED + 953), d = Math.hypot(x - px, (y - py) * 1.4);
+      if (d < r) return d > r - .9 ? [92, 92, 84] : (y - py < -.3 ? [128, 152, 162] : [62, 84, 96]) } }
+    if (gf > .6 && best < 2.8 && F > .5 && h2(x, y, SEED + 956) < (F - .5) * 3) return h2(x, y, SEED + 957) < .3 ? PAL.straw[1] : G.grass[quant(.4 + vn(x * .3, y * .3, SEED + 958) * .5, x, y, 5, .7)]; // (grass down the middle, where no wheel goes)
+    if (Math.abs(best - 5.4) < 1 && gf > .6) return F > .62 && h2(x, y, SEED + 959) < .35 ? [96, 90, 80] : G.rut;
+    const v = .55 + (fbm(x * .05, y * .05, SEED + 9) - .5) * .3 + (vn(x * .18, y * .18, SEED + 12) - .5) * .1; let c = PAL.stone[quant(clamp(v, 0, 1), x, y, 5, .35)];
+    if (best > 10.5) { const sv = fbm(x * .045 + y * .02, y * .045 - x * .02, SEED + 952) + (best - 10.5) * .03; if (h2(x, y, SEED + 960) < (sv - .5 - .2 * (1 - F)) * 4) c = BEACHP[h2(x, y, SEED + 961) < .5 ? 2 : 3] } // (sand blown up over the edge, in wisps)
+    const st = h2(x, y, SEED + 10); if (st < .012) c = PAL.stone[4]; else if (st < .03) c = PAL.stone[2]; else if (st < .035) c = [236, 234, 226]; else if (st < .04) c = [206, 194, 172]; return c } // (a gull's dropping; a broken shell)
   if (part === 2) return K_sedge(x, y);
   if (L.both && part) { const q = culvertNear(x, y); if (q) { const m = culvertMouth(q.a, q.C.k), half = q.C.k > 1 ? 17 : 6.5;
       if ((part === 1 || part === 2) && Math.abs(q.a) < half && DAMG.best > TOP - 2.5) return Math.abs(DAMG.best - TOP + 1) < .7 ? [128, 124, 116] : [176, 172, 164]; // (the concrete headwall along the top's edge)
       if (part === 3 || part === 4) { const b = (part === 4 ? ST : TOP + (K.ns - TOP) * sw) - best - e; if (b < 7 && m * m + (b * 1.15) * (b * 1.15) < 4.4 * 4.4) return b < 1.2 ? [70, 96, 104] : [24, 28, 30]; // (the mouth: dark, the water in its sill)
-        if (b < 8.5 && m * m + (b * 1.15) * (b * 1.15) < 6 * 6) return [168, 164, 156] } } } // (its stone rim)
-  if (part === 3) { const s = stoneCell(x, y, 3.4, 61); if (s.gap < .12) return [52, 50, 46]; return PAL.stone[quant(.5 + (-s.oy * .8 - s.ox * .5 + (s.id - .5) * .4), x, y, 5, .4)] }
+        if (b < 8.5 && m * m + (b * 1.15) * (b * 1.15) < 6 * 6) return [168, 164, 156];
+        if (q.C.slime && b < 12 && m < 9 && h2(x, y, SEED + 931) < q.C.slime * (1 - m / 9) * (1 - b / 12) * 1.4) return h2(x, y, SEED + 932) < .5 ? [44, 70, 46] : [70, 96, 56]; // (green slime round the mouth, where the water runs)
+        if (q.C.rust && part === 4 && Math.abs(q.a - q.C.rust) < 1.1 && b > 4) return h2(x, y, SEED + 933) < .5 ? [132, 82, 48] : [108, 66, 42] } } } // (a rust stain run down from the headwall's iron) // (its stone rim)
+  if (part === 3) { const s = stoneCell(x, y, 3.4, 61); if (s.gap < .12) return [52, 50, 46]; return foulStone(PAL.stone[quant(.5 + (-s.oy * .8 - s.ox * .5 + (s.id - .5) * .4), x, y, 5, .4)], x, y, DP.edge) }
   const t = clamp((best - VG - e) / Math.max(4, ST - VG), 0, 1), s = stoneCell(x, y * 1.15, 4.2, 72); // the broad stone face on the south
   if (t < .1) return PAL.stone[3]; if (s.gap < .1) return [40, 38, 36];
   let c = PAL.stone[quant(clamp(.55 - s.oy * .5 - s.ox * .3 + (s.id - .5) * .5 - t * .55, 0, 1), x, y, 5, .45)];
-  if (t > .8 && vn(x * .3, y, SEED + 74) > .45) c = PAL.moss[1 + (h2(x, y, SEED + 75) < .5 ? 1 : 0)]; return c }
+  if (t > .8 && vn(x * .3, y, SEED + 74) > .45) c = PAL.moss[1 + (h2(x, y, SEED + 75) < .5 ? 1 : 0)]; return foulStone(c, x, y, DP.edge) }
+function foulStone(c, x, y, edge) { const w = clamp(1 + edge / 5, 0, 1); if (w <= 0) return c; const F = vn(x * .005, y * .005, SEED + 940), q = h2(x, y, SEED + 941); // (w: 1 at the water's edge, nought 5 px up the stones)
+  if (F > .56 && q < w * (F - .56) * 3.4) return q < w * (F - .56) * 1.5 ? [32, 36, 50] : [74, 80, 98]; // mussels, black-blue, in clusters on some stretches
+  if (q < w * (.25 + F * .6)) return cmix(c, q < .5 * w ? [44, 70, 46] : [80, 104, 60], .75); // weed and slime at the waterline
+  return c }
 // the layer under the dams that show nothing here (their thin gravel, the water beyond their slopes)
 function underLayer(x, y) { return layerAt(x, y) }
 // a point of a dam's layer where there is no slope any more but the water below: the bike may not go there
@@ -4974,6 +4995,30 @@ function wDw(x, y) { const J = WJOBS.get(Math.floor(x / CK) + ',' + Math.floor(y
 const wFrac = u => u - Math.floor(u);
 const wHash = (x, y, k) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(k, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 24 }; // (a cheap hash, 0..255)
 let WRING = []; // (rings spreading on the water: a fish rising, a fly landing)
+// the water out of the dam's culverts, running: at each mouth a boil of white that never keeps still, and from it streaks of foam and
+// lighter water carried off on the current, spreading and thinning as they go, dying away some 6 m out (each streak's place is its
+// own time along its way: nothing is kept from frame to frame)
+function drawCulvertFlow(cx0, cy0) { if (!DAMR.culverts.length) return; const LEN = 58;
+  for (const [ci, C] of DAMR.culverts.entries()) { if (C.x < cx0 - 90 || C.x > cx0 + W + 90 || C.y < cy0 - 90 || C.y > cy0 + H + 90) continue;
+    const sx = -C.nx, sy = -C.ny, at = (a, s) => [Math.round(C.x + C.tx * a + sx * s), Math.round(C.y + C.ty * a + sy * s)], s0 = DAMK.st + .5;
+    for (const o of CULV_OFF[C.k]) { const sd = ci * 97 + Math.round(o * 3);
+      // the boil at the mouth: a few pixels of white, turning over
+      const fr = Math.floor(t * 9); for (let q = 0; q < 14; q++) { const u = h2(fr, q, sd), v = h2(fr, q + 19, sd); const [x, y] = at(o + (u - .5) * 6.5, s0 + v * 4.5); ctx.fillStyle = q < 8 ? 'rgba(240,247,245,.92)' : 'rgba(184,212,218,.8)'; ctx.fillRect(x, y, q < 3 ? 2 : 1, 1) }
+      // the streaks carried off
+      for (let p = 0; p < 30; p++) { const h = h2(p, sd, 7731), sp = 9 + 7 * h2(p, sd, 7732), ph = (t * sp / LEN + h * 5) % 1, s = s0 + 1 + ph * LEN, spread = 1.6 + ph * 8,
+          a = o + (h2(p, sd, 7733) - .5) * 2 * spread + Math.sin(t * 1.1 + p * 1.7) * .5 * ph, al = Math.pow(1 - ph, 1.1) * (.7 + .3 * h2(p, sd, 7734)); if (al < .04) continue;
+        const [x, y] = at(a, s), L = ph < .4 ? 4 : 2, foam = ph < .45 && h2(p, sd, 7735) < .7; ctx.fillStyle = foam ? `rgba(232,240,238,${al.toFixed(2)})` : `rgba(150,188,198,${(al * .8).toFixed(2)})`;
+        for (let k = 0; k < L; k++) { const [x2, y2] = at(a, s - k); ctx.fillRect(x2, y2, 1, 1) } } } } }
+// a wave slapping the dam's stones: now here, now there along its edges (each spot its own beat; in a wind more spots, oftener, higher), a
+// burst of spray thrown up the stones and falling back, a line of white along the waterline under it
+function drawDamSpray(cx0, cy0) { const P = DAMR.pts; if (!P) return; const K = .3 + 1.3 * clamp(WIND.s || 0, 0, 1) * (.7 + .5 * gustNow());
+  for (const [a, b] of DAMR.runs) for (let i = a + 4; i < b - 4; i += 5) { const [px, py] = P[i]; if (px < cx0 - 40 || px > cx0 + W + 40 || py < cy0 - 50 || py > cy0 + H + 60) continue;
+    const tx0 = P[i + 1][0] - P[i - 1][0], ty0 = P[i + 1][1] - P[i - 1][1], l = Math.hypot(tx0, ty0) || 1, tx = tx0 / l, ty = ty0 / l, [nx, ny] = tx > 0 ? [ty, -tx] : [-ty, tx];
+    for (const sd of [-1, 1]) { if (h2(i, sd + 3, 8802) > K * (sd > 0 ? .5 : .35)) continue; const h = h2(i, sd, 8801), per = 3.5 + 5 * h, dur = .2 + .1 * K, ph = (t / per + h * 9) % 1; if (ph > dur) continue;
+      const u = ph / dur, d = sd < 0 ? DAMK.ns - 1 : -(DAMK.st - 1), ex = px + nx * d, ey = py + ny * d, hgt = (3 + 6 * K) * (.6 + .4 * h);
+      if (u < .6) { ctx.fillStyle = `rgba(232,240,238,${(.8 * (1 - u / .6)).toFixed(2)})`; for (let k = -3; k <= 3; k++) ctx.fillRect(Math.round(ex + tx * k * 1.3), Math.round(ey + ty * k * 1.3), 1, 1) }
+      for (let q = 0; q < 8; q++) { const g = h2(i * 8 + q, sd, 8803), z = Math.sin(Math.min(1, u * (1.1 + g * .4)) * Math.PI) * hgt * (.5 + .5 * g), al = (1 - u) * .85; if (z < .4) continue;
+        const lat = (h2(i * 8 + q, sd, 8804) - .5) * 7, out = u * 3 * (sd < 0 ? 1 : -1); ctx.fillStyle = `rgba(236,244,244,${al.toFixed(2)})`; ctx.fillRect(Math.round(ex + tx * lat + nx * out), Math.round(ey + ty * lat + ny * out - z), 1, 1) } } } }
 function drawWater(cx0, cy0) {
   if (!WS.tile) wInit();
   const FS = wFields(cx0, cy0);
@@ -5197,8 +5242,10 @@ PF.boom = ({ len = 30, seed = 1, hx = .33, hn = -.94 } = {}) => {
 PF.gaterest = ({ seed = 2 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3cyl(M, 0, 0, 1.4, 0, 9.4, [92, 70, 50], { topCol: [140, 112, 84] }); t3box(M, -1.8, -1.2, 9.4, -.9, 1.2, 12.2, [92, 70, 50]); t3box(M, .9, -1.2, 9.4, 1.8, 1.2, 12.2, [92, 70, 50]); t3box(M, -2.4, -.8, 0, 2.4, .8, .8, [118, 116, 110]); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-1.6, -1.6, 1.6, 1.6]].map(t3w) } };
 // a culvert's post on the dam's top: a short concrete post striped black and white, on a concrete headwall
-PF.spost = ({ seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3box(M, -3.2, -2.2, 0, 3.2, 2.2, 1.6, [172, 170, 162]);
-    t3cyl(M, 0, 0, 1.1, 1.6, 10.5, [236, 234, 228], { topCol: [236, 234, 228], tex: (x, n, z, c) => (Math.floor((z - 1.6) / 1.8) % 2 ? [40, 40, 42] : c) }); return M }, [0]);
+PF.spost = ({ seed = 1, wear = 0, foul = false, snap = false } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3box(M, -3.2, -2.2, 0, 3.2, 2.2, 1.6, foul ? [124, 132, 108] : [172, 170, 162]);
+    // (the black and white bands, the paint worn off to the grey concrete here and there; weed up its foot where the spray reaches; one snapped off short)
+    t3cyl(M, 0, 0, 1.1, 1.6, snap ? 6.2 : 10.5, [236, 234, 228], { topCol: snap ? [120, 116, 108] : [236, 234, 228], tex: (x, n, z, c) => { const band = Math.floor((z - 1.6) / 1.8) % 2, q = h2(Math.round(x * 3 + n * 5) + 50, Math.round(z * 4), seed); let col = band ? [40, 40, 42] : c;
+      if (q < wear * .5) col = band ? [112, 110, 104] : [150, 146, 136]; if (foul && z < 2.4 + q * 1.6) col = q < .35 ? [40, 46, 58] : q < .7 ? [56, 82, 52] : [86, 110, 64]; return col } }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-1.4, -1.4, 1.4, 1.4]].map(t3w) } };
 // the leading-light tower on the pine islet: a lattice of four legs (rusty iron) narrowing up to a small platform, braced across, and on
 // top the white daymark with its red stripe, turned to the bay; a lamp over it
@@ -5987,7 +6034,9 @@ function gullsInit() {
     if (o.p === 'piling') GPERCH.push({ x: o.x + .5, y: o.y, z: (q.h || 16) + 1, g: null });
     else if (o.p === 'bollard' && /^bollard-\d/.test(o.id)) GPERCH.push({ x: o.x, y: o.y, z: PIER.H + 4.8, g: null });
     else if (o.p === 'lantern') GPERCH.push({ x: o.x, y: o.y, z: (q.h || 24) + 7.5, g: null });
-    else if (o.p === 'boat' && q.water) GPERCH.push({ x: o.x + (q.flip ? -9 : 9), y: o.y + 1, z: 6.5, g: null, boat: o }) }
+    else if (o.p === 'boat' && q.water) GPERCH.push({ x: o.x + (q.flip ? -9 : 9), y: o.y + 1, z: 6.5, g: null, boat: o })
+    else if (o.p === 'pole' && /^dam\/lamp/.test(o.id) && !q.nest) GPERCH.push({ x: o.x + (q.dir || 1) * 10 + (q.lean || 0), y: o.y, z: 65.5, g: null });
+    else if (o.p === 'spost') GPERCH.push({ x: o.x, y: o.y, z: q.snap ? 8.2 : 12.4, g: null }) }
   for (const o of OBJS) if (o.t === 'rock' && matAt(o.x, o.y) === 'lake') GPERCH.push({ x: o.x, y: o.y - 1, z: 3.5, g: null });
 }
 // the sand by the water where they walk: every so many px along the beaches near the village (found when the place is running: it asks what stands where)
@@ -6010,7 +6059,7 @@ function gullCall(g) { if (!SND.on || !SND.ctx || !SND.ready || paused) return; 
     gn.gain.setValueAtTime(0, t0); gn.gain.linearRampToValueAtTime(.55 - .08 * i, t0 + .025); gn.gain.exponentialRampToValueAtTime(.001, t0 + .26); o.connect(f); f.connect(gn); gn.connect(out); o.start(t0); lf.start(t0); o.stop(t0 + .3); lf.stop(t0 + .3) } }
 function stepGulls(dt) { if (!GPERCH.length && !GBEACH.length) return;
   // (only about the places with a beach for them: away from it they fly off, and the beach is looked over when one first comes near)
-  const near = PLW.some(W => W.P.gullBeach && Math.hypot(R.x - W.cx, R.y - W.cy) < 1400), act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = near ? Math.round(5 * act) : 0;
+  const near = PLW.some(W => W.P.gullBeach && Math.hypot(R.x - W.cx, R.y - W.cy) < 1400) || !!(DAMR.pts && damRef(R.x, R.y)), act = clamp(1.25 - LT.dark * 1.7, 0, 1) * (1 - .55 * WX.rain) * (1 - .5 * WX.fog), want = near ? Math.round(5 * act) : 0;
   if (!GSTART) { if (!near) return; GSTART = true; gullsBeach(); gullsSpawn(want) }
   const live = GULLS.filter(g => !g.leave).length; GSPAWNT = (typeof GSPAWNT === 'undefined' ? 0 : GSPAWNT) - dt;
   if (live < want && GSPAWNT <= 0) { GSPAWNT = 2 + Math.random() * 4; gullsSpawn(1); const g = GULLS[GULLS.length - 1]; if (g && Math.random() < .5) { g.x = CAM.x + (Math.random() < .5 ? -30 : W + 30); g.y = CAM.y + Math.random() * H * .6; if (g.perch) { g.perch.g = null; g.perch = null } g.st = 'fly'; gullUp(g, [g.x + (g.x < CAM.x ? -50 : 50), g.y]); g.z = 18; g.vz = 0; const P = GPERCH.find(gullFree); if (P) { g.st = 'land'; g.target = P; P.g = g } } }
@@ -6622,7 +6671,7 @@ function mapwD(x, y) { if (!MAPW.on) return 1e9; const fx = (x - MAPW.ox) / MAP_
 // laid: into the layer grid wherever there is water near
 function mapwLayers() { mapwInit(); LAYERS.push(MWL); LAYER[MWL.id] = MWL; const [bx0, by0, bx1, by1] = MWL.bb;
   for (let j = Math.floor(by0 / LGC); j <= Math.floor(by1 / LGC); j++) for (let i = Math.floor(bx0 / LGC); i <= Math.floor(bx1 / LGC); i++) {
-    if (!mwNear(i * LGC, j * LGC, (i + 1) * LGC, (j + 1) * LGC, 60)) continue; const key = lkey(i, j); let a = LGRID.get(key); if (!a) LGRID.set(key, a = []); a.push(MWL); a.sort((p, q) => q.k - p.k) } }
+    if (!mwNear(i * LGC, j * LGC, (i + 1) * LGC, (j + 1) * LGC, 200)) continue; /* (as far as the land feels the water, and a margin for the shore's wander: terrH lowers it to the shore over 150 px; a square without it would stand at full height, and its edge would show as a cliff of light) */ const key = lkey(i, j); let a = LGRID.get(key); if (!a) LGRID.set(key, a = []); a.push(MWL); a.sort((p, q) => q.k - p.k) } }
 // The roads between places: from one place's way out (a layer of it, and which end: 0 its first point, 1 its last) to
 // another's, along the road the map has between them (map: its bends in the map's cells, the first and the last laid on
 // the two ends), winding as a forest road winds, so long that from signpost to signpost it is what the signposts say
@@ -6699,9 +6748,9 @@ function damPlan() { const Rk = WORLD_ROADS.find(r => r.id === 'road-kb'); if (!
   // the culverts: a triple one in the middle of the longest run (the strait between the open bay and the inner), single ones along the others
   const longest = runs.reduce((a, r) => (r[1] - r[0] > a[1] - a[0] ? r : a), [0, 0]);
   for (const r of runs) { const L = S[r[1]] - S[r[0]], at = r === longest ? [[.5, 3], [.18, 1], [.82, 1]] : L > 2400 ? [[.33, 1], [.67, 1]] : [[.5, 1]];
-    for (const [f, k] of at) { const s = S[r[0]] + L * f, i = S.findIndex(v => v >= s), [tx, ty] = T(i), [nx, ny] = NN(i); DAMR.culverts.push({ x: P[i][0], y: P[i][1], tx, ty, nx, ny, k, s }) } }
+    for (const [f, k] of at) { const s = S[r[0]] + L * f, i = S.findIndex(v => v >= s), [tx, ty] = T(i), [nx, ny] = NN(i); DAMR.culverts.push({ x: P[i][0], y: P[i][1], tx, ty, nx, ny, k, s, slime: [.8, .2, .55, 0, .9, .35, .15][DAMR.culverts.length % 7], rust: DAMR.culverts.length % 3 === 1 ? (k > 1 ? 13 : 4) : 0 }) } }
   const thing = (id, p, x, y, params) => DAMR.things.push({ id: 'dam/' + id, p, x, y, params: Object.assign({ seed: hashStr(id) % 997 }, params) });
-  for (const [ci, C] of DAMR.culverts.entries()) for (const sd of [-1, 1]) for (const e of [-1, 1]) { const off = (C.k > 1 ? 15 : 8) * e, w = (DAMK.top + 1.5) * sd; thing(`cpost-${ci}${sd}${e}`, 'spost', C.x + C.tx * off - C.nx * w, C.y + C.ty * off - C.ny * w, {}) }
+  for (const [ci, C] of DAMR.culverts.entries()) for (const sd of [-1, 1]) for (const e of [-1, 1]) { const off = (C.k > 1 ? 15 : 8) * e, w = (DAMK.top + 1.5) * sd; thing(`cpost-${ci}${sd}${e}`, 'spost', C.x + C.tx * off - C.nx * w, C.y + C.ty * off - C.ny * w, { wear: ((ci * 5 + sd + 1 + (e + 1) * 3) % 7) / 7, foul: ci % 3 === 1 || (ci + sd + e + 4) % 5 === 0, snap: ci % 4 === 2 && sd > 0 && e > 0 }) }
   // the checkpoint, some 60 m before the first run, where the road is still on the land: the barrier across it, its rest beyond, the booth
   // on the north side, the cable from the booth's panel over the ground to the barrier's post, the guard by it
   if (runs.length) { const ic = Math.max(2, runs[0][0] - 5), [tx, ty] = T(ic), [nx, ny] = NN(ic), G = [P[ic][0] + nx * 19, P[ic][1] + ny * 19], sx = -nx, sy = -ny;
@@ -6712,7 +6761,7 @@ function damPlan() { const Rk = WORLD_ROADS.find(r => r.id === 'road-kb'); if (!
     // the lamp posts with their wire: from the checkpoint to the end, every ~36 m on the north verge, clear of the culverts' posts
     let k = 0; runs.forEach(([a, b], ri) => { const s0 = S[Math.max(0, a - 10)], s1 = S[Math.min(n - 1, b + 10)], m = Math.max(1, Math.round((s1 - s0) / 360)), ids = [];
       for (let q = 0; q <= m; q++) { let i = S.findIndex(v => v >= s0 + (s1 - s0) * q / m); if (i < 0) i = n - 1; if (DAMR.culverts.some(C => Math.abs(C.s - S[i]) < 40)) i = Math.min(n - 1, i + 5); const [qx, qy] = NN(i), d = DAMK.top + 4;
-        const id = 'dam/lamp-' + k; DAMR.things.push({ id, p: 'pole', x: P[i][0] + qx * d, y: P[i][1] + qy * d, params: { lamp: true, dir: k % 2 ? 1 : -1, seed: 80 + k, lean: (k * 7 % 5) - 2, flick: k % 6 === 4 } }); ids.push(id); k++ }
+        const id = 'dam/lamp-' + k; DAMR.things.push({ id, p: 'pole', x: P[i][0] + qx * d, y: P[i][1] + qy * d, params: { lamp: true, dir: k % 2 ? 1 : -1, seed: 80 + k, lean: (k * 7 % 5) - 2, flick: k % 6 === 4, dead: k % 7 === 3, nest: k % 9 === 5, foul: ri === 1 || k * 13 % 10 < 2, rust: k % 3 === 1, guano: k % 9 === 5 || k % 5 === 2 } }); ids.push(id); k++ }
       WORLD_LINES.push({ id: 'line-dam-' + ri, custom: 1, spans: ids.slice(1).map((id, i) => [ids[i], id]) }) }) }
   // the islands: the land between two runs over the water (their extent: the road's stretch over them, widened)
   DAMR.isles = runs.slice(1).map((r, k) => { const a = runs[k][1], b = r[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = a; i <= b; i++) { x0 = Math.min(x0, P[i][0]); y0 = Math.min(y0, P[i][1]); x1 = Math.max(x1, P[i][0]); y1 = Math.max(y1, P[i][1]) } return [x0 - 1400, y0 - 1400, x1 + 1400, y1 + 1400] });
@@ -6960,7 +7009,7 @@ function groundColor(x, y) {
   else if (mat === 'lake' && L.pal === 'bay') { const q = L.mapw ? culvertNear(x, y) : null; c = null; // (out of a culvert's mouth on the south: the jet, lighter, streaked, spreading)
     c = bayColor(x, y, bayDist(x, y));
     if (q && q.s > DAMK.st - 2 && q.s < DAMK.st + 64) { const t = q.s - DAMK.st, m = culvertMouth(q.a, q.C.k), wdt = 2.4 + t * .11; if (m < wdt) { const k = (1 - t / 64) * (1 - m / wdt * .6), v = vn(q.a * .55, t * .2, SEED + 970) + (h2(x, y, SEED + 971) - .5) * .25;
-      if (v > .62 && t < 40) c = cmix(c, [196, 214, 216], .7 * k); else if (v > .4) c = cmix(c, [104, 140, 152], .55 * k) } } } // the bay of a big lake
+      c = cmix(c, [104, 140, 152], (.25 + .2 * v) * k) } } } // the bay of a big lake (the stirred water only, a shade lighter: the foam on it runs, drawCulvertFlow)
   else if (mat === 'rut' || mat === 'hump') c = rutColor(L, x, y, d); // old wheel tracks, overgrown
   else if (mat === 'dam') c = damColor(L, x, y, d); // an embankment across the water
   else if (mat === 'lake') { // a lake: like the pond, deeper and darker further out, sedge and reeds at the shore
@@ -7531,6 +7580,14 @@ function shadowChunk0(ci, cj, v, key) { let cv;
   cv = document.createElement('canvas'); cv.width = CK; cv.height = CK; const c = cv.getContext('2d'), x0 = ci * CK, y0 = cj * CK;
   for (const o of objsIn(x0 - SHM, y0 - SHM, x0 + CK + SHM, y0 + CK + SHM)) { if (!o.ready || o.noShadow) continue; const s = objShadow(o, v); c.drawImage(s.cv, Math.round(o.x) + s.dx - x0, Math.round(o.y) + s.dy - y0) }
   SHCH.set(key, cv); return cv }
+// A sun position is drawn only when every square in view has its shadows for it, made since the last thing there was grown: a missing
+// or outdated square is made now while the frame allows (4 ms), else in the background, and meanwhile that position's weight goes to
+// one that is whole. So no square shows another hour's shadows beside its neighbours', nor a thing's shadow cut off at its edge.
+function shWhole(set, cx0, cy0) { if (set.length < 1) return set; const t0 = performance.now(), keys = [];
+  for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) keys.push(ckey(ci, cj) * 16);
+  const whole = v => { let ok = true; for (const k0 of keys) { const k = k0 + v; if (SHCH.has(k) && !SHDIRTY.has(k)) continue; if (performance.now() - t0 < 4) { shadowBuild(k); continue } ok = false; SHQ.add(k) } return ok };
+  const good = set.filter(([v]) => whole(v)); if (good.length === set.length || !good.length) return set;
+  const lost = set.reduce((s, e) => s + (good.includes(e) ? 0 : e[1]), 0); return good.map(([v, a], i) => [v, a + (i ? 0 : lost)]) }
 function shadowDirty(o) { if (!SHCH.size) return; for (let cj = Math.floor((o.y - SHM) / CK); cj <= Math.floor((o.y + SHM) / CK); cj++) for (let ci = Math.floor((o.x - SHM) / CK); ci <= Math.floor((o.x + SHM) / CK); ci++) for (let v = 0; v < 16; v++) { const k = ckey(ci, cj) * 16 + v; if (SHCH.has(k)) SHDIRTY.add(k) } }
 function objShadow(o, v) { if (!o.csv) o.csv = []; if (!o.csv[v]) { const c = castShadowV(o.mask, o.mw, o.mh, o.ax, o.ay, SUNV[v][0], SUNV[v][1]); o.csv[v] = { cv: softShadow(c.cv), dx: c.dx, dy: c.dy } } return o.csv[v] }
 
@@ -7630,12 +7687,12 @@ function drawWorld() {
   RLIFT += (deckLift(R.x, R.y) - RLIFT) * Math.min(1, LASTDT * 14); worldT(); const cx0 = Math.floor(CAM.x), cy0 = Math.floor(CAM.y), night = LT.dark > .38;
   // the ground
   for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  const key = ckey(ci, cj); let cv = CHUNKS.get(key); if (!cv) { if (CBAND.has(key)) { while (!bakeStep(ci, cj)); cv = CHUNKS.get(key) } else cv = bakeChunk(ci, cj) } ctx.drawImage(cv, ci * CK, cj * CK) }
-  drawTracks(cx0, cy0); drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawPuddles(cx0, cy0);
+  drawTracks(cx0, cy0); drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawCulvertFlow(cx0, cy0); drawDamSpray(cx0, cy0); drawPuddles(cx0, cy0);
   if (WET > .01) { ctx.globalAlpha = .3 * WET; ctx.fillStyle = '#120d0a'; ctx.fillRect(cx0, cy0, W + 2, H + 2); ctx.globalAlpha = 1 }
   // what is in view (and a margin: tall trees reach up into the screen from below it)
   VIS.length = 0; for (const o of objsIn(cx0 - 60, cy0 - 20, cx0 + W + 60, cy0 + H + 110)) { if (!o.ready) continue; const x0 = o.x - o.ax, y0 = o.y - o.ay; if (x0 > cx0 + W + 2 || x0 + o.mw < cx0 - 2 || y0 > cy0 + H + 2 || y0 + o.mh < cy0 - 2) continue; VIS.push(o) } visCount = VIS.length;
   // cast shadows: all on one layer first, so overlapping shadows don't double up
-  SHSET = sunSet();
+  SHSET = shWhole(sunSet(), cx0, cy0);
   if (shLayer.width !== W + 4 || shLayer.height !== H + 4) { shLayer.width = W + 4; shLayer.height = H + 4 }
   for (const [v, a] of SHSET) { shCtx.clearRect(0, 0, shLayer.width, shLayer.height);
     for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  shCtx.drawImage(shadowChunk(ci, cj, v), ci * CK - cx0 + 2, cj * CK - cy0 + 2) }
