@@ -4687,7 +4687,7 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
     const cn = D * .55, cz0 = RIDGE - 9;
     if (chim === 'brick') { t3box(M, chimX - 3.5, cn - 3, cz0, chimX + 3.5, cn + 3, RIDGE + 9, FV.brick, { tex: (x, n, z) => (((Math.floor(z / 1.6) % 2) ? Math.floor(x + .8) : Math.floor(x)) % 3 === 0 || Math.floor(z * 10) % 16 === 0) ? cmul(FV.brick, .78) : FV.brick });
       t3box(M, chimX - 4.2, cn - 3.7, RIDGE + 9, chimX + 4.2, cn + 3.7, RIDGE + 10.6, [96, 92, 88]) }
-    else { t3cyl(M, chimX, cn, 2, cz0, RIDGE + 12, [118, 110, 104], { topCol: [60, 56, 54] }); t3cyl(M, chimX, cn, 3.4, RIDGE + 12, RIDGE + 13.4, [88, 84, 82], { topCol: [60, 56, 54] }) }
+    else if (chim !== 'none') { t3cyl(M, chimX, cn, 2, cz0, RIDGE + 12, [118, 110, 104], { topCol: [60, 56, 54] }); t3cyl(M, chimX, cn, 3.4, RIDGE + 12, RIDGE + 13.4, [88, 84, 82], { topCol: [60, 56, 54] }) }
     // the windows: frames, dark glass with a cross (lit by the engine at night), shutters, a flower box
     const win = (cx, wi) => { const fx0 = cx - winW / 2 - 1.4, fx1 = cx + winW / 2 + 1.4;
       t3face(M, [[fx0, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 + winH + 1.6], [fx0, -.3, winZ0 + winH + 1.6]], trim, null, { both: true, zb: .2 });
@@ -4759,7 +4759,7 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
   if (deco.includes('bucket')) solids.push([door - pw - 12.2, 2.8, door - pw - 3.8, 7.2]);
   if (deco.includes('kennel')) solids.push([door + pw + 9, 4, door + pw + 21, 12.5]);
   if (deco.includes('laundry')) solids.push([-HW - 37.2, -D * .3 - 1.4, -HW - 4.8, -D * .3 + 1.4]); // (the posts and the washing between them, hung at the height of a rider's head)
-  return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
+  return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: chim === 'none' ? [] : [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
 
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.
 // kind: 'row' or 'motor' (an outboard on the stern); up: turned over on the beach; water: afloat (the ripples round it and its rocking are the water's: water.js) ----
@@ -5100,11 +5100,12 @@ function drawDamSpray(cx0, cy0) { const P = DAMR.pts; if (!P) return; const K = 
 // along its way); and at a water wheel, the water falling from the flume onto its buckets and the boil where it comes down
 function drawWeirFlow(cx0, cy0) { for (const L of LAYERS) { if (L.mat !== 'weir' || L.bb[2] < cx0 - 40 || L.bb[0] > cx0 + W + 40 || L.bb[3] < cy0 - 60 || L.bb[1] > cy0 + H + 60) continue; const F = weirFrame(L), wk = L.walk || 12, sg = Math.sign(F.tx || 1), nx = F.ty * sg, ny = -F.tx * sg;
     for (let s = 2; s < F.l - 2; s += 2.2) { const k = Math.floor(s / 2.2), h = h2(k, 7, 9911), ph = (t * (.7 + .5 * h) + h * 7) % 1, n = -wk - 1 - ph * (L.w - wk + 16), x = F.a[0] + F.tx * s + nx * n, y = F.a[1] + F.ty * s + ny * n; if (x < cx0 - 2 || x > cx0 + W + 2 || y < cy0 - 2 || y > cy0 + H + 2) continue;
-      const a = (n < -L.w ? .9 * (1 - (ph - .6) / .4) : .55 + .35 * h) * Math.min(1, ph * 8); if (a <= .03) continue; ctx.fillStyle = `rgba(234,242,244,${clamp(a, 0, 1).toFixed(2)})`; ctx.fillRect(Math.round(x + (n < -L.w ? (h2(k, Math.floor(t * 6), 9912) - .5) * 3 : 0)), Math.round(y), 1, n < -L.w ? 1 : 2) } }
+      const a = (n < -L.w ? .9 * (1 - (ph - .6) / .4) : .55 + .35 * h) * Math.min(1, ph * 8); if (a <= .03 || MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = `rgba(234,242,244,${clamp(a, 0, 1).toFixed(2)})`; ctx.fillRect(Math.round(x + (n < -L.w ? (h2(k, Math.floor(t * 6), 9912) - .5) * 3 : 0)), Math.round(y), 1, n < -L.w ? 1 : 2) } }
 }
 function drawWheelWater() { for (const o of VIS) { if (o.p !== 'wheel') continue; const r = o.params && o.params.r || 20, x0 = Math.round(o.x - 4), top = Math.round(o.y - 3 - 2 * r - 2);
     for (let k = 0; k < 10; k++) { const ph = (t * 2.2 + k / 10) % 1, y = top + ph * (r * 1.1), x = x0 - Math.round(Math.sin(ph * 1.4) * r * .55); ctx.fillStyle = `rgba(200,224,232,${(.75 - ph * .3).toFixed(2)})`; ctx.fillRect(x, Math.round(y), 2, 2) }
-    for (let k = 0; k < 9; k++) { const u = h2(k, Math.floor(t * 8), 9913), v = h2(k + 20, Math.floor(t * 8), 9913); ctx.fillStyle = 'rgba(236,244,244,.8)'; ctx.fillRect(Math.round(o.x - r * .7 + u * r * 1.4), Math.round(o.y - 2 + v * 4), 1, 1) } } }
+    for (let k = 0; k < 9; k++) { const u = h2(k, Math.floor(t * 8), 9913), v = h2(k + 20, Math.floor(t * 8), 9913); ctx.fillStyle = 'rgba(236,244,244,.8)'; ctx.fillRect(Math.round(o.x - r * .7 + u * r * 1.4), Math.round(o.y - 2 + v * 4), 1, 1) }
+    for (let k = 0; k < 14; k++) { const h = h2(k, 5, 9914), ph = (t * (.45 + .3 * h) + h * 3) % 1, x = o.x - r * .5 + h * r + (h - .5) * ph * 16, y = o.y + 2 + ph * 26; if (MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = `rgba(226,238,240,${(.7 * (1 - ph)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), ph < .4 ? 2 : 1, 1) } } }
 function drawWater(cx0, cy0) {
   if (!WS.tile) wInit();
   const FS = wFields(cx0, cy0);
@@ -5341,12 +5342,19 @@ PF.wheel = ({ r = 20, seed = 1 } = {}) => { const W = 2 * r + 10, H = 2 * r + 8,
   const F = Array.from({ length: N }, (_, k) => frame(k)); return { s: F[0].s, ax: F[0].ax, ay: F[0].ay, solids: [[-r, -3, r, 2]], frames: F.map(f => ({ s: f.s })) } };
 // the flume: a plank trough on trestles from the mill pond to the top of the wheel, water running in it (its anchor: the end over the wheel; dx, dn: where its
 // mouth at the pond is, z: its height). A thing high up: nothing under it stops a bike
-PF.flume = ({ dx = -50, dn = 140, z = 40, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const L = Math.hypot(dx, dn), ux = -dx / L, un = -dn / L, px = -un, pn = ux, w = 2.6, A = [dx, dn], B = [0, 0];
-    const P = (q, o, zz) => [q[0] + px * o, q[1] + pn * o, zz], wood = [118, 88, 58], dark = [78, 58, 40];
-    t3face(M, [P(A, -w, z), P(B, -w, z), P(B, w, z), P(A, w, z)], wood, [0, 0, z - 5]);
-    t3face(M, [P(A, -w + .7, z + 1.4), P(B, -w + .7, z + 1.4), P(B, w - .7, z + 1.4), P(A, w - .7, z + 1.4)], [104, 146, 164], [0, 0, z - 5], { flat: true, z: 3 });
-    for (const o of [-w, w]) t3face(M, [P(A, o, z), P(B, o, z), P(B, o, z + 2.6), P(A, o, z + 2.6)], o < 0 ? dark : wood, [px * -o * 3, pn * -o * 3, z]);
-    for (let s = 6; s < L - 4; s += 26) { const q = [A[0] + ux * s, A[1] + un * s]; for (const o of [-w, w]) t3line(M, P(q, o, z), P(q, o * 1.6, 0), dark); t3line(M, P(q, -w, z * .45), P(q, w, z * .55), dark) }
+PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const L = Math.hypot(dx, dn), ux = -dx / L, un = -dn / L, px = -un, pn = ux, w = 4, A = [dx, dn], B = [0, 0], zA = z0 ?? z + 2;
+    const P = (q, o, zz) => [q[0] + px * o, q[1] + pn * o, zz], wood = [124, 94, 62], dark = [76, 56, 38], zz = u => zA + (z - zA) * u, at = u => [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u];
+    const plank = (x, n, zq, c) => { const k = Math.floor((x * ux + n * un) / 5); return h2(k, 3, seed) < .2 ? cmul(c, .84) : h2(k, 4, seed) < .1 ? cmix(c, [64, 92, 56], .35) : c };
+    t3face(M, [P(A, -w, zA), P(B, -w, z), P(B, w, z), P(A, w, zA)], wood, [0, 0, z - 9]);
+    // the water in it: running, streaked lighter along it
+    t3face(M, [P(A, -w + .9, zA + 1.6), P(B, -w + .9, z + 1.6), P(B, w - .9, z + 1.6), P(A, w - .9, zA + 1.6)], [92, 140, 162], [0, 0, z - 9], { flat: true, z: 3, tex: (x, n) => vn((x * ux + n * un) * .35, (x * px + n * pn) * 1.4, seed + 7) > .66 ? [168, 204, 214] : [92, 140, 162] });
+    for (const o of [-w, w]) t3face(M, [P(A, o, zA), P(B, o, z), P(B, o, z + 3.2), P(A, o, zA + 3.2)], o < 0 ? dark : wood, [px * -o * 3, pn * -o * 3, z], { tex: (x, n, zq, c) => plank(x, n, zq, c) });
+    for (let s = 3; s < L; s += 7) { const u = s / L, q = at(u); t3line(M, P(q, -w - .4, zz(u) + 3.4), P(q, w + .4, zz(u) + 3.4), dark) } // (the spreaders across its top)
+    for (let s = 10; s < L - 4; s += 22) { const u = s / L, q = at(u), h = zz(u); for (const o of [-w, w]) t3box(M, q[0] + px * o * 1.3 - .6, q[1] + pn * o * 1.3 - .6, 0, q[0] + px * o * 1.3 + .6, q[1] + pn * o * 1.3 + .6, h, dark); t3line(M, P(q, -w * 1.3, h * .2), P(q, w * 1.3, h * .7), dark); t3line(M, P(q, -w * 1.3, h - 1), P(q, w * 1.3, h - 1), dark) }
+    // the sluice at its mouth: two posts, a beam, the gate board raised in its slots
+    for (const o of [-w - 1, w + 1]) t3box(M, A[0] + px * o - .7, A[1] + pn * o - .7, 0, A[0] + px * o + .7, A[1] + pn * o + .7, zA + 12, dark);
+    t3box(M, A[0] + px * (-w - 1.6) - .6, A[1] + pn * (-w - 1.6) - .6, zA + 11, A[0] + px * (w + 1.6) + .6, A[1] + pn * (w + 1.6) + .6, zA + 12.4, dark);
+    t3face(M, [P(A, -w, zA + 5), P(A, w, zA + 5), P(A, w, zA + 10), P(A, -w, zA + 10)], [96, 72, 50], null, { both: true, z: 2 }); t3line(M, P(A, 0, zA + 10), P(A, 0, zA + 14), [60, 58, 56]);
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [] } };
 // an old millstone lying in the grass, its eye in the middle, a little moss on it
@@ -6599,34 +6607,36 @@ const PLACES = {};
 // ---- the mill: the river comes round in a hook here; a log weir holds a mill pond above it, a plank walk runs along its top to the far bank,
 // where the mill stands with its overshot wheel fed by a flume from the pond, the miller's house behind it. The forest road from the dam comes
 // down the near bank and goes on south toward the bee garden (the map: 990, 526) ----
-{ const WEIR = [[772, 334], [1492, 302]], wl = Math.hypot(WEIR[1][0] - WEIR[0][0], WEIR[1][1] - WEIR[0][1]), wux = (WEIR[1][0] - WEIR[0][0]) / wl, wuy = (WEIR[1][1] - WEIR[0][1]) / wl;
-  const rails = []; for (let s = 14; s < wl - 10; s += 26) for (const sd of [-1, 1]) rails.push({ id: `rail-${sd < 0 ? 's' : 'n'}${Math.round(s)}`, t: 'post', x: Math.round(WEIR[0][0] + wux * s + wuy * 13 * sd), y: Math.round(WEIR[0][1] + wuy * s - wux * 13 * sd), seed: 900 + Math.round(s) + (sd + 1) });
+{ const WEIR = [[790, 334], [1440, 306]], wl = Math.hypot(WEIR[1][0] - WEIR[0][0], WEIR[1][1] - WEIR[0][1]), wux = (WEIR[1][0] - WEIR[0][0]) / wl, wuy = (WEIR[1][1] - WEIR[0][1]) / wl;
+  // (the handrails: a rail fence along each side of the walk, over the water only; the walk's ends on the banks are open)
+  const rails = []; for (let s = 46; s < wl - 70; s += 40) for (const sd of [-1, 1]) rails.push({ id: `rail-${sd < 0 ? 's' : 'n'}${Math.round(s)}`, p: 'fence', axis: 'x', len: 40, x: Math.round(WEIR[0][0] + wux * s + wuy * 18 * sd), y: Math.round(WEIR[0][1] + wuy * s - wux * 18 * sd), seed: 900 + Math.round(s) + (sd + 1) });
   PLACES.mill = {
     id: 'mill', name: 'Мельница', mapAt: [990, 526], mapAnchor: [560, 520],
     size: [1800, 1000], margin: [240, 220], base: 'forest',
     trail: { side: ['road-n', 'road-s'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [1110, 420, 840, 380], rough: .32 },
-      { id: 'yard', mat: 'trodden', ellipse: [1590, 470, 120, 70], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1690, 590, 70, 36], rough: .3 },
+      { id: 'yard', mat: 'trodden', ellipse: [1500, 440, 100, 46], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1690, 590, 70, 36], rough: .3 },
       { id: 'landing-w', mat: 'trodden', ellipse: [730, 345, 60, 26], rough: .3 },
       // the forest road: down from the north (the dam), along the near bank and on to the south
       { id: 'road-n', mat: 'road', line: [[300, -40], [400, 60], [500, 190], [560, 330]], w: 13 },
       { id: 'road-s', mat: 'road', line: [[560, 330], [566, 520], [552, 680], [470, 900], [410, 1040]], w: 13 },
       { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [760, 336]], w: 5 },
-      { id: 'path-mill', mat: 'path', line: [[1500, 302], [1535, 325], [1606, 352], [1612, 410], [1580, 432]], w: 5 },
-      { id: 'path-house', mat: 'path', line: [[1580, 432], [1640, 470], [1680, 540], [1690, 590]], w: 5 },
+      { id: 'path-mill', mat: 'path', line: [[1436, 308], [1484, 330], [1500, 384], [1484, 428], [1450, 430]], w: 5 },
+      { id: 'path-house', mat: 'path', line: [[1484, 428], [1560, 470], [1680, 540], [1690, 590]], w: 5 },
       // the weir and the walk along it; the tailrace from the wheel back to the river
-      { id: 'weir', mat: 'weir', line: WEIR, w: 30, walk: 12, rough: .25 },
-      { id: 'walk', mat: 'bridge', line: WEIR, w: 12, rough: 0, bridge: { ux: wux, uy: wuy } },
-      { id: 'race', mat: 'brook', line: [[1500, 412], [1462, 424], [1400, 434], [1360, 440]], w: 6 },
+      { id: 'weir', mat: 'weir', line: WEIR, w: 36, walk: 17, rough: .25 },
+      { id: 'walk', mat: 'bridge', line: WEIR, w: 17, rough: 0, worn: 1, bridge: { ux: wux, uy: wuy } },
     ],
     objects: [
-      { id: 'mill', p: 'house', x: 1560, y: 420, w: 66, d: 54, h: 34, wall: 'log', col: [128, 98, 70], roof: 'shingle', roofCol: [96, 84, 70], porch: false, wins: [-20, 18], door: 0, chim: 'none', deco: ['ladder'], seed: 71, decay: .7 },
-      { id: 'wheel', p: 'wheel', x: 1500, y: 410, r: 20, seed: 3, spin: 1.1 },
-      { id: 'flume', p: 'flume', x: 1497, y: 404, dx: -56, dn: 138, z: 38, seed: 5 },
+      // the mill on the bank's very edge, its wheel hanging over the river at its west wall (the lower buckets in the water, which runs off
+      // downstream from under it), fed from above by the flume: from a sluice in the pond above the weir, on trestles over the weir and the walk
+      { id: 'mill', p: 'house', x: 1448, y: 422, w: 60, d: 50, h: 40, wall: 'log', col: [124, 96, 68], roof: 'shingle', roofCol: [92, 82, 70], porch: false, wins: [-16, 16], door: 0, chim: 'none', sideWin: false, deco: ['ladder'], seed: 71, decay: .7 },
+      { id: 'wheel', p: 'wheel', x: 1390, y: 406, r: 20, seed: 3, spin: 1.1 },
+      { id: 'flume', p: 'flume', x: 1388, y: 402, dx: -34, dn: 146, z: 40, z0: 42, seed: 5 },
       { id: 'house-miller', p: 'house', x: 1690, y: 600, w: 50, d: 38, h: 22, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench'], seed: 72, decay: .5, lampX: 6 },
-      { id: 'millstone-1', p: 'millstone', x: 1528, y: 448, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1640, y: 430, r: 5, seed: 12 },
-      { id: 'sacks', p: 'crates', x: 1612, y: 444, seed: 6 }, { id: 'barrels', p: 'barrels', x: 1508, y: 446, seed: 7, n: 2 },
+      { id: 'millstone-1', p: 'millstone', x: 1514, y: 452, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1600, y: 470, r: 5, seed: 12 },
+      { id: 'sacks', p: 'crates', x: 1500, y: 412, seed: 6 }, { id: 'barrels', p: 'barrels', x: 1420, y: 446, seed: 7, n: 2 },
       { id: 'logpile', p: 'logpile', x: 1760, y: 560, seed: 14 },
       { id: 'sign', p: 'signpost', dir: 1, text: 'МЕЛЬНИЦА', x: 610, y: 396 },
       { id: 'bench-w', p: 'bench', x: 700, y: 386 },
@@ -6647,13 +6657,14 @@ const PLACES = {};
     // the miller, between the mill, the sacks and his house; an angler on the near bank below the weir
     npcs: [
       { id: 'miller', look: { id: 'miller', sex: 'm', age: 'old', h: 17.4, build: 1.12, skin: 1, hair: [190, 186, 176], cut: 'short', beard: [196, 192, 182], hat: 'cap', hatCol: [176, 170, 156], top: [176, 168, 150], topKind: 'jacket', legs: [92, 86, 76], boots: [52, 44, 36] },
-        route: [[1580, 436, 18, 180], [1612, 456, 0], [1622, 452, 12, 90], [1640, 480, 0], [1680, 540, 0], [1690, 606, 25, 180], [1680, 540, 0], [1640, 480, 0]] },
+        route: [[1450, 436, 18, 180], [1490, 428, 0], [1504, 420, 12, 0], [1530, 458, 0], [1600, 490, 0], [1680, 540, 0], [1690, 606, 25, 180], [1680, 540, 0], [1600, 490, 0], [1530, 458, 0]] },
       { id: 'angler', look: { id: 'angler', sex: 'm', h: 18, build: 1, skin: 2, hair: [70, 52, 40], cut: 'short', hat: 'hood', hatCol: [70, 90, 70], top: [70, 90, 70], topKind: 'jacket', legs: [60, 64, 72], boots: [40, 36, 34], carry: 'bucket' },
         route: [[700, 420, 40, 90], [740, 440, 0], [770, 470, 60, 100], [740, 440, 0]] },
     ],
     poi: [
       { id: 'weir', name: 'Запруда', hint: 'вода переливается через бревенчатый гребень и шумит', x: 1130, y: 318, r: 60 },
-      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1560, y: 432, r: 40 },
+      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1448, y: 436, r: 40 },
+      { id: 'flume', name: 'Жёлоб и щит', hint: 'из пруда по жёлобу вода падает на колесо; щитом её перекрывают', x: 1388, y: 300, r: 26 },
       { id: 'pond', name: 'Мельничный пруд', hint: 'тихая вода выше запруды, в ней отражается лес', x: 1130, y: 200, r: 70 },
       { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1690, y: 610, r: 30 },
     ],
@@ -7141,6 +7152,21 @@ const matAt = (x, y) => { const h = layerAt(x, y); return h.L ? h.L.mat : PL.bas
 const inClearing = (x, y, pad = 0) => inPlace(x, y, pad);
 // the colour of the ground: the game's own palettes and dithering
 const ROADDUST = [150, 132, 104];
+// the plank walk along a weir: boards laid across it on two edge beams, each board its own age (a new yellow one put in, a dark rotten one, now and
+// then one gone and the water showing through), worn pale down the middle where feet and wheels go, nail heads in rows over the beams, moss and
+// lichen along the edges, wet stains, a cracked board here and there
+function walkColor(L, x, y, d) { const B = L.bridge, a = L.line[0], s = (x - a[0]) * B.ux + (y - a[1]) * B.uy, n = (x - a[0]) * B.uy - (y - a[1]) * B.ux, w = L.w, an = Math.abs(n), sd = L.sd || 1;
+  if (d > -1.7) return h2(Math.floor(s / 3), 1, sd) < .3 ? [52, 40, 30] : [66, 50, 36];
+  const q = s / 4.4, pi = Math.floor(q), f = q - pi, wet = MAPW.on && mapwD(x, y) < 0, t = h2(pi, 3, sd);
+  if (f < .15) return wet ? [28, 40, 46] : [44, 34, 26];
+  if (wet && t > .982) return h2(x, y, sd) < .3 ? [70, 104, 120] : [34, 54, 66];
+  let c = t < .1 ? [178, 148, 100] : t < .2 ? [84, 64, 46] : cmix([108, 82, 56], [148, 114, 78], vn(pi * 3.1, n * .07, sd + 3));
+  if (an < w * .4) c = cmix(c, [170, 144, 108], .3 * (1 - an / (w * .4)));
+  if (Math.abs(an - (w - 3.2)) < .6 && f > .4 && f < .62) c = [50, 48, 46];
+  if (an > w - 4.5 && vn(s * .2, n * .3, sd + 5) > .6) c = cmix(c, [84, 104, 58], .55);
+  if (vn(s * .05, n * .12, sd + 6) > .7) c = cmul(c, .82);
+  if (h2(pi, 7, sd) < .14 && Math.abs(f - .55) < .07) { const c0 = (h2(pi, 8, sd) - .5) * w; if (Math.abs(n - c0) < 5) c = cmul(c, .55) }
+  return c }
 // A weir across a river (a layer, mat 'weir', its line from bank to bank, w its half width): upstream (to the north of the line) a sloping face
 // of logs laid along it, dark and wet, the pond lapping at its foot; along the middle the plank walk (a 'bridge' layer of its own); downstream
 // the water sheeting over the crest and down the stepped logs, white at the foot (the moving foam over it: drawWeirFlow)
@@ -7226,6 +7252,7 @@ function groundColor(x, y) {
     const v = vn(x * .05 + vn(x * .02, y * .02, SEED + 560) * 2, y * .05, SEED + 561) * .7 + vn(x * .2, y * .2, SEED + 562) * .3;
     c = v < .38 ? GW.bog[quant(v / .38, x, y, 4)] : v < .45 ? GW.mud[quant(vn(x * .3, y * .3, SEED + 563), x, y, 3)] : GW.moss[quant((v - .45) * 1.8, x, y, 4)] }
   else if (mat === 'weir') c = weirColor(L, x, y);
+  else if (mat === 'bridge' && L.worn) c = walkColor(L, x, y, d);
   else if (mat === 'bridge') { // a plank bridge: boards laid across the way, gaps between them, darker at the edges
     const B = L.bridge, s = (x - L.line[0][0]) * B.ux + (y - L.line[0][1]) * B.uy, gap = ((s % 4) + 4) % 4 < .7, edge = d > -2;
     c = edge ? [70, 50, 34] : gap ? [52, 38, 28] : cmix([120, 88, 58], [150, 116, 78], vn(Math.floor(s / 4) * 3.1, (x * B.uy - y * B.ux) * .08, SEED + 570)) }
