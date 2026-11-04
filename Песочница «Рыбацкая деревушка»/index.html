@@ -4631,7 +4631,11 @@ const DECKO = { id: 'jetty', type: 'jetty' };
 function deckBlocked(x, y, rad) { const P = PIER, lx = x - P.ox, ly = y - P.oy; if (lx < P.x - P.w - 4 - rad || lx > P.x + P.w + 4 + rad || ly < P.y0 - 5 - rad || ly > P.y1 + P.ramp + rad) return false;
   const X0 = P.x - P.w, X1 = P.x + P.w, hit = (a, b, c, d) => lx > a - rad && lx < c + rad && ly > b - rad && ly < d + rad;
   return (hit(X0 - 2, P.y0 - 4, X0 + 1.6, P.y1 + P.ramp - 1) || hit(X1 - 1.6, P.y0 - 4, X1 + 3, P.y1 + P.ramp - 1) || hit(X0 - 2, P.y0 - 4, X1 + 3, P.y0 + 1.6)) ? DECKO : false }
-let RLIFT = 0; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
+let RLIFT = 0, RLB = 0; const JOLT = { t: 9, k: 0, keys: [null, null] };
+// a missing board of a worn walk under a point (a gap with the water showing): its board's number, or null
+function walkHole(x, y) { for (const L of layersNear(x, y)) { if (L.mat !== 'bridge' || !L.worn || layerD(L, x, y) > -2) continue; const B = L.bridge, a = L.line[0], s = (x - a[0]) * B.ux + (y - a[1]) * B.uy, pi = Math.floor(s / 4.4);
+    if (h2(pi, 3, L.sd || 1) > .965 && (!MAPW.on || mapwD(x, y) < 0)) return L.id + ':' + pi } return null }
+const joltLift = () => { const t0 = JOLT.t; return t0 < .07 ? -2.2 * JOLT.k * t0 / .07 : t0 < .32 ? -2.2 * JOLT.k * (1 - (t0 - .07) / .08) * (t0 < .15 ? 1 : 0) + Math.sin(Math.min(1, (t0 - .07) / .25) * Math.PI) * 2.4 * JOLT.k : 0 }; // (how high the rider is just now: eased, so the ramp is climbed and not jumped)
 
 // ---- the village's own colours and textures ----
 const FV = { glass: [52, 64, 74], door: [112, 78, 52], plinth: [124, 120, 110], brick: [150, 70, 52], tar: [40, 36, 32], wood: [150, 114, 76], woodD: [100, 72, 48], woodL: [186, 152, 108] };
@@ -4647,7 +4651,7 @@ const fvShingle = (c, seed = 1) => (x, n, z) => { const row = Math.floor(n / 2.4
 // ---- a fisherman's house: a plank or log box under a gabled roof, windows (lit at night), a door with a small porch, a chimney ----
 // w, d, h: width, depth, wall height; wall: 'board' or 'log'; col: the paint of the boards (the logs' own colour); roof: 'tin' or 'shingle';
 // wins: the x of the front windows; door: its x; shut: the colour of shutters; deco: things about it
-PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], trim = [236, 232, 216], roof = 'tin', roofCol = [120, 74, 56], porch = true, pw = 10, chim = 'brick', chimX = -16,
+PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], trim = [236, 232, 216], roof = 'tin', roofCol = [120, 74, 56], porch = true, pw = 10, chim = 'brick', chimX = -16, loft = null,
     wins = [-18, 18], door = 0, shut = null, deco = [], seed = 3, sideWin = true, gate = 0, decay = .5, shutBad = [], fallen = 0, lampC = '255,214,160', lampFlick = false, tarp = null, dishAt = null, meter = null, lampX = null } = {}) => {
   const HW = w / 2, D = d, WALL = h, OVR = 3, RISE = Math.round(d * .3), RIDGE = WALL + RISE, eave = WALL - OVR * RISE / (D / 2), PD = 14, PZ = 4;
   const wallC = wall === 'log' ? col : col, wallT = wall === 'log' ? fvLogs(col, 3.2, seed) : fvBoards(col, 3.4, seed), roofT = roof === 'tin' ? fvTin(roofCol, seed) : fvShingle(roofCol, seed);
@@ -4704,6 +4708,12 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
       for (const sx of [-1, 1]) t3face(M, [[door + sx * gw, -.5, 3], [door + sx * (gw + 4), -9, 3], [door + sx * (gw + 4), -9, gh], [door + sx * gw, -.5, gh]], FV.door, null, { both: true, zb: .5, tex: (x, n, z) => ((Math.round(n * 1.3) % 3) === 0) ? cmul(FV.door, .78) : FV.door }) }
     else { t3face(M, [[door - 4.5, -.4, 3], [door + 4.5, -.4, 3], [door + 4.5, -.4, 22], [door - 4.5, -.4, 22]], FV.door, null, { both: true, zb: .3, tex: x => (((Math.floor(x + 5) % 3) + 3) % 3 === 0 ? cmul(FV.door, .82) : FV.door) });
       t3box(M, door + 2.4, -1, 12, door + 3.4, -.4, 13, [200, 190, 150], { clean: true }) }
+    // a mill's loft door up under the eaves, its beam out over it with the pulley, the rope down and a sack hanging on it; small upper windows
+    if (loft) { const lx = loft.x || 0, z0 = WALL - 15, z1 = WALL - 3, DK = [52, 40, 30];
+      t3face(M, [[lx - 5, -.45, z0], [lx + 5, -.45, z0], [lx + 5, -.45, z1], [lx - 5, -.45, z1]], [70, 54, 40], null, { both: true, zb: .4, tex: (x, n, z) => Math.abs(x - lx) < .5 ? DK : (Math.floor(z) % 3 === 0 ? cmul([70, 54, 40], .85) : [70, 54, 40]) });
+      t3box(M, lx - 6, -1, z0 - 1, lx + 6, -.4, z0, DK); t3box(M, lx - .8, -10, WALL + 1, lx + .8, 2, WALL + 2.6, [96, 72, 50]); t3cyl(M, lx, -9, 1.2, WALL - .4, WALL + 1, [60, 58, 56], { topCol: [70, 68, 64] });
+      t3line(M, [lx, -9, WALL - .4], [lx, -9, 12], [150, 132, 100]); t3box(M, lx - 2.4, -10.6, 7, lx + 2.4, -7.4, 12.4, [214, 204, 180], { tex: (x, n, z) => z > 11.6 ? [190, 180, 156] : [214, 204, 180] });
+      for (const ux of loft.wins || []) { t3face(M, [[ux - 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 6], [ux - 3, -.5, WALL - 6]], FV.glass, null, { both: true, inside: true, zb: .4 }); t3box(M, ux - 3.6, -.8, WALL - 12.6, ux + 3.6, -.4, WALL - 12, trim, { clean: true }) } }
     // the east wall's window and the downpipe
     if (sideWin) t3face(M, [[HW + .5, D * .45, winZ0], [HW + .5, D * .45 + winW, winZ0], [HW + .5, D * .45 + winW, winZ0 + winH], [HW + .5, D * .45, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(n - D * .45 - winW / 2) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : null });
     t3box(M, -HW - 2, -OVR - 1.2, eave - 1.4, HW + 2, -OVR, eave - .3, [116, 120, 122]);
@@ -5099,10 +5109,34 @@ function drawDamSpray(cx0, cy0) { const P = DAMR.pts; if (!P) return; const K = 
 // along its way); and at a water wheel, the water falling from the flume onto its buckets and the boil where it comes down
 function drawWeirFlow(cx0, cy0) { for (const L of LAYERS) { if (L.mat !== 'weir' || L.bb[2] < cx0 - 40 || L.bb[0] > cx0 + W + 40 || L.bb[3] < cy0 - 60 || L.bb[1] > cy0 + H + 60) continue; const F = weirFrame(L), wk = L.walk || 12, sg = Math.sign(F.tx || 1), nx = F.ty * sg, ny = -F.tx * sg;
     for (let s = 2; s < F.l - 2; s += 2.2) { const k = Math.floor(s / 2.2), h = h2(k, 7, 9911), ph = (t * (.7 + .5 * h) + h * 7) % 1, n = -wk - 1 - ph * (L.w - wk + 16), x = F.a[0] + F.tx * s + nx * n, y = F.a[1] + F.ty * s + ny * n; if (x < cx0 - 2 || x > cx0 + W + 2 || y < cy0 - 2 || y > cy0 + H + 2) continue;
-      const a = (n < -L.w ? .9 * (1 - (ph - .6) / .4) : .55 + .35 * h) * Math.min(1, ph * 8); if (a <= .03 || MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = `rgba(234,242,244,${clamp(a, 0, 1).toFixed(2)})`; ctx.fillRect(Math.round(x + (n < -L.w ? (h2(k, Math.floor(t * 6), 9912) - .5) * 3 : 0)), Math.round(y), 1, n < -L.w ? 1 : 2) } }
+      const a = (n < -L.w ? .9 * (1 - (ph - .6) / .4) : .55 + .35 * h) * Math.min(1, ph * 8); if (a <= .03 || MAPW.on && mapwD(x, y) > -1) continue; const fall = n >= -L.w, len = fall ? 2 + Math.round(ph * 4) : 1;
+      ctx.fillStyle = `rgba(234,242,244,${clamp(a, 0, 1).toFixed(2)})`; ctx.fillRect(Math.round(x + (fall ? 0 : (h2(k, Math.floor(t * 6), 9912) - .5) * 3)), Math.round(y), 1, fall ? 2 : 1);
+      if (fall) { ctx.fillStyle = `rgba(206,226,232,${clamp(a * .45, 0, 1).toFixed(2)})`; ctx.fillRect(Math.round(x - nx * len), Math.round(y - ny * len), 1, len) } }
+    // (foam carried off from the foot, meandering a little and thinning out as it goes)
+    for (let s = 3; s < F.l - 3; s += 5) { const k = Math.floor(s / 5), h = h2(k, 17, 9915), ph = (t * (.12 + .1 * h) + h * 9) % 1, n = -L.w - 4 - ph * 26, s2 = s + Math.sin(t * .8 + k) * 2.5 + (h - .5) * 3, x = F.a[0] + F.tx * s2 + nx * n, y = F.a[1] + F.ty * s2 + ny * n;
+      if (x < cx0 - 2 || x > cx0 + W + 2 || y < cy0 - 2 || y > cy0 + H + 2 || MAPW.on && mapwD(x, y) > -1) continue; const a = .65 * Math.min(1, ph * 5) * (1 - ph); ctx.fillStyle = `rgba(228,238,240,${a.toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), h > .55 ? 2 : 1, 1) }
+    // (leaves come down the pond to the crest, tip over it, tumble down the face and float off below)
+    for (let k = 0, nL = Math.max(2, Math.round(F.l / 38)); k < nL; k++) { const h = h2(k, 18, 9916), per = 9 + 7 * h, u = ((t + h * 47) % per) / per, s = (k + .5) / nL * F.l + (h2(k, 19, 9916) - .5) * 20 + Math.sin(t * .5 + k) * 3;
+      let n; if (u < .35) n = -wk + 6 * (1 - u / .35); else if (u < .5) n = -wk - (L.w - wk) * Math.pow((u - .35) / .15, 1.6); else n = -L.w - (u - .5) / .5 * 30;
+      const x = F.a[0] + F.tx * s + nx * n, y = F.a[1] + F.ty * s + ny * n; if (x < cx0 - 2 || x > cx0 + W + 2 || y < cy0 - 2 || y > cy0 + H + 2) continue; if (u < .35 && (MAPW.on && mapwD(x, y) > -1)) continue; if (u >= .5 && MAPW.on && mapwD(x, y) > -1) continue;
+      const C = [[196, 92, 36], [222, 168, 54], [168, 58, 34], [150, 110, 44]][k % 4], tum = u >= .35 && u < .5 ? Math.floor(t * 14 + k) % 2 : Math.floor(t * 2 + k) % 2; ctx.fillStyle = `rgb(${C[0]},${C[1]},${C[2]})`; ctx.fillRect(Math.round(x), Math.round(y), tum ? 1 : 2, tum ? 2 : 1); if (!tum) { ctx.fillStyle = `rgb(${C[0] * .7 | 0},${C[1] * .7 | 0},${C[2] * .7 | 0})`; ctx.fillRect(Math.round(x) + 1, Math.round(y) - 1, 1, 1) } } }
 }
-function drawWheelWater() { for (const o of VIS) { if (o.p !== 'wheel') continue; const r = o.params && o.params.r || 20, x0 = Math.round(o.x - 4), top = Math.round(o.y - 3 - 2 * r - 2);
-    for (let k = 0; k < 10; k++) { const ph = (t * 2.2 + k / 10) % 1, y = top + ph * (r * 1.1), x = x0 - Math.round(Math.sin(ph * 1.4) * r * .55); ctx.fillStyle = `rgba(200,224,232,${(.75 - ph * .3).toFixed(2)})`; ctx.fillRect(x, Math.round(y), 2, 2) }
+function drawFlumeWater(o) { const q = o.params || {}, dx = q.dx ?? -50, dn = q.dn ?? 140, z = q.z ?? 40, zA = q.z0 ?? z + 2, L = Math.hypot(dx, dn), px = -(-dn / L), pn = -dx / L, w = 4 - 1.2;
+  const at = (u, o2, lift) => { const x = dx + (0 - dx) * u + px * o2, n = dn + (0 - dn) * u + pn * o2, zz = zA + (z - zA) * u + 1.8 + (lift || 0), [sx, sy] = t3p([x, n, zz]); return [Math.round(o.x + sx), Math.round(o.y + sy)] };
+  // streaks of light on the running water, sliding down it toward the wheel
+  // (the swell runs down it in soft bands, each a lighter line across the water, the streaks drawn out long by the pace)
+  for (let k = 0; k < 7; k++) { const u = (t * .62 + k / 7) % 1, a = Math.sin(u * Math.PI); for (let o2 = -w; o2 <= w; o2 += .9) { const [x, y] = at(u + Math.abs(o2) * .006, o2); ctx.fillStyle = `rgba(150,196,212,${(.45 * a).toFixed(2)})`; ctx.fillRect(x, y, 1, 1) } }
+  for (let k = 0; k < 30; k++) { const h = h2(k, 11, 9921), sp = .55 + .3 * h, u = (t * sp + h * 5) % 1, o2 = (h2(k, 12, 9921) - .5) * 2 * w + Math.sin(t * 2.1 + k) * .5, al = .3 + .5 * h2(k, 13, 9921), n = h > .5 ? 5 : 3;
+    for (let j = 0; j < n; j++) { const [x, y] = at(u - j * .009, o2); ctx.fillStyle = `rgba(222,240,246,${(al * (1 - j / n)).toFixed(2)})`; ctx.fillRect(x, y, 1, 1) } }
+  // (a glint that slips along with the water)
+  for (let k = 0; k < 4; k++) { const h = h2(k, 16, 9921), u = (t * .7 + h) % 1, [x, y] = at(u, (h - .5) * w); if (Math.floor(t * 6 + k) % 3) { ctx.fillStyle = 'rgba(248,252,252,.9)'; ctx.fillRect(x, y, 1, 1) } }
+  // a few leaves riding it, turning as they go, dropping off the end
+  for (let k = 0; k < 3; k++) { const h = h2(k, 14, 9922), per = 7 + 5 * h, u = ((t + h * 31) % per) / per * 1.15; if (u > 1.12) continue; const C = [[196, 92, 36], [222, 168, 54], [168, 58, 34]][k];
+    let x, y; if (u <= 1) [x, y] = at(u, Math.sin(t * 1.3 + k * 2) * (w - .8), .3); else { [x, y] = at(1, 0, .3); y += (u - 1) / .12 * 22 } ctx.fillStyle = `rgb(${C[0]},${C[1]},${C[2]})`; ctx.fillRect(x, y, 2, 1); if (Math.floor(t * 3 + k) % 2) ctx.fillRect(x, y - 1, 1, 1) } }
+function drawWheelWater() { for (const o of VIS) if (o.p === 'flume') drawFlumeWater(o);
+  for (const o of VIS) { if (o.p !== 'wheel') continue; const r = o.params && o.params.r || 20, x0 = Math.round(o.x - 4), top = Math.round(o.y - 3 - 2 * r - 2);
+    for (let k = 0; k < 26; k++) { const h = h2(k, 15, 9923), ph = (t * (1.9 + .8 * h) + h * 7) % 1, y = top + ph * (r * 1.15), x = x0 - Math.round(Math.sin(ph * 1.4) * r * .55) + Math.round((h - .5) * 5 * (.4 + ph)); ctx.fillStyle = ph < .7 ? `rgba(196,222,232,${(.85 - ph * .4).toFixed(2)})` : `rgba(238,246,248,${(1.2 - ph).toFixed(2)})`; ctx.fillRect(x, Math.round(y), ph < .5 ? 2 : 1, ph < .5 ? 2 : 1) }
+    for (let k = 0; k < 6; k++) { const u = h2(k, Math.floor(t * 10), 9924), v = h2(k + 7, Math.floor(t * 10), 9924); ctx.fillStyle = 'rgba(240,248,250,.75)'; ctx.fillRect(Math.round(x0 - r * .5 - 3 + u * 8), Math.round(top + r * .55 + v * 6), 1, 1) }
     for (let k = 0; k < 9; k++) { const u = h2(k, Math.floor(t * 8), 9913), v = h2(k + 20, Math.floor(t * 8), 9913); ctx.fillStyle = 'rgba(236,244,244,.8)'; ctx.fillRect(Math.round(o.x - r * .7 + u * r * 1.4), Math.round(o.y - 2 + v * 4), 1, 1) }
     for (let k = 0; k < 14; k++) { const h = h2(k, 5, 9914), ph = (t * (.45 + .3 * h) + h * 3) % 1, x = o.x - r * .5 + h * r + (h - .5) * ph * 16, y = o.y + 2 + ph * 26; if (MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = `rgba(226,238,240,${(.7 * (1 - ph)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), ph < .4 ? 2 : 1, 1) } } }
 function drawWater(cx0, cy0) {
@@ -5344,11 +5378,11 @@ PF.wheel = ({ r = 20, seed = 1 } = {}) => { const W = 2 * r + 10, H = 2 * r + 8,
 PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const L = Math.hypot(dx, dn), ux = -dx / L, un = -dn / L, px = -un, pn = ux, w = 4, A = [dx, dn], B = [0, 0], zA = z0 ?? z + 2;
     const P = (q, o, zz) => [q[0] + px * o, q[1] + pn * o, zz], wood = [124, 94, 62], dark = [76, 56, 38], zz = u => zA + (z - zA) * u, at = u => [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u];
     const plank = (x, n, zq, c) => { const k = Math.floor((x * ux + n * un) / 5); return h2(k, 3, seed) < .2 ? cmul(c, .84) : h2(k, 4, seed) < .1 ? cmix(c, [64, 92, 56], .35) : c };
-    t3face(M, [P(A, -w, zA), P(B, -w, z), P(B, w, z), P(A, w, zA)], wood, [0, 0, z - 9]);
+    t3face(M, [P(A, -w, zA), P(B, -w, z), P(B, w, z), P(A, w, zA)], wood, [0, 0, z - 9], { clean: true });
     // the water in it: running, streaked lighter along it
-    t3face(M, [P(A, -w + .9, zA + 1.6), P(B, -w + .9, z + 1.6), P(B, w - .9, z + 1.6), P(A, w - .9, zA + 1.6)], [92, 140, 162], [0, 0, z - 9], { flat: true, z: 3, tex: (x, n) => vn((x * ux + n * un) * .35, (x * px + n * pn) * 1.4, seed + 7) > .66 ? [168, 204, 214] : [92, 140, 162] });
+    t3face(M, [P(A, -w + .9, zA + 1.6), P(B, -w + .9, z + 1.6), P(B, w - .9, z + 1.6), P(A, w - .9, zA + 1.6)], [92, 140, 162], [0, 0, z - 9], { flat: true, z: 3, tex: (x, n) => { const v = vn((x * ux + n * un) * .2, (x * px + n * pn) * 1.1, seed + 7); return v > .72 ? [112, 158, 178] : v < .3 ? [80, 126, 150] : [92, 140, 162] } });
     for (const o of [-w, w]) t3face(M, [P(A, o, zA), P(B, o, z), P(B, o, z + 3.2), P(A, o, zA + 3.2)], o < 0 ? dark : wood, [px * -o * 3, pn * -o * 3, z], { tex: (x, n, zq, c) => plank(x, n, zq, c) });
-    for (let s = 3; s < L; s += 7) { const u = s / L, q = at(u); t3line(M, P(q, -w - .4, zz(u) + 3.4), P(q, w + .4, zz(u) + 3.4), dark) } // (the spreaders across its top)
+    for (let s = 10; s < L - 4; s += 22) { const u = s / L, q = at(u); t3line(M, P(q, -w - .4, zz(u) + 3.4), P(q, w + .4, zz(u) + 3.4), dark) } // (the spreaders across its top, one over each pair of legs)
     for (let s = 10; s < L - 4; s += 22) { const u = s / L, q = at(u), h = zz(u); for (const o of [-w, w]) t3box(M, q[0] + px * o * 1.3 - .6, q[1] + pn * o * 1.3 - .6, 0, q[0] + px * o * 1.3 + .6, q[1] + pn * o * 1.3 + .6, h, dark); t3line(M, P(q, -w * 1.3, h * .2), P(q, w * 1.3, h * .7), dark); t3line(M, P(q, -w * 1.3, h - 1), P(q, w * 1.3, h - 1), dark) }
     // the sluice at its mouth: two posts, a beam, the gate board raised in its slots
     for (const o of [-w - 1, w + 1]) t3box(M, A[0] + px * o - .7, A[1] + pn * o - .7, 0, A[0] + px * o + .7, A[1] + pn * o + .7, zA + 12, dark);
@@ -5357,6 +5391,27 @@ PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1 } = {}) => { const
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [] } };
 // an old millstone lying in the grass, its eye in the middle, a little moss on it
+// flour sacks piled by a door: plump, tied at the neck, dusted white
+PF.sacks = ({ seed = 1, n = 5 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const r = mulberry(seed), S = [[-5, 0, 0], [0, .5, 0], [5, 0, 0], [-2.5, .4, 4.4], [2.5, .2, 4.4], [0, 3.5, 0]];
+    for (const [x, n0, z] of S.slice(0, n)) { const c = r() < .3 ? [196, 184, 156] : [222, 214, 192]; t3box(M, x - 2.3, n0, z, x + 2.3, n0 + 3.4, z + 4.2, c, { tex: (xx, nn, zz) => zz > z + 3.6 ? cmul(c, .88) : Math.abs(xx - x) > 1.9 ? cmul(c, .92) : c }); t3box(M, x - .7, n0 + 1.2, z + 4.2, x + .7, n0 + 2.2, z + 5.2, cmul(c, .8)) } return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-7.5, 0, 7.5, 7]].map(t3w) } };
+// a cart: a plank bed on two big wheels, its shafts down on the ground, sacks in it
+PF.cart = ({ seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const r = mulberry(seed), W = [104, 80, 54], D = [70, 54, 38], I = [52, 46, 42];
+    // (the axle runs across the view so the two wheels face us as rings; the bed tips a little forward onto its shafts)
+    const wheel = n => { for (const [rr, c] of [[6, I], [5.4, D]]) { let prev = null; for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU, p = [Math.cos(a) * rr, n, 6 + Math.sin(a) * rr]; if (prev) t3line(M, prev, p, c); prev = p } }
+      for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + .3; t3line(M, [0, n, 6], [Math.cos(a) * 5.2, n, 6 + Math.sin(a) * 5.2], D) } t3box(M, -.9, n - .4, 5.1, .9, n + .4, 6.9, I) };
+    wheel(11.2);
+    t3box(M, -12, 0, 6.4, 12, 11, 7.4, W, { tex: (x, n, z, c) => Math.abs(((n + 11) % 3.6) - 1.8) < .25 ? cmul(c, .7) : h2(Math.round(x * 2), Math.round(n * 2), seed) < .08 ? cmul(c, .85) : c });
+    for (const n0 of [0, 10.2]) t3box(M, -12, n0, 7.4, 12, n0 + .8, 10.4, D, { tex: (x, n, z, c) => Math.abs(z - 8.9) < .2 ? cmul(c, .75) : c });
+    t3box(M, -12.6, 0, 7.4, -11.8, 11, 10.4, D); t3box(M, 11.8, 0, 7.4, 12.6, 11, 9.4, D);
+    for (const n0 of [2, 9]) { t3line(M, [12, n0, 6.8], [27, n0, .6], D); t3line(M, [12, n0 + .5, 6.8], [27, n0 + .5, .6], W) } t3line(M, [22, 2, 2.6], [22, 9.5, 2.6], D);
+    for (const [x, n0, z] of [[-7, 2, 7.4], [-1.6, 2.4, 7.4], [-4.6, 6, 7.4], [-4.2, 3.6, 11.4]]) { const c = r() < .3 ? [200, 190, 162] : [222, 214, 192]; t3box(M, x - 2.4, n0, z, x + 2.4, n0 + 3.4, z + 4, c, { tex: (xx, nn, zz) => zz > z + 3.4 ? cmul(c, .88) : Math.abs(xx - x) > 2 ? cmul(c, .9) : c }); t3box(M, x - .6, n0 + 1.2, z + 4, x + .6, n0 + 2.2, z + 4.9, cmul(c, .78)) }
+    wheel(-.6); return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-12.6, -1, 12.6, 11.6]].map(t3w) } };
+// the post at a bridge's end: a thick squared log, its top cut to a point, the handrail's end iron-strapped to it
+PF.epost = ({ seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3box(M, -1.8, -1.8, 0, 1.8, 1.8, 13, [96, 72, 50], { tex: (x, n, z) => Math.abs(z - 10) < .5 || Math.abs(z - 3) < .5 ? [60, 58, 56] : z < 2 ? [70, 84, 56] : [96, 72, 50] });
+    t3face(M, [[-1.8, -1.8, 13], [1.8, -1.8, 13], [0, 0, 15.5]], [118, 90, 62], [0, 0, 10]); t3face(M, [[1.8, -1.8, 13], [1.8, 1.8, 13], [0, 0, 15.5]], [84, 64, 44], [0, 0, 10]); return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-2, -2, 2, 2]].map(t3w) } };
 PF.millstone = ({ seed = 1, r = 6 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3cyl(M, 0, 0, r, 0, 2.2, [150, 146, 136], { topCol: [168, 162, 150] }); t3cyl(M, 0, 0, 1.2, 2.2, 2.4, [60, 58, 54], { topCol: [52, 50, 48] }); return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-r, -r * .9, r, r * .9]].map(t3w) } };
 PF.spost = ({ seed = 1, wear = 0, foul = false, snap = false } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; t3box(M, -3.2, -2.2, 0, 3.2, 2.2, 1.6, foul ? [124, 132, 108] : [172, 170, 162]);
@@ -6609,20 +6664,23 @@ const PLACES = {};
 { const WEIR = [[790, 334], [1440, 306]], wl = Math.hypot(WEIR[1][0] - WEIR[0][0], WEIR[1][1] - WEIR[0][1]), wux = (WEIR[1][0] - WEIR[0][0]) / wl, wuy = (WEIR[1][1] - WEIR[0][1]) / wl;
   // (the handrails: a rail fence along each side of the walk, over the water only; the walk's ends on the banks are open)
   const rails = []; for (let s = 46; s < wl - 70; s += 40) for (const sd of [-1, 1]) rails.push({ id: `rail-${sd < 0 ? 's' : 'n'}${Math.round(s)}`, p: 'fence', axis: 'x', len: 40, x: Math.round(WEIR[0][0] + wux * s + wuy * 18 * sd), y: Math.round(WEIR[0][1] + wuy * s - wux * 18 * sd), seed: 900 + Math.round(s) + (sd + 1) });
+  // (the end posts where the handrails begin, at both banks; a few boulders piled against the abutments)
+  for (const s of [44, 46 + Math.floor((wl - 116) / 40) * 40 + 2]) for (const sd of [-1, 1]) rails.push({ id: `epost-${Math.round(s)}${sd < 0 ? 's' : 'n'}`, p: 'epost', x: Math.round(WEIR[0][0] + wux * s + wuy * 19 * sd), y: Math.round(WEIR[0][1] + wuy * s - wux * 19 * sd), seed: 950 + Math.round(s) + sd });
+  for (const [s, sd, k] of [[30, 1, 0], [34, -1, 1], [wl - 44, 1, 2], [wl - 40, -1, 3], [24, -1, 4], [wl - 34, 1, 5]]) rails.push({ id: 'abut-rock-' + k, t: 'rock', x: Math.round(WEIR[0][0] + wux * s + wuy * (26 + k % 3 * 4) * sd), y: Math.round(WEIR[0][1] + wuy * s - wux * (26 + k % 3 * 4) * sd), seed: 970 + k, sz: .8 + k % 2 * .3 });
   PLACES.mill = {
     id: 'mill', name: 'Мельница', mapAt: [990, 526], mapAnchor: [560, 520],
     size: [1800, 1000], margin: [240, 220], base: 'forest',
     trail: { side: ['road-n', 'road-s'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [1110, 420, 840, 380], rough: .32 },
-      { id: 'yard', mat: 'trodden', ellipse: [1500, 440, 100, 46], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1690, 590, 70, 36], rough: .3 },
+      { id: 'yard', mat: 'trodden', ellipse: [1500, 452, 110, 52], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1640, 664, 64, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1456, 440, 16, 6], rough: .4 },
       { id: 'landing-w', mat: 'trodden', ellipse: [730, 345, 60, 26], rough: .3 },
       // the forest road: down from the north (the dam), along the near bank and on to the south
       { id: 'road-n', mat: 'road', line: [[300, -40], [400, 60], [500, 190], [560, 330]], w: 13 },
       { id: 'road-s', mat: 'road', line: [[560, 330], [566, 520], [552, 680], [470, 900], [410, 1040]], w: 13 },
-      { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [760, 336]], w: 5 },
-      { id: 'path-mill', mat: 'path', line: [[1436, 308], [1484, 330], [1500, 384], [1484, 428], [1450, 430]], w: 5 },
-      { id: 'path-house', mat: 'path', line: [[1484, 428], [1560, 470], [1680, 540], [1690, 590]], w: 5 },
+      { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [744, 338], [796, 334]], w: 5 },
+      { id: 'path-mill', mat: 'path', line: [[1436, 308], [1490, 322], [1514, 360], [1514, 410], [1490, 444], [1458, 446]], w: 5 },
+      { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1606, 660], [1640, 670]], w: 5 },
       // the weir and the walk along it; the tailrace from the wheel back to the river
       { id: 'weir', mat: 'weir', line: WEIR, w: 36, walk: 17, rough: .25 },
       { id: 'walk', mat: 'bridge', line: WEIR, w: 17, rough: 0, worn: 1, bridge: { ux: wux, uy: wuy } },
@@ -6630,13 +6688,14 @@ const PLACES = {};
     objects: [
       // the mill on the bank's very edge, its wheel hanging over the river at its west wall (the lower buckets in the water, which runs off
       // downstream from under it), fed from above by the flume: from a sluice in the pond above the weir, on trestles over the weir and the walk
-      { id: 'mill', p: 'house', x: 1448, y: 422, w: 60, d: 50, h: 40, wall: 'log', col: [124, 96, 68], roof: 'shingle', roofCol: [92, 82, 70], porch: false, wins: [-16, 16], door: 0, chim: 'none', sideWin: false, deco: ['ladder'], seed: 71, decay: .7 },
+      { id: 'mill', p: 'house', x: 1456, y: 432, w: 76, d: 58, h: 50, wall: 'log', col: [124, 96, 68], roof: 'shingle', roofCol: [92, 82, 70], porch: false, wins: [-24, 24], door: 0, chim: 'none', sideWin: false, deco: ['ladder'], seed: 71, decay: .7, loft: { x: 12, wins: [-22, 30] } },
+      { id: 'sacks-door', p: 'sacks', x: 1432, y: 448, seed: 3, n: 6 }, { id: 'cart', p: 'cart', x: 1540, y: 474, seed: 4 },
       { id: 'wheel', p: 'wheel', x: 1390, y: 406, r: 20, seed: 3, spin: 1.1 },
       { id: 'flume', p: 'flume', x: 1388, y: 402, dx: -34, dn: 146, z: 40, z0: 42, seed: 5 },
-      { id: 'house-miller', p: 'house', x: 1690, y: 600, w: 50, d: 38, h: 22, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench'], seed: 72, decay: .5, lampX: 6 },
-      { id: 'millstone-1', p: 'millstone', x: 1514, y: 452, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1600, y: 470, r: 5, seed: 12 },
-      { id: 'sacks', p: 'crates', x: 1500, y: 412, seed: 6 }, { id: 'barrels', p: 'barrels', x: 1420, y: 446, seed: 7, n: 2 },
-      { id: 'logpile', p: 'logpile', x: 1760, y: 560, seed: 14 },
+      { id: 'house-miller', p: 'house', x: 1660, y: 650, w: 50, d: 38, h: 22, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench'], seed: 72, decay: .5, lampX: 6 },
+      { id: 'millstone-1', p: 'millstone', x: 1514, y: 452, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1580, y: 520, r: 5, seed: 12 },
+      { id: 'sacks', p: 'sacks', x: 1532, y: 420, seed: 6, n: 4 }, { id: 'barrels', p: 'barrels', x: 1418, y: 470, seed: 7, n: 2 },
+      { id: 'logpile', p: 'logpile', x: 1730, y: 640, seed: 14 },
       { id: 'sign', p: 'signpost', dir: 1, text: 'МЕЛЬНИЦА', x: 610, y: 396 },
       { id: 'bench-w', p: 'bench', x: 700, y: 386 },
       { id: 'birch-1', t: 'birch', x: 660, y: 430, sz: 1.2, seed: 6101 }, { id: 'willow-1', t: 'decid', x: 820, y: 250, sz: 1.3, seed: 6102 },
@@ -6656,16 +6715,16 @@ const PLACES = {};
     // the miller, between the mill, the sacks and his house; an angler on the near bank below the weir
     npcs: [
       { id: 'miller', look: { id: 'miller', sex: 'm', age: 'old', h: 17.4, build: 1.12, skin: 1, hair: [190, 186, 176], cut: 'short', beard: [196, 192, 182], hat: 'cap', hatCol: [176, 170, 156], top: [176, 168, 150], topKind: 'jacket', legs: [92, 86, 76], boots: [52, 44, 36] },
-        route: [[1450, 436, 18, 180], [1490, 428, 0], [1504, 420, 12, 0], [1530, 458, 0], [1600, 490, 0], [1680, 540, 0], [1690, 606, 25, 180], [1680, 540, 0], [1600, 490, 0], [1530, 458, 0]] },
+        route: [[1458, 452, 18, 180], [1500, 452, 0], [1520, 432, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1650, 672, 25, 0], [1606, 660, 0], [1586, 588, 0], [1546, 500, 0]] },
       { id: 'angler', look: { id: 'angler', sex: 'm', h: 18, build: 1, skin: 2, hair: [70, 52, 40], cut: 'short', hat: 'hood', hatCol: [70, 90, 70], top: [70, 90, 70], topKind: 'jacket', legs: [60, 64, 72], boots: [40, 36, 34], carry: 'bucket' },
         route: [[700, 420, 40, 90], [740, 440, 0], [770, 470, 60, 100], [740, 440, 0]] },
     ],
     poi: [
       { id: 'weir', name: 'Запруда', hint: 'вода переливается через бревенчатый гребень и шумит', x: 1130, y: 318, r: 60 },
-      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1448, y: 436, r: 40 },
+      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1456, y: 450, r: 44 },
       { id: 'flume', name: 'Жёлоб и щит', hint: 'из пруда по жёлобу вода падает на колесо; щитом её перекрывают', x: 1388, y: 300, r: 26 },
       { id: 'pond', name: 'Мельничный пруд', hint: 'тихая вода выше запруды, в ней отражается лес', x: 1130, y: 200, r: 70 },
-      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1690, y: 610, r: 30 },
+      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1660, y: 672, r: 30 },
     ],
     exits: [
       { id: 'north', x: 330, y: -10, to: 'дамба и Рыбацкая деревушка', km: 5.4, road: 'road-n' },
@@ -7155,10 +7214,21 @@ const ROADDUST = [150, 132, 104];
 // then one gone and the water showing through), worn pale down the middle where feet and wheels go, nail heads in rows over the beams, moss and
 // lichen along the edges, wet stains, a cracked board here and there
 function walkColor(L, x, y, d) { const B = L.bridge, a = L.line[0], s = (x - a[0]) * B.ux + (y - a[1]) * B.uy, n = (x - a[0]) * B.uy - (y - a[1]) * B.ux, w = L.w, an = Math.abs(n), sd = L.sd || 1;
+  const Lt = L._len || (L._len = Math.hypot(L.line[L.line.length - 1][0] - a[0], L.line[L.line.length - 1][1] - a[1])); if (L.worn && (s < 0 || s > Lt)) { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c } // (cut square at its ends, not rounded off)
   if (d > -1.7) return h2(Math.floor(s / 3), 1, sd) < .3 ? [52, 40, 30] : [66, 50, 36];
-  const q = s / 4.4, pi = Math.floor(q), f = q - pi, wet = MAPW.on && mapwD(x, y) < 0, t = h2(pi, 3, sd);
+  const dw = MAPW.on ? mapwD(x, y) : -1, wet = dw < 0;
+  if (dw > 10) { if (L.worn && s < Lt / 2) { // (the near bank: an earth ramp packed hard, worn in two ruts, stones in it, a log sill where the boards begin)
+      if (s < 8 && h2(x, y, sd + 25) < (8 - s) / 8 * .8) { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c } // (frayed into the grass where it starts)
+      if (dw < 15) return Math.abs(n) > w - 1.2 ? [40, 32, 24] : h2(Math.floor(n / 2), 5, sd) < .5 ? [74, 56, 38] : [88, 66, 44];
+      let c = cmix([104, 86, 62], [126, 104, 76], vn(s * .15, n * .2, sd + 21)); const rn = Math.abs(Math.abs(n) - w * .38); if (rn < 1.4) c = cmul(c, .78 + rn * .08); if (h2(x, y, sd + 22) < .07) c = h2(x, y, sd + 23) < .5 ? [150, 144, 132] : [116, 110, 100];
+      if (Math.abs(n) > w - 2.2 && h2(Math.floor(s / 3), Math.sign(n), sd + 24) < .5) c = cmix(c, [72, 96, 54], .5); return c }
+    // (the far bank: a timber landing, its boards laid along the way in a heavy frame, a cross beam bolted every so often)
+    if (Math.abs(n) > w - 1.8) return Math.abs(n) > w - .6 ? [38, 30, 22] : [64, 48, 34];
+    const bq = (n + w) / 4.6, bi = Math.floor(bq), bf = bq - bi; if (bf < .16) return [50, 40, 30]; let c = cmix([96, 74, 52], [130, 100, 68], h2(bi, Math.floor(s / 40), sd + 9));
+    const sj = ((s - Lt) % 18 + 18) % 18; if (sj < 1.6) return Math.abs(sj - .8) < .3 && ((bq * 4.6) % 4.6 < 1) ? [150, 146, 136] : [58, 44, 32]; if (dw > 26 && h2(x, y, sd + 10) < (dw - 26) / 40) c = cmul(c, .82); return c } // (the approach on land)
+  const q = s / 4.4, pi = Math.floor(q), f = q - pi, t = h2(pi, 3, sd);
   if (f < .15) return wet ? [28, 40, 46] : [44, 34, 26];
-  if (wet && t > .982) return h2(x, y, sd) < .3 ? [70, 104, 120] : [34, 54, 66];
+  if (wet && t > .965) return h2(x, y, sd) < .3 ? [70, 104, 120] : [34, 54, 66];
   let c = t < .1 ? [178, 148, 100] : t < .2 ? [84, 64, 46] : cmix([108, 82, 56], [148, 114, 78], vn(pi * 3.1, n * .07, sd + 3));
   if (an < w * .4) c = cmix(c, [170, 144, 108], .3 * (1 - an / (w * .4)));
   if (Math.abs(an - (w - 3.2)) < .6 && f > .4 && f < .62) c = [50, 48, 46];
@@ -7169,6 +7239,7 @@ function walkColor(L, x, y, d) { const B = L.bridge, a = L.line[0], s = (x - a[0
 // A weir across a river (a layer, mat 'weir', its line from bank to bank, w its half width): upstream (to the north of the line) a sloping face
 // of logs laid along it, dark and wet, the pond lapping at its foot; along the middle the plank walk (a 'bridge' layer of its own); downstream
 // the water sheeting over the crest and down the stepped logs, white at the foot (the moving foam over it: drawWeirFlow)
+function weirFace(x, y) { const h = layerAt(x, y); if (!h || !h.L || h.L.mat !== 'weir' || MAPW.on && mapwD(x, y) > 1.5) return false; const L = h.L, F = weirFrame(L), dx = x - F.a[0], dy = y - F.a[1]; return (dx * F.ty - dy * F.tx) * Math.sign(F.tx || 1) < 0 }
 function weirFrame(L) { if (!L._wf) { const a = L.line[0], b = L.line[L.line.length - 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; L._wf = { a, tx: (b[0] - a[0]) / l, ty: (b[1] - a[1]) / l, l } } return L._wf }
 function weirColor(L, x, y) { if (MAPW.on && mapwD(x, y) > 1.5) { SKIPS.push(L); const c = groundColor(x, y); SKIPS.pop(); return c } // (on the banks the weir is under the ground: only its walk goes on)
   const F = weirFrame(L), dx = x - F.a[0], dy = y - F.a[1], s = dx * F.tx + dy * F.ty, n = (dx * F.ty - dy * F.tx) * Math.sign(F.tx || 1), w = L.w, wk = L.walk || 12;
@@ -7451,7 +7522,7 @@ function bakeChunk0(ci, cj, pre) { const key = ckey(ci, cj);
   // leaves lying about (fewer on the trodden ways), then each tree's own litter round its foot
   for (let cy = Math.floor(y0 / 6) - 1; cy <= Math.ceil((y0 + CK) / 6); cy++) for (let cx = Math.floor(x0 / 6) - 1; cx <= Math.ceil((x0 + CK) / 6); cx++) {
     const hh = h2(cx, cy, SEED + 70), x = cx * 6 + Math.floor(h2(cx, cy, SEED + 71) * 6), y = cy * 6 + Math.floor(h2(cx, cy, SEED + 72) * 6), mat = matAt(x, y);
-    const p = (mat === 'road' || mat === 'gravel' ? .07 : mat === 'path' ? .12 : mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' ? 0 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34) * (.55 + .9 * vn(x * .025, y * .025, SEED + 2020)) * LITTERK;
+    const p = (mat === 'road' || mat === 'gravel' ? .07 : mat === 'path' ? .12 : mat === 'pond' ? .05 : mat === 'bridge' ? .07 : mat === 'lake' || mat === 'weir' && weirFace(x, y) ? 0 : mat === 'beach' ? .1 : mat === 'dam' ? .05 : mat === 'forest' ? .7 : .34) * (.55 + .9 * vn(x * .025, y * .025, SEED + 2020)) * LITTERK;
     if (hh < p) { const lr = mulberry((Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ SEED) >>> 0), K = lkPick(leafSpAt(x, y, lr), lr); lkStamp(set, x, y, K, Math.floor(lr() * 8), mat === 'road' || mat === 'path' ? .35 + lr() * .3 : lr() * .4) } }
   // sticks and twigs fallen from the trees: thin dry ones, some forked, birch twigs pale; thick on the forest floor and
   // under the crowns, sparse on the glade, kicked aside from the paths and the gravel
@@ -7462,7 +7533,7 @@ function bakeChunk0(ci, cj, pre) { const key = ckey(ci, cj);
     const dark = birch ? [200, 194, 180] : r() < .5 ? [74, 54, 38] : [98, 74, 52], lite = birch ? [230, 226, 214] : [150, 122, 88], ca = Math.cos(a), sa = Math.sin(a) * .7;
     for (let i = 0; i < L; i++) { set(x + ca * (i - L / 2), y + sa * (i - L / 2), i === 0 && r() < .5 ? lite : dark); if (i === 1) set(x + ca * (i - L / 2), y + sa * (i - L / 2) - 1, lite) }
     if (r() < .35) { const k = 1 + Math.floor(r() * (L - 2)), b = a + (r() < .5 ? .7 : -.7); for (let i = 1; i < 3; i++) set(x + ca * (k - L / 2) + Math.cos(b) * i, y + sa * (k - L / 2) + Math.sin(b) * .7 * i, dark) } }
-  for (const o of objsIn(x0 - 60, y0 - 40, x0 + CK + 60, y0 + CK + 40)) { stage1(o); if (!o.litter) continue; for (const [dx, dy, gi, rot, age] of o.litter) { const x = o.x + dx, y = o.y + dy; if (x < x0 - 4 || y < y0 - 4 || x > x0 + CK + 4 || y > y0 + CK + 4) continue; const m = matAt(x, y); if (m === 'road' || m === 'gravel') continue; lkStamp(set, x, y, LKINDS[gi], rot, age) } }
+  for (const o of objsIn(x0 - 60, y0 - 40, x0 + CK + 60, y0 + CK + 40)) { stage1(o); if (!o.litter) continue; for (const [dx, dy, gi, rot, age] of o.litter) { const x = o.x + dx, y = o.y + dy; if (x < x0 - 4 || y < y0 - 4 || x > x0 + CK + 4 || y > y0 + CK + 4) continue; const m = matAt(x, y); if (m === 'road' || m === 'gravel' || m === 'weir' && weirFace(x, y)) continue; lkStamp(set, x, y, LKINDS[gi], rot, age) } }
   const cv = document.createElement('canvas'); cv.width = CK; cv.height = CK; cv.getContext('2d').putImageData(img, 0, 0); CHUNKS.set(key, cv); return cv }
 
 
@@ -7657,7 +7728,9 @@ function stepStand(dt) { const S = STAND; S.cool = Math.max(0, S.cool - dt); con
       if (S.gp) { S.gw += dt; if (stGReady(S.gp)) { if (!ST_IDLE[S.m]) { S.g = { id: S.gp, j: 0, ph: 0, t: 0, hold: 0 }; S.gp = 0 } } else if (S.gw > 2.5) { S.gp = 0; S.gt = 2 } } // (it starts when the breath is at rest)
       else { S.gt -= dt; if (S.gt <= 0) { S.gp = stPick(); S.gw = 0; stWantG(S.gp) } } } }
   S.cv = !S.k ? null : S.k === ST_N ? (S.g && S.g.j > 0 ? stGetG(S.g.id, S.g.j) : S.go >= 0 && ST_IDLE[S.m] ? SPR_ST.get(stKey(S.yi, S.f0, 'i' + ST_IDLE[S.m])) : null) || stGet(ST_N) : stGet(S.k) }
-function stepRider(dt) {
+function stepJolt() { if (R.foot || Math.abs(R.v) < 3) return; const sx = Math.sin(R.psi), sy = -Math.cos(R.psi);
+  [[7, 0], [-7, 1]].forEach(([d, i]) => { const k = walkHole(R.x + sx * d, R.y + sy * d); if (k && k !== JOLT.keys[i]) { JOLT.t = 0; JOLT.k = clamp(Math.abs(R.v) / 40, .45, 1); R.v *= .9; if (SND.on && SND.ctx && SX.buf && SX.buf.white) shot(SX.buf.white, Math.random(), .07, .35, { lp: 420 }) } JOLT.keys[i] = k }) }
+function stepRider(dt) { stepJolt();
   slopeStep(dt);
   const want = STAND.k > 0 || STAND.go ? null : wantDir(), surf = SURF[matAt(R.x, R.y)] || SURF.bor; R.surf = matAt(R.x, R.y);
   let vt = 0, stT = 0, brake = KEYS.has('Space'), refused = false;
@@ -7937,7 +8010,7 @@ function drawFlecks(cx0, cy0) { const sun = sunAmt() * LT.sunUp; if (sun < .05) 
     for (const [v, a] of [[0, ph], [1, 1 - ph]]) { const c = fleckChunk(ci, cj, v); if (!c || a < .03) continue; ctx.globalAlpha = a * sun * .9; ctx.drawImage(c, ci * CK + dx, cj * CK) } }
   ctx.restore() }
 function drawWorld() {
-  RLIFT += (deckLift(R.x, R.y) - RLIFT) * Math.min(1, LASTDT * 14); worldT(); const cx0 = Math.floor(CAM.x), cy0 = Math.floor(CAM.y), night = LT.dark > .38;
+  RLB += (deckLift(R.x, R.y) - RLB) * Math.min(1, LASTDT * 14); JOLT.t += LASTDT; RLIFT = RLB + (R.foot ? 0 : joltLift()); worldT(); const cx0 = Math.floor(CAM.x), cy0 = Math.floor(CAM.y), night = LT.dark > .38;
   // the ground
   for (let cj = Math.floor(cy0 / CK); cj <= Math.floor((cy0 + H) / CK); cj++) for (let ci = Math.floor(cx0 / CK); ci <= Math.floor((cx0 + W) / CK); ci++) {  const key = ckey(ci, cj); let cv = CHUNKS.get(key); if (!cv) { if (CBAND.has(key)) { while (!bakeStep(ci, cj)); cv = CHUNKS.get(key) } else cv = bakeChunk(ci, cj) } ctx.drawImage(cv, ci * CK, cj * CK) }
   drawTracks(cx0, cy0); drawBrooks(cx0, cy0); drawWater(cx0, cy0); drawCulvertFlow(cx0, cy0); drawDamSpray(cx0, cy0); drawWeirFlow(cx0, cy0); drawPuddles(cx0, cy0);
@@ -8455,7 +8528,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { walkHole, JOLT, get RLIFT() { return RLIFT }, DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
