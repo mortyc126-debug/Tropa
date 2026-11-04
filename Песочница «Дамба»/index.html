@@ -4642,6 +4642,8 @@ const joltLift = () => { const t0 = JOLT.t; return t0 < .07 ? -2.2 * JOLT.k * t0
 // ---- the village's own colours and textures ----
 const FV = { glass: [52, 64, 74], door: [112, 78, 52], plinth: [124, 120, 110], brick: [150, 70, 52], tar: [40, 36, 32], wood: [150, 114, 76], woodD: [100, 72, 48], woodL: [186, 152, 108] };
 // painted upright boards: a seam every few pixels, the paint faded and peeling in patches
+// a pane of window glass: dark, a pale streak of the sky across its upper corner, its lower edge greyed (dust, or flour)
+const glassAt = (u, v, w, h, dust = 0) => { const s = (u + w / 2) / w * .6 + (h - v) / h * .7; if (dust && v < h * .32 && h2(Math.round(u * 3) + 40, Math.round(v * 3), 77) < dust) return [150, 148, 140]; return s > .78 && s < 1.02 ? [92, 108, 118] : s < .32 ? [40, 50, 58] : [52, 64, 74] };
 const fvBoards = (c, step = 3.4, seed = 1) => (x, n, z) => { const u = x / step, k = Math.floor(u); let m = u - k < .2 ? .8 : 1; const v = h2(k, 3, seed); if (v < .22) m *= .93; else if (v > .86) m *= 1.06;
   if (vn(x * .11 + n * .11, z * .2, seed + 5) > .72) m *= .9; if (z < 2.5) m *= .84; return cmul(c, m) };
 // log walls: rows of rounded logs with a dark seam between them
@@ -4687,7 +4689,7 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
     t3line(M, [-HW - OVR, D / 2, RIDGE + .4], [HW + OVR, D / 2, RIDGE + .4], cmul(roofCol, .65));
     t3line(M, [-HW - OVR, -OVR, eave - .3], [HW + OVR, -OVR, eave - .3], cmul(roofCol, .6));
     // the attic window in the east gable
-    t3face(M, [[HW + .3, D / 2 - 3, WALL + 2], [HW + .3, D / 2 + 3, WALL + 2], [HW + .3, D / 2 + 3, WALL + 7], [HW + .3, D / 2 - 3, WALL + 7]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => Math.abs(n - D / 2) < .4 ? trim : null });
+    t3face(M, [[HW + .3, D / 2 - 3, WALL + 2], [HW + .3, D / 2 + 3, WALL + 2], [HW + .3, D / 2 + 3, WALL + 7], [HW + .3, D / 2 - 3, WALL + 7]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => Math.abs(n - D / 2) < .4 ? trim : glassAt(n - D / 2, z - WALL - 2, 6, 5) });
     // the chimney: brick, or a tin pipe with a cap
     const cn = D * .55, cz0 = RIDGE - 9;
     if (chim === 'brick') { t3box(M, chimX - 3.5, cn - 3, cz0, chimX + 3.5, cn + 3, RIDGE + 9, FV.brick, { tex: (x, n, z) => (((Math.floor(z / 1.6) % 2) ? Math.floor(x + .8) : Math.floor(x)) % 3 === 0 || Math.floor(z * 10) % 16 === 0) ? cmul(FV.brick, .78) : FV.brick });
@@ -4696,7 +4698,7 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
     // the windows: frames, dark glass with a cross (lit by the engine at night), shutters, a flower box
     const win = (cx, wi) => { const fx0 = cx - winW / 2 - 1.4, fx1 = cx + winW / 2 + 1.4;
       t3face(M, [[fx0, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 - 1.6], [fx1, -.3, winZ0 + winH + 1.6], [fx0, -.3, winZ0 + winH + 1.6]], trim, null, { both: true, zb: .2 });
-      t3face(M, [[cx - winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0 + winH], [cx - winW / 2, -.5, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(x - cx) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : null });
+      t3face(M, [[cx - winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0], [cx + winW / 2, -.5, winZ0 + winH], [cx - winW / 2, -.5, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(x - cx) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : glassAt(x - cx, z - winZ0, winW, winH) });
       if (shut) for (const sd of [-1, 1]) { const st = shutBad[wi * 2 + (sd < 0 ? 0 : 1)] || 0; if (st === 2) continue; // (0: in its place, 1: hanging by one hinge, 2: gone)
         const x0 = cx + sd * (winW / 2 + 1.6), x1 = cx + sd * (winW / 2 + 5.4), xa = Math.min(x0, x1), xb = Math.max(x0, x1), z0 = winZ0 - .6, z1 = winZ0 + winH + .6;
         const stx = (x, n, z) => Math.abs(z - winZ0 - winH / 2) < .4 ? cmul(shut, .72) : (vn(x * .5, z * .3, seed + 44) > .8 - decay * .1 ? cmix(shut, [150, 140, 120], .6) : shut);
@@ -4715,9 +4717,9 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
       t3face(M, [[lx - 5, -.45, z0], [lx + 5, -.45, z0], [lx + 5, -.45, z1], [lx - 5, -.45, z1]], [70, 54, 40], null, { both: true, zb: .4, tex: (x, n, z) => Math.abs(x - lx) < .5 ? DK : (Math.floor(z) % 3 === 0 ? cmul([70, 54, 40], .85) : [70, 54, 40]) });
       t3box(M, lx - 6, -1, z0 - 1, lx + 6, -.4, z0, DK); t3box(M, lx - .8, -10, WALL + 1, lx + .8, 2, WALL + 2.6, [96, 72, 50]); t3cyl(M, lx, -9, 1.2, WALL - .4, WALL + 1, [60, 58, 56], { topCol: [70, 68, 64] });
       t3line(M, [lx, -9, WALL - .4], [lx, -9, 12], [150, 132, 100]); t3box(M, lx - 2.4, -10.6, 7, lx + 2.4, -7.4, 12.4, [214, 204, 180], { tex: (x, n, z) => z > 11.6 ? [190, 180, 156] : [214, 204, 180] });
-      for (const ux of loft.wins || []) { t3face(M, [[ux - 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 6], [ux - 3, -.5, WALL - 6]], FV.glass, null, { both: true, inside: true, zb: .4 }); t3box(M, ux - 3.6, -.8, WALL - 12.6, ux + 3.6, -.4, WALL - 12, trim, { clean: true }) } }
+      for (const ux of loft.wins || []) { t3face(M, [[ux - 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 12], [ux + 3, -.5, WALL - 6], [ux - 3, -.5, WALL - 6]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => glassAt(x - ux, z - WALL + 12, 6, 6) }); t3box(M, ux - 3.6, -.8, WALL - 12.6, ux + 3.6, -.4, WALL - 12, trim, { clean: true }) } }
     // the east wall's window and the downpipe
-    if (sideWin) t3face(M, [[HW + .5, D * .45, winZ0], [HW + .5, D * .45 + winW, winZ0], [HW + .5, D * .45 + winW, winZ0 + winH], [HW + .5, D * .45, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(n - D * .45 - winW / 2) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : null });
+    if (sideWin) t3face(M, [[HW + .5, D * .45, winZ0], [HW + .5, D * .45 + winW, winZ0], [HW + .5, D * .45 + winW, winZ0 + winH], [HW + .5, D * .45, winZ0 + winH]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => (Math.abs(n - D * .45 - winW / 2) < .5 || Math.abs(z - winZ0 - winH * .62) < .5) ? trim : glassAt(n - D * .45 - winW / 2, z - winZ0, winW, winH) });
     t3box(M, -HW - 2, -OVR - 1.2, eave - 1.4, HW + 2, -OVR, eave - .3, [116, 120, 122]);
     // a porch: a deck, steps, two posts and a lean-to roof
     if (porch) { const PW = pw, rz = 23;
@@ -4772,6 +4774,88 @@ PF.house = ({ w = 56, d = 44, h = 24, wall = 'board', col = [118, 150, 168], tri
   if (deco.includes('laundry')) solids.push([-HW - 37.2, -D * .3 - 1.4, -HW - 4.8, -D * .3 + 1.4]); // (the posts and the washing between them, hung at the height of a rider's head)
   return { s: sp[0].s, ax, ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], eave]], smoke: chim === 'none' ? [] : [[ch[0], ch[1]]], attach: P(meter ?? HW - 2, 0, WALL - 1.4), solids: solids.map(t3w) } };
 
+// ---- the watermill: a tall old mill, its gable end to the yard, on a fieldstone foundation stepping out into the river; logs below, silvered
+// boards above, the gable boarded with carved bargeboards and a carved towel-board under the peak, the loft door in it with the hoist beam out over
+// it (pulley, rope, a sack on the way up), a steep mossy shingle roof, a cockerel vane at the back of the ridge. The wheel's shaft comes into the
+// front wall through an iron-bound bearing at wheelX; a woodshed leans on the east wall, a plank ramp runs up to the double doors (one leaf open
+// on the dark inside, flour dust about the sill), a red creeper climbs the west corner. ----
+PF.watermill = ({ w = 60, d = 64, h = 40, seed = 71, door = 14, wheelX = -26, wheelZ = 20 } = {}) => {
+  const HW = w / 2, D = d, FZ = 7, Z1 = 25, WALL = h, OVR = 4, RISE = HW * 1.15, APEX = WALL + RISE, ez = WALL - OVR * RISE / HW, zg = x => WALL + RISE * (1 - Math.abs(x) / HW);
+  const LOG = [128, 96, 64], BRD = [122, 108, 90], DK = [58, 44, 32], FR = [80, 62, 44], STONE = [136, 130, 120], ROOF = [94, 82, 68], FLOUR = [226, 222, 210], SHUT = [92, 110, 96], CARV = [168, 140, 100];
+  const logs = fvLogs(LOG, 3.4, seed), shing = fvShingle(ROOF, seed);
+  const flour = (x, z, c) => { const k = clamp(1 - Math.abs(x - door) / 13, 0, 1) * clamp(1 - (z - FZ) / 20, 0, 1); return k > 0 && vn(x * .5, z * .4, seed + 9) < k * .9 ? cmix(c, FLOUR, .25 + .45 * k) : c };
+  const brd = (u, z) => { const q = u / 4, k = Math.floor(q), f = q - k; if (f < .17) return cmul(BRD, .6); let c = cmul(BRD, .88 + .22 * h2(k, 3, seed)); const g = vn(u * .12, z * .07, seed + 5);
+    if (g > .66) c = cmix(c, [156, 152, 144], .55); else if (g < .22) c = cmul(c, .84); if (h2(k, 7, seed) < .05 && ((z + h2(k, 8, seed) * 10) % 14) < 5) c = [34, 28, 24]; return c };
+  const lg = (u, z) => { let c = logs(u, 0, z - FZ); if (z < FZ + 4 && vn(u * .4, z, seed + 3) > .5) c = cmix(c, [74, 92, 52], .35); if (vn(u * .2, z * .2, seed + 4) > .74) c = cmix(c, [150, 138, 120], .5); return c };
+  const stone = (x, z) => { const row = Math.floor(z / 2.3), fz = z / 2.3 - row, q = (x + (row % 2) * 2.2 + h2(row, 1, seed) * 3) / (3.6 + 1.4 * h2(row, 2, seed)), k = Math.floor(q), fx = q - k;
+    if (fz < .2 || fx < .12) return [86, 82, 76]; let c = cmul(STONE, .78 + .36 * h2(k, row, seed + 1)); if (z < 2.6 || x < -HW + 22 && z < 5) c = cmix(c, x < -HW + 22 ? [62, 80, 66] : [80, 90, 62], .5); else if (vn(x * .3, z * .4, seed + 2) > .72) c = cmix(c, [92, 112, 60], .45); return c };
+  const rtex = (x, n, z) => { let c = shing(n * 1.3, x * 1.3 + 40, z); const m = vn(x * .14, n * .09, seed + 30); if (m > .6) c = cmix(c, m > .73 ? [70, 96, 44] : [96, 104, 56], .55); const cx = Math.floor(x / 4.8), cn = Math.floor(n / 6);
+    if (h2(cx, cn, seed + 31) < .05) c = cmix([150, 120, 82], c, .2); else if (h2(Math.floor(x / 2.4), Math.floor(n / 4), seed + 32) < .015) c = [36, 32, 28]; return c };
+  const L = [], WINS = [], P = (x, n, z) => t3p([x, n, z]);
+  const build = () => { const M = T3(), ctr = [0, D / 2, WALL / 2]; M.seed = seed;
+    t3box(M, -HW - 1.2, -1.2, 0, HW + 1.2, D + 1.2, FZ, STONE, { tex: (x, n, z) => stone(x + n * .7, z), noAO: true });
+    // the walls: logs below the belt beam, upright boards and battens above; the gables boarded up to the peak
+    for (const n of [0, D]) { t3face(M, [[-HW, n, FZ], [HW, n, FZ], [HW, n, Z1], [-HW, n, Z1]], LOG, ctr, { tex: (x, nn, z) => flour(x, z, lg(x, z)) }); t3face(M, [[-HW, n, Z1], [HW, n, Z1], [HW, n, WALL], [-HW, n, WALL]], BRD, ctr, { tex: (x, nn, z) => brd(x, z) });
+      t3face(M, [[-HW, n, WALL], [HW, n, WALL], [0, n, APEX]], BRD, ctr, { tex: (x, nn, z) => Math.abs(z - WALL - .3) < .5 ? DK : brd(x + 2, z) }) }
+    for (const x of [-HW, HW]) { t3face(M, [[x, 0, FZ], [x, D, FZ], [x, D, Z1], [x, 0, Z1]], LOG, ctr, { tex: (xx, n, z) => lg(n, z) }); t3face(M, [[x, 0, Z1], [x, D, Z1], [x, D, WALL], [x, 0, WALL]], BRD, ctr, { tex: (xx, n, z) => brd(n + 50, z) }) }
+    for (let z = FZ; z < Z1 - 1; z += 3.4) for (const sx of [-1, 1]) t3box(M, sx * HW - (sx < 0 ? 3 : 1), -2.6, z, sx * HW + (sx < 0 ? 1 : 3), 1, z + 3, LOG, { zb: .3, tex: (x, n, zz) => n < -2.4 ? (Math.hypot(x - sx * HW - (sx < 0 ? -1 : 1), zz - z - 1.5) < .7 ? [92, 66, 44] : [176, 140, 96]) : LOG });
+    t3box(M, -HW - 1.4, -1.4, Z1 - .5, HW + 1.4, D + 1.4, Z1 + 1, DK); for (const sx of [-1, 1]) t3box(M, sx * HW - 1, -.9, Z1, sx * HW + 1, .4, WALL, DK, { zb: .3 });
+    // the roof, its ridge running back from the gable: two steep slopes of shingle, moss in drifts, shingles gone, a newer patch
+    for (const sx of [-1, 1]) t3face(M, [[sx * (HW + OVR), -OVR, ez], [0, -OVR, APEX], [0, D + OVR, APEX], [sx * (HW + OVR), D + OVR, ez]], ROOF, [0, D / 2, 0], { tex: rtex });
+    t3box(M, -1, -OVR - .5, APEX - .4, 1, D + OVR + .5, APEX + 1, DK);
+    // the bargeboards along the gable's edges, sawn into teeth, and the carved towel-board hanging under the peak
+    for (const sx of [-1, 1]) { const a = [sx * (HW + OVR), -OVR - .4, ez - .4], b = [0, -OVR - .4, APEX + .4]; for (let i = 0; i < 3; i++) t3line(M, [a[0], a[1], a[2] - i * .8], [b[0], b[1], b[2] - i * .8], i === 2 ? DK : CARV);
+      for (let u = .06; u < .96; u += .08) { const x = a[0] + (b[0] - a[0]) * u, z = a[2] + (b[2] - a[2]) * u - 2.2; t3line(M, [x, -OVR - .4, z], [x, -OVR - .4, z - 1.4], CARV) } }
+    t3face(M, [[-1.6, -OVR - .3, APEX - 1], [1.6, -OVR - .3, APEX - 1], [1.6, -OVR - .3, APEX - 9], [0, -OVR - .3, APEX - 11], [-1.6, -OVR - .3, APEX - 9]], CARV, null, { both: true, clean: true, zb: .6, tex: (x, n, z) => Math.hypot(x, z - APEX + 5) < .8 || Math.abs(z - APEX + 8) < .4 ? DK : CARV });
+    // the windows: small, four panes, the frames dark wood, the glass dusty; shutters, one hanging by a hinge
+    const win = (cx, z0, ww, hh, sh, bad) => { t3face(M, [[cx - ww / 2 - 1.1, -.3, z0 - 1], [cx + ww / 2 + 1.1, -.3, z0 - 1], [cx + ww / 2 + 1.1, -.3, z0 + hh + 1], [cx - ww / 2 - 1.1, -.3, z0 + hh + 1]], FR, null, { both: true, zb: .2 });
+      t3face(M, [[cx - ww / 2, -.5, z0], [cx + ww / 2, -.5, z0], [cx + ww / 2, -.5, z0 + hh], [cx - ww / 2, -.5, z0 + hh]], FV.glass, null, { both: true, inside: true, zb: .4, tex: (x, n, z) => Math.abs(x - cx) < .45 || Math.abs(z - z0 - hh * .5) < .45 ? FR : glassAt(x - cx, z - z0, ww, hh, .35) });
+      t3box(M, cx - ww / 2 - 1.6, -1.6, z0 - 1.8, cx + ww / 2 + 1.6, -.2, z0 - 1, cmix(FR, FLOUR, .3));
+      if (sh) for (const sd of [-1, 1]) { const x0 = cx + sd * (ww / 2 + 1.3), x1 = cx + sd * (ww / 2 + 1.3 + ww / 2 + .6), xa = Math.min(x0, x1), xb = Math.max(x0, x1), st = (x, n, z) => Math.abs(z - z0 - hh / 2) < .4 ? cmul(SHUT, .7) : vn(x * .5, z * .3, seed + 44) > .7 ? cmix(SHUT, [150, 140, 120], .6) : SHUT;
+        if (bad && sd > 0) t3face(M, [[xa, -.8, z0 + hh + .4], [xa + 1, -3.4, z0 + hh - 3], [xb + .4, -3.4, z0 - 3.6], [xb - .6, -.8, z0 - .4]], SHUT, null, { both: true, zb: .6, tex: st });
+        else t3face(M, [[xa, -.8, z0 - .4], [xb, -.8, z0 - .4], [xb, -.8, z0 + hh + .4], [xa, -.8, z0 + hh + .4]], SHUT, null, { both: true, zb: .6, tex: st }) }
+      const a = P(cx - ww / 2, -.5, z0 + hh), b = P(cx + ww / 2, -.5, z0), q = P(cx, 0, z0 + hh / 2); WINS.push({ x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]), cx: Math.round(P(cx, -.5, 0)[0]), cz: Math.round(P(cx, -.5, z0 + hh * .5)[1]) });
+      L.push({ x: q[0], y: q[1], r: 11, c: '255,206,128', a: .55, k: 'window', win: WINS.length - 1 }); L.push({ x: q[0], y: 2, r: 22, sy: .5, c: '255,196,120', a: .26, k: 'window', win: WINS.length - 1 }) };
+    win(-2, FZ + 6, 7, 8, true, true); win(2, Z1 + 5, 6, 7, true, false); win(21, Z1 + 5, 6, 7, false, false); win(-15, WALL + 4, 5, 5, false, false); win(15, WALL + 4, 5, 5, false, false);
+    // the loft door in the gable, the hoist beam out over it from under the peak, the pulley, the rope, a sack on the way up
+    { const lz0 = WALL + 2, lz1 = WALL + 15; t3face(M, [[-4, -.4, lz0], [4, -.4, lz0], [4, -.4, lz1], [-4, -.4, lz1]], [76, 58, 40], null, { both: true, zb: .4, tex: (x, n, z) => Math.abs(x) < .4 ? [40, 32, 26] : Math.abs(z - lz0 - 6.5 + x * .9) < .5 ? [58, 44, 30] : ((Math.floor(x + 8) % 2) ? [88, 66, 46] : [76, 58, 40]) });
+      t3box(M, -5, -1.4, lz0 - 1, 5, -.2, lz0, DK); t3box(M, -.9, -11, APEX - 6, .9, 1, APEX - 4.4, [100, 76, 52]); t3line(M, [0, -9, APEX - 6], [0, -3, APEX - 12], DK);
+      t3cyl(M, 0, -9.6, 1.3, APEX - 7.4, APEX - 6, [64, 62, 58], { topCol: [70, 68, 64] }); t3line(M, [0, -9.6, APEX - 7.4], [0, -9.6, Z1 + 6], [150, 132, 100]);
+      t3box(M, -2.4, -11.2, Z1, 2.4, -8, Z1 + 5.6, [214, 204, 180], { tex: (x, n, z) => z > Z1 + 4.8 ? [190, 180, 156] : [214, 204, 180] }) }
+    // the double doors at the top of the ramp: the left leaf shut and braced, the right one swung open on the dark inside, flour about the sill
+    const dl = door - 6, dr = door + 6, dz = FZ + 18;
+    t3face(M, [[dl - 1, -.25, FZ], [dr + 1, -.25, FZ], [dr + 1, -.25, dz + 1.2], [dl - 1, -.25, dz + 1.2]], DK, null, { both: true, zb: .2 });
+    t3face(M, [[door, -.4, FZ], [dr, -.4, FZ], [dr, -.4, dz], [door, -.4, dz]], [30, 26, 22], null, { both: true, inside: true, zb: .3, tex: (x, n, z) => z < FZ + 4 && vn(x, z, seed + 12) < .5 ? [96, 92, 84] : (Math.abs(x - door - 3.6) < 1.8 && z < FZ + 5.5 ? [176, 168, 146] : [30, 26, 22]) });
+    t3face(M, [[dl, -.45, FZ], [door, -.45, FZ], [door, -.45, dz], [dl, -.45, dz]], [106, 80, 56], null, { both: true, zb: .4, tex: (x, n, z) => { let c = ((Math.floor(x - dl) % 2) ? [106, 80, 56] : [94, 70, 48]); if (Math.abs((z - FZ) - (x - dl) * 3) < .7 || Math.abs(z - FZ - 3) < .5 || Math.abs(z - dz + 3) < .5) c = [70, 52, 36]; return flour(x, z, c) } });
+    t3face(M, [[dr, -.5, FZ], [dr - 2.2, -5.6, FZ], [dr - 2.2, -5.6, dz], [dr, -.5, dz]], [106, 80, 56], null, { both: true, zb: .5, tex: (x, n, z) => Math.abs(z - FZ - 3) < .5 || Math.abs(z - dz + 3) < .5 ? [70, 52, 36] : [100, 76, 54] });
+    t3face(M, [[door - 7.5, -15, 0], [door + 7.5, -15, 0], [door + 7.5, -.3, FZ], [door - 7.5, -.3, FZ]], [120, 96, 66], [door, -20, 20], { zb: .1, tex: (x, n, z) => { let c = Math.abs(((n % 2.2) + 2.2) % 2.2) < .35 ? [78, 60, 42] : [120, 96, 66]; if (Math.abs(x - door) < 4 && vn(x * .6, n * .5, seed + 13) > .45) c = cmix(c, FLOUR, .55); return c } });
+    for (const sx of [-1, 1]) t3box(M, door + sx * 7.5 - .5, -15, 0, door + sx * 7.5 + .5, -.3, FZ + .6, DK);
+    // the bearing the wheel's shaft turns in: an oak block bolted through, an iron collar, grease run black down the logs below it
+    t3box(M, wheelX - 3, -2.2, wheelZ - 3.4, wheelX + 3, 0, wheelZ + 3.4, [74, 56, 40], { tex: (x, n, z) => Math.abs(x - wheelX) > 2.2 && Math.abs(z - wheelZ) > 2.4 ? [56, 56, 58] : [74, 56, 40] });
+    t3cyl(M, wheelX, -2.6, 1.8, wheelZ - 1.6, wheelZ + 1.6, [62, 60, 58], { topCol: [44, 42, 40] }); t3face(M, [[wheelX - 1, -.1, FZ], [wheelX + 1.4, -.1, FZ], [wheelX + 1, -.1, wheelZ - 3.4], [wheelX - .8, -.1, wheelZ - 3.4]], [36, 32, 28], null, { both: true, zb: .25 });
+    // the cockerel at the front of the ridge, over the peak: a rod, the arms of the compass, the bird cut out of sheet iron
+    { const vn0 = 3, IR = [46, 44, 44]; t3line(M, [0, vn0, APEX + 1], [0, vn0, APEX + 13], IR); t3line(M, [-3.4, vn0, APEX + 8], [3.4, vn0, APEX + 8], IR); t3line(M, [0, vn0 - 3, APEX + 8], [0, vn0 + 3, APEX + 8], IR);
+      const R = [[0, 0], [4.4, 0], [5.6, 1.6], [5, 3.4], [6.4, 5.6], [5.6, 6.6], [4.6, 5.4], [3.2, 3.4], [1.2, 4.6], [-.4, 6.6], [-1.6, 4.4], [-.4, 2.2]];
+      t3face(M, R.map(([a, b]) => [-2.4 + a, vn0, APEX + 13 + b]), IR, null, { both: true, clean: true, zb: .5 }) }
+    // the woodshed leaning on the east wall under the eaves: its front stacked with split logs, end on, a mono-pitch roof
+    { const x0 = HW, x1 = HW + 18, n0 = 10, n1 = D - 10, zh = 14, zl = 23;
+      t3face(M, [[x0, n0, 0], [x1, n0, 0], [x1, n0, zh], [x0, n0, zh]], [150, 118, 80], null, { both: true, tex: (x, n, z) => { const i = Math.floor(x / 2.3 + (Math.floor(z / 2.2) % 2) * .5), j = Math.floor(z / 2.2), u = x / 2.3 + (j % 2) * .5 - i - .5, v = z / 2.2 - j - .5, rr = Math.hypot(u, v);
+        return rr > .48 ? [52, 40, 30] : rr < .14 ? [140, 108, 72] : cmul([188, 152, 104], .86 + .26 * h2(i, j, seed + 50)) } });
+      t3face(M, [[x0, n0, zh], [x1, n0, zh], [x0, n0, zl]], BRD, null, { both: true, tex: (x, n, z) => brd(x + 60, z) });
+      t3face(M, [[x1, n0, 0], [x1, n1, 0], [x1, n1, zh], [x1, n0, zh]], BRD, [HW, D / 2, 8], { tex: (x, n, z) => brd(n + 70, z) });
+      t3face(M, [[x0, n0 - 2, zl], [x1 + 2, n0 - 2, zh - .6], [x1 + 2, n1 + 2, zh - .6], [x0, n1 + 2, zl]], ROOF, [HW + 10, D / 2, 0], { tex: rtex });
+      for (const n of [n0, n1]) t3box(M, x1 - 1, n - .6, 0, x1 + .2, n + .6, zh, DK) }
+    // the lantern on its bracket by the door
+    t3line(M, [dr + 4, -.4, dz + 3], [dr + 4, -3.6, dz + 3], [56, 56, 58]); t3box(M, dr + 3, -4.8, dz - .2, dr + 5, -3, dz + 2.4, [255, 220, 160], { clean: true }); t3box(M, dr + 2.8, -5, dz + 2.4, dr + 5.2, -2.8, dz + 3, [50, 48, 46]);
+    // a worn-out millstone leant against the foundation by the ramp
+    { const cx = door - 14, cz = 5.2, pts = []; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; pts.push([cx + Math.cos(a) * 5, -2.2 + Math.sin(a) * .8, cz + Math.sin(a) * 5]) } t3face(M, pts, [150, 146, 136], [cx, 5, cz], { tex: (x, n, z) => { const rr = Math.hypot(x - cx, z - cz); return rr < 1.1 ? [52, 50, 48] : rr > 4.2 ? [128, 124, 116] : ((Math.atan2(z - cz, x - cx) * 4 / Math.PI + 8) % 1 < .18 ? [126, 122, 114] : [150, 146, 136]) } }) }
+    // the creeper on the east corner, red for the autumn, thinning out up the wall
+    { const r = mulberry(seed + 5); for (let i = 0; i < 160; i++) { const z = FZ + Math.pow(r(), 1.5) * (WALL - FZ - 2), spread = 14 * (1 - (z - FZ) / (WALL - FZ)) + 2, x = HW - r() * spread; const C = [[168, 40, 36], [196, 66, 40], [138, 34, 30], [212, 122, 52], [110, 30, 28]][Math.floor(r() * 5)]; M.dots.push([[x, -.7, z], C]) } }
+    return M };
+  const sp = t3sprite(build, [0]);
+  const q = P(door + 10, -4, FZ + 19.2); L.push({ x: q[0], y: q[1], r: 8, c: '255,214,160', a: .9, k: 'lamp', glare: true }); L.push({ x: q[0] - 6, y: 14, r: 40, sy: .6, c: '255,214,160', a: .55, k: 'lamp', fall: 'sq' });
+  const e0 = P(-HW - OVR, -OVR, ez), e1 = P(-HW - OVR, D + OVR, ez);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, night: null, lights: L, wins: WINS, drip: [[e0[0], e0[1], e1[0], e1[1], ez]], smoke: [], attach: P(HW - 2, 0, WALL - 2), solids: [[-HW - 1.5, -D - 1.5, HW + 1.5, 0], [HW, -D + 9, HW + 19, -9]].map(t3w) } };
 // ---- a boat, seen from the south: a lofted hull (bow pointed, stern blunt), the outside painted, the inside bare wood, thwarts, oars.
 // kind: 'row' or 'motor' (an outboard on the stern); up: turned over on the beach; water: afloat (the ripples round it and its rocking are the water's: water.js) ----
 PF.boat = ({ kind = 'row', col = [66, 112, 150], L = 46, up = false, water = false, flip = false, seed = 1 } = {}) => {
@@ -5132,13 +5216,27 @@ function drawFlumeWater(o) { const q = o.params || {}, dx = q.dx ?? -50, dn = q.
     for (let j = 0; j < n; j++) { const [x, y] = at(u - j * .009, o2); ctx.fillStyle = `rgba(222,240,246,${(al * (1 - j / n)).toFixed(2)})`; ctx.fillRect(x, y, 1, 1) } }
   // (a glint that slips along with the water)
   for (let k = 0; k < 4; k++) { const h = h2(k, 16, 9921), u = (t * .7 + h) % 1, [x, y] = at(u, (h - .5) * w); if (Math.floor(t * 6 + k) % 3) { ctx.fillStyle = 'rgba(248,252,252,.9)'; ctx.fillRect(x, y, 1, 1) } }
-  // a few leaves riding it, turning as they go, dropping off the end
-  for (let k = 0; k < 3; k++) { const h = h2(k, 14, 9922), per = 7 + 5 * h, u = ((t + h * 31) % per) / per * 1.15; if (u > 1.12) continue; const C = [[196, 92, 36], [222, 168, 54], [168, 58, 34]][k];
+  if (q.gate === 'weir') { // (white water out under the raised board)
+    for (let k = 0; k < 10; k++) { const u = h2(k, Math.floor(t * 9), 9931) * .07, [x, y] = at(u, (h2(k + 30, Math.floor(t * 9), 9931) - .5) * 2 * w, .4); ctx.fillStyle = 'rgba(236,244,246,.85)'; ctx.fillRect(x, y, 1, 1) }
+    if (q.rack) { const f = 1 + q.rack / L, [rx, ry] = t3p([dx * f, dn * f, 0]), X = o.x + rx, Y = o.y + ry; // (the pond drawn in toward the rack: rings closing on it, a leaf or two drifting to it)
+      for (let k = 0; k < 4; k++) { const rad = 4 + (1 - ((t * .35 + k / 4) % 1)) * 22, al = .32 * Math.min(1, (26 - rad) / 6) * Math.min(1, (rad - 4) / 4); if (al <= .02) continue; ctx.fillStyle = `rgba(190,214,222,${al.toFixed(2)})`;
+        for (let a2 = Math.PI * 1.15; a2 < Math.PI * 1.85; a2 += .9 / rad) { const x = Math.round(X + Math.cos(a2) * rad), y = Math.round(Y - 3 + Math.sin(a2) * rad * .55); if (y > Y - 4 || MAPW.on && mapwD(x, y) > -1) continue; ctx.fillRect(x, y, 1, 1) } }
+      for (let k = 0; k < 2; k++) { const h = h2(k, 41, 9932), u = ((t * .05 + h) % 1), a2 = Math.PI * (1.2 + .6 * h), d2 = 34 * (1 - u), x = Math.round(X + Math.cos(a2) * d2), y = Math.round(Y + Math.sin(a2) * d2 * .55); if (MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = k ? 'rgb(206,150,52)' : 'rgb(178,70,36)'; ctx.fillRect(x, y, 2, 1) } } }
+  // a few leaves riding it, turning as they go, dropping off the end (or carried on round the corner into the next run)
+  for (let k = 0; k < 3; k++) { const h = h2(k, 14, 9922), per = 7 + 5 * h, u = ((t + h * 31) % per) / per * 1.15; if (u > 1.12 || q.cont && u > 1) continue; const C = [[196, 92, 36], [222, 168, 54], [168, 58, 34]][k];
     let x, y; if (u <= 1) [x, y] = at(u, Math.sin(t * 1.3 + k * 2) * (w - .8), .3); else { [x, y] = at(1, 0, .3); y += (u - 1) / .12 * 22 } ctx.fillStyle = `rgb(${C[0]},${C[1]},${C[2]})`; ctx.fillRect(x, y, 2, 1); if (Math.floor(t * 3 + k) % 2) ctx.fillRect(x, y - 1, 1, 1) } }
 function drawWheelWater() { for (const o of VIS) if (o.p === 'flume') drawFlumeWater(o);
+  // flour dust drifting out of the mill's open door, catching the light, settling
+  for (const o of VIS) { if (o.p !== 'watermill') continue; const X = o.x + (o.params && o.params.door || 14) + 3, Y = o.y - 12; for (let k = 0; k < 9; k++) { const h = h2(k, 18, 9941), ph = (t * (.12 + .08 * h) + h * 3) % 1, x = X + (h - .5) * 5 + ph * (8 + 10 * h2(k, 19, 9941)) + Math.sin(t * 1.3 + k * 2) * 1.5, y = Y + (h2(k, 20, 9941) - .5) * 8 - ph * 7 + ph * ph * 9;
+    const a = .55 * Math.min(1, ph * 6) * (1 - ph); ctx.fillStyle = `rgba(238,234,222,${a.toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), 1, 1) } }
   for (const o of VIS) { if (o.p !== 'wheel') continue; const r = o.params && o.params.r || 20, x0 = Math.round(o.x - 4), top = Math.round(o.y - 3 - 2 * r - 2);
-    for (let k = 0; k < 26; k++) { const h = h2(k, 15, 9923), ph = (t * (1.9 + .8 * h) + h * 7) % 1, y = top + ph * (r * 1.15), x = x0 - Math.round(Math.sin(ph * 1.4) * r * .55) + Math.round((h - .5) * 5 * (.4 + ph)); ctx.fillStyle = ph < .7 ? `rgba(196,222,232,${(.85 - ph * .4).toFixed(2)})` : `rgba(238,246,248,${(1.2 - ph).toFixed(2)})`; ctx.fillRect(x, Math.round(y), ph < .5 ? 2 : 1, ph < .5 ? 2 : 1) }
-    for (let k = 0; k < 6; k++) { const u = h2(k, Math.floor(t * 10), 9924), v = h2(k + 7, Math.floor(t * 10), 9924); ctx.fillStyle = 'rgba(240,248,250,.75)'; ctx.fillRect(Math.round(x0 - r * .5 - 3 + u * 8), Math.round(top + r * .55 + v * 6), 1, 1) }
+    let F = null, bd = 34; for (const f of VIS) if (f.p === 'flume') { const d2 = Math.hypot(f.x - o.x, f.y - o.y); if (d2 < bd) { bd = d2; F = f } }
+    if (F) { const q = F.params || {}, z = q.z ?? 40, z0 = q.z0 ?? z + 2, ex = F.x, ey = F.y - z - 1.8, mx = (q.dx ?? -50) + (q.dn ?? 140) * T3S, my = -(q.dn ?? 140) - z0, ml = Math.hypot(mx, my - (-z)) || 1, ux = -mx / ml, uy = -(my + z) / ml;
+      for (let k = 0; k < 24; k++) { const h = h2(k, 15, 9923), ph = (t * (1.7 + .7 * h) + h * 7) % 1, x = ex + ux * ph * 7 + (h - .5) * 3, y = ey + uy * ph * 7 + ph * ph * 9 + (h2(k, 16, 9923) - .5) * 2; ctx.fillStyle = `rgba(206,228,236,${(.9 - ph * .5).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), ph < .4 ? 2 : 1, 1) }
+      for (let k = 0; k < 8; k++) { const u = h2(k, Math.floor(t * 10), 9924), v = h2(k + 7, Math.floor(t * 10), 9924); ctx.fillStyle = 'rgba(240,248,250,.8)'; ctx.fillRect(Math.round(ex + ux * 7 - 2 + u * 7), Math.round(ey + 7 + v * 6), 1, 1) }
+      for (let k = 0; k < 10; k++) { const h = h2(k, 17, 9925), ph = (t * (1.1 + .5 * h) + h * 5) % 1, x = o.x + r * (.55 + .4 * h), y = o.y - 3 - r * (1 - .9 * h) + ph * r * (.9 + .5 * h); if (y > o.y) continue; ctx.fillStyle = `rgba(214,232,238,${(.75 * (1 - ph)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), 1, 1) } // (water running off the paddles as they come up)
+    } else for (let k = 0; k < 26; k++) { const h = h2(k, 15, 9923), ph = (t * (1.9 + .8 * h) + h * 7) % 1, y = top + ph * (r * 1.15), x = x0 - Math.round(Math.sin(ph * 1.4) * r * .55) + Math.round((h - .5) * 5 * (.4 + ph)); ctx.fillStyle = ph < .7 ? `rgba(196,222,232,${(.85 - ph * .4).toFixed(2)})` : `rgba(238,246,248,${(1.2 - ph).toFixed(2)})`; ctx.fillRect(x, Math.round(y), ph < .5 ? 2 : 1, ph < .5 ? 2 : 1) }
+    if (!F) for (let k = 0; k < 6; k++) { const u = h2(k, Math.floor(t * 10), 9924), v = h2(k + 7, Math.floor(t * 10), 9924); ctx.fillStyle = 'rgba(240,248,250,.75)'; ctx.fillRect(Math.round(x0 - r * .5 - 3 + u * 8), Math.round(top + r * .55 + v * 6), 1, 1) }
     for (let k = 0; k < 9; k++) { const u = h2(k, Math.floor(t * 8), 9913), v = h2(k + 20, Math.floor(t * 8), 9913); ctx.fillStyle = 'rgba(236,244,244,.8)'; ctx.fillRect(Math.round(o.x - r * .7 + u * r * 1.4), Math.round(o.y - 2 + v * 4), 1, 1) }
     for (let k = 0; k < 14; k++) { const h = h2(k, 5, 9914), ph = (t * (.45 + .3 * h) + h * 3) % 1, x = o.x - r * .5 + h * r + (h - .5) * ph * 16, y = o.y + 2 + ph * 26; if (MAPW.on && mapwD(x, y) > -1) continue; ctx.fillStyle = `rgba(226,238,240,${(.7 * (1 - ph)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), ph < .4 ? 2 : 1, 1) } } }
 function drawWater(cx0, cy0) {
@@ -5367,17 +5465,20 @@ PF.gaterest = ({ seed = 2 } = {}) => { const sp = t3sprite(() => { const M = T3(
 // ---- the mill's things ----
 // an overshot water wheel, seen face on: two rims, eight spokes, sixteen buckets round it, an iron hub; wet and darker below. Six frames turn it
 // through an eighth of a turn (its spokes repeat every eighth), and the engine steps them round (wheelIdx)
-PF.wheel = ({ r = 20, seed = 1 } = {}) => { const W = 2 * r + 10, H = 2 * r + 8, cx = r + 5, cy = r + 3, wood = [[84, 62, 42], [112, 84, 56], [146, 112, 76]], N = 6;
+PF.wheel = ({ r = 20, seed = 1, th = 6 } = {}) => { const bx = th * T3S, by = -th, W = 2 * r + 12 + Math.ceil(bx * 1.6), H = 2 * r + 8 + th * 2, cx = r + 6, cy = r + 3 + th * 2, wood = [[84, 62, 42], [112, 84, 56], [146, 112, 76]], N = 6;
   const frame = k => pfMake(W, H, cx, H - 3, s => { const a0 = k / N * Math.PI / 4;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const dx = x + .5 - cx, dy = y + .5 - cy, rr = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) - a0, wet = dy > 2 ? .78 : 1; let c = null;
-      const pa = ((ang % (Math.PI / 8)) + Math.PI / 8) % (Math.PI / 8), sa = ((ang % (Math.PI / 4)) + Math.PI / 4) % (Math.PI / 4), sd = rr * Math.sin(Math.min(sa, Math.PI / 4 - sa));
-      if (rr >= r - 1 && rr <= r + 3.2 && pa < .16) c = wood[2]; else if (rr >= r - 2.4 && rr <= r - .6) c = wood[1]; else if (Math.abs(rr - r * .55) < .8) c = wood[0]; else if (rr < r - 1 && sd < .8) c = wood[0];
-      if (rr < 3.2) c = rr < 1.4 ? [36, 36, 38] : [70, 68, 66];
-      if (c) { if (h2(x, y, seed) < .12) c = cmul(c, .88); s.set(x, y, cmul(c, wet)) } } });
-  const F = Array.from({ length: N }, (_, k) => frame(k)); return { s: F[0].s, ax: F[0].ax, ay: F[0].ay, solids: [[-r, -3, r, 2]], frames: F.map(f => ({ s: f.s })) } };
+    const front = (dx, dy) => { const rr = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) - a0, pa = ((ang % (Math.PI / 8)) + Math.PI / 8) % (Math.PI / 8), sa = ((ang % (Math.PI / 4)) + Math.PI / 4) % (Math.PI / 4), sd = rr * Math.sin(Math.min(sa, Math.PI / 4 - sa));
+      if (rr < 3.2) return rr < 1.4 ? [36, 36, 38] : [70, 68, 66]; if (rr >= r - 1 && rr <= r + 3.2 && pa < .16) return wood[2]; if (rr >= r - 2.4 && rr <= r - .6) return wood[1]; if (Math.abs(rr - r * .55) < .8) return wood[0]; if (rr < r - 1 && sd < .8) return wood[0]; return null };
+    const paddle = (dx, dy) => { const rr = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) - a0, pa = ((ang % (Math.PI / 8)) + Math.PI / 8) % (Math.PI / 8); return rr >= r - .8 && rr <= r + 3.2 && pa < .22 };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const dx = x + .5 - cx, dy = y + .5 - cy; let c = front(dx, dy), back = false;
+      if (!c) for (let q = 1; q <= 6; q++) { const t = q / 6; if (paddle(dx - bx * t, dy - by * t)) { c = cmul(wood[2], .8 - .14 * t); break } } // (the paddle boards, end on, running back to the far rim)
+      if (!c) { const rr = Math.hypot(dx - bx, dy - by); if (rr >= r - 2.4 && rr <= r - .6) { c = wood[1]; back = true } else if (rr < 2.4) c = [40, 40, 42] } // (the far rim)
+      if (!c) { const L2 = bx * bx + by * by, t = (dx * bx + dy * by) / L2, off = Math.abs(dx * by - dy * bx) / Math.sqrt(L2); if (t > 0 && t < 1.7 && off < 1.7) c = off < .6 ? [70, 66, 62] : [48, 46, 44] } // (the shaft, into the wall)
+      if (c) { if (h2(x, y, seed) < .12) c = cmul(c, .88); s.set(x, y, cmul(c, (dy > 2 ? .78 : 1) * (back ? .62 : 1))) } } });
+  const F = Array.from({ length: N }, (_, k) => frame(k)); return { s: F[0].s, ax: F[0].ax, ay: F[0].ay, solids: [[-r, -th - 2, r, 2]], frames: F.map(f => ({ s: f.s })) } };
 // the flume: a plank trough on trestles from the mill pond to the top of the wheel, water running in it (its anchor: the end over the wheel; dx, dn: where its
 // mouth at the pond is, z: its height). A thing high up: nothing under it stops a bike
-PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const L = Math.hypot(dx, dn), ux = -dx / L, un = -dn / L, px = -un, pn = ux, w = 4, A = [dx, dn], B = [0, 0], zA = z0 ?? z + 2;
+PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1, gate = 'pond', rack = 0, box = false } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const L = Math.hypot(dx, dn), ux = -dx / L, un = -dn / L, px = -un, pn = ux, w = 4, A = [dx, dn], B = [0, 0], zA = z0 ?? z + 2;
     const P = (q, o, zz) => [q[0] + px * o, q[1] + pn * o, zz], wood = [124, 94, 62], dark = [76, 56, 38], zz = u => zA + (z - zA) * u, at = u => [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u];
     const plank = (x, n, zq, c) => { const k = Math.floor((x * ux + n * un) / 5); return h2(k, 3, seed) < .2 ? cmul(c, .84) : h2(k, 4, seed) < .1 ? cmix(c, [64, 92, 56], .35) : c };
     t3face(M, [P(A, -w, zA), P(B, -w, z), P(B, w, z), P(A, w, zA)], wood, [0, 0, z - 9], { clean: true });
@@ -5387,9 +5488,20 @@ PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1 } = {}) => { const
     for (let s = 10; s < L - 4; s += 22) { const u = s / L, q = at(u); t3line(M, P(q, -w - .4, zz(u) + 3.4), P(q, w + .4, zz(u) + 3.4), dark) } // (the spreaders across its top, one over each pair of legs)
     for (let s = 10; s < L - 4; s += 22) { const u = s / L, q = at(u), h = zz(u); for (const o of [-w, w]) t3box(M, q[0] + px * o * 1.3 - .6, q[1] + pn * o * 1.3 - .6, 0, q[0] + px * o * 1.3 + .6, q[1] + pn * o * 1.3 + .6, h, dark); t3line(M, P(q, -w * 1.3, h * .2), P(q, w * 1.3, h * .7), dark); t3line(M, P(q, -w * 1.3, h - 1), P(q, w * 1.3, h - 1), dark) }
     // the sluice at its mouth: two posts, a beam, the gate board raised in its slots
-    for (const o of [-w - 1, w + 1]) t3box(M, A[0] + px * o - .7, A[1] + pn * o - .7, 0, A[0] + px * o + .7, A[1] + pn * o + .7, zA + 12, dark);
-    t3box(M, A[0] + px * (-w - 1.6) - .6, A[1] + pn * (-w - 1.6) - .6, zA + 11, A[0] + px * (w + 1.6) + .6, A[1] + pn * (w + 1.6) + .6, zA + 12.4, dark);
-    t3face(M, [P(A, -w, zA + 5), P(A, w, zA + 5), P(A, w, zA + 10), P(A, -w, zA + 10)], [96, 72, 50], null, { both: true, z: 2 }); t3line(M, P(A, 0, zA + 10), P(A, 0, zA + 14), [60, 58, 56]);
+    if (gate === 'weir') { const IR = [58, 56, 54];
+      for (const o of [-w - 1.2, w + 1.2]) t3box(M, A[0] + px * o - .9, A[1] + pn * o - .9, 0, A[0] + px * o + .9, A[1] + pn * o + .9, zA + 16, dark);
+      t3box(M, A[0] + px * (-w - 2) - .7, A[1] + pn * (-w - 2) - .7, zA + 15, A[0] + px * (w + 2) + .7, A[1] + pn * (w + 2) + .7, zA + 16.8, dark);
+      t3face(M, [P(A, -w, zA + 5.4), P(A, w, zA + 5.4), P(A, w, zA + 13), P(A, -w, zA + 13)], [96, 72, 50], null, { both: true, z: 2, tex: (x, n, zq) => Math.abs(zq - zA - 9) < .4 ? [70, 52, 36] : zq < zA + 7 ? [70, 84, 66] : [96, 72, 50] });
+      t3face(M, [P(A, -w, zA + 1.4), P(A, w, zA + 1.4), P(A, w, zA + 5.4), P(A, -w, zA + 5.4)], [28, 38, 42], null, { both: true, z: 1 });
+      t3box(M, A[0] - .45, A[1] - .45, zA + 13, A[0] + .45, A[1] + .45, zA + 23, IR, { tex: (x, n, zq) => (zq % 1.2) < .4 ? [40, 40, 40] : IR });
+      let pv = null; for (let i = 0; i <= 14; i++) { const a2 = i / 14 * TAU, p = P(A, Math.cos(a2) * 3.4, zA + 19.6 + Math.sin(a2) * 3.4); if (pv) t3line(M, pv, p, IR); pv = p } for (let i = 0; i < 4; i++) { const a2 = i / 4 * Math.PI; t3line(M, P(A, Math.cos(a2) * 3.4, zA + 19.6 + Math.sin(a2) * 3.4), P(A, -Math.cos(a2) * 3.4, zA + 19.6 - Math.sin(a2) * 3.4), IR) }
+      if (rack) { const q = [A[0] - ux * rack, A[1] - un * rack], r2 = mulberry(seed + 3); for (let o2 = -w - 1.4; o2 <= w + 1.5; o2 += 1.25) t3line(M, P(q, o2, 0), P(q, o2, 6.4), [62, 60, 58]); t3line(M, P(q, -w - 2, 6.4), P(q, w + 2, 6.4), dark); t3line(M, P(q, -w - 2, 3.4), P(q, w + 2, 3.4), dark);
+        for (const o of [-w - 2, w + 2]) t3box(M, q[0] + px * o - .7, q[1] + pn * o - .7, 0, q[0] + px * o + .7, q[1] + pn * o + .7, 7.6, dark);
+        for (let i = 0; i < 7; i++) M.dots.push([P(q, (r2() - .5) * 2 * w, .6 + r2() * 5), [[196, 92, 36], [222, 168, 54], [168, 58, 34], [120, 96, 50]][i % 4]]) } }
+    if (box) t3box(M, -w - 1.6, -w - 1.6, 0, w + 1.6, w + 1.6, z + 3.6, wood, { tex: (x, n, zq) => zq > z + 3.4 && Math.abs(x) < w + .4 && Math.abs(n) < w + .4 ? [92, 140, 162] : plank(x, n, zq, wood) });
+    if (gate === 'pond') for (const o of [-w - 1, w + 1]) t3box(M, A[0] + px * o - .7, A[1] + pn * o - .7, 0, A[0] + px * o + .7, A[1] + pn * o + .7, zA + 12, dark);
+    if (gate === 'pond') { t3box(M, A[0] + px * (-w - 1.6) - .6, A[1] + pn * (-w - 1.6) - .6, zA + 11, A[0] + px * (w + 1.6) + .6, A[1] + pn * (w + 1.6) + .6, zA + 12.4, dark);
+      t3face(M, [P(A, -w, zA + 5), P(A, w, zA + 5), P(A, w, zA + 10), P(A, -w, zA + 10)], [96, 72, 50], null, { both: true, z: 2 }); t3line(M, P(A, 0, zA + 10), P(A, 0, zA + 14), [60, 58, 56]) }
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [] } };
 // an old millstone lying in the grass, its eye in the middle, a little moss on it
@@ -5839,7 +5951,7 @@ const bRand = (a, b) => a + Math.random() * (b - a), bPick = a => a[Math.floor(M
 const BWARM = [];
 function bWarmInit() { for (const id in BKIND) { const K = BKIND[id], fl = K.bound ? ['fup', 'fmid', 'fdn', 'fold'] : ['fup', 'fmid', 'fdn']; const poses = K.feet === 'trunk' ? ['cling', 'hammer'].concat(fl) : K.feet === 'water' ? ['swim', 'dabble'].concat(fl) : K.feet === 'air' ? fl : K.feet === 'tree' ? ['stand', 'hop'].concat(fl) : ['stand', 'hop', 'peck'].concat(fl);
     for (const po of poses) for (const f of [false, true]) BWARM.push([id, po, f]) } BWARM.reverse() }
-function bInit() { BSTART = true; bWarmInit(); for (const o of OBJS) { if (o.kind !== 'prefab') continue; if (o.p === 'house' || o.p === 'smokehouse' || o.p === 'boatshed' || o.p === 'cowshed' || o.p === 'booth') BLDS.push([o.x, o.y - 10, (o.params && o.params.w ? o.params.w / 2 : 22) + 6]) } }
+function bInit() { BSTART = true; bWarmInit(); for (const o of OBJS) { if (o.kind !== 'prefab') continue; if (o.p === 'house' || o.p === 'watermill' || o.p === 'smokehouse' || o.p === 'boatshed' || o.p === 'cowshed' || o.p === 'booth') BLDS.push([o.x, o.y - 10, (o.params && o.params.w ? o.params.w / 2 : 22) + 6]) } }
 // the ground a bird may stand on
 const bGround = (x, y) => { const m = matAt(x, y); return m !== 'lake' && m !== 'bridge' && !blocked(x, y, 1.6) };
 // open water a duck may swim on: lake, a little off the shore, clear of the boats, the piles and the rocks of the shallows
@@ -6675,28 +6787,31 @@ const PLACES = {};
     trail: { side: ['road-n', 'road-s'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [1110, 420, 840, 380], rough: .32 },
-      { id: 'yard', mat: 'trodden', ellipse: [1500, 452, 110, 52], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1640, 664, 64, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1456, 440, 16, 6], rough: .4 },
+      { id: 'yard', mat: 'trodden', ellipse: [1486, 492, 86, 40], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1640, 664, 64, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1424, 488, 14, 7], rough: .4 },
       { id: 'landing-w', mat: 'trodden', ellipse: [730, 345, 60, 26], rough: .3 },
       // the forest road: down from the north (the dam), along the near bank and on to the south
       { id: 'road-n', mat: 'road', line: [[300, -40], [400, 60], [500, 190], [560, 330]], w: 13 },
       { id: 'road-s', mat: 'road', line: [[560, 330], [566, 520], [552, 680], [470, 900], [410, 1040]], w: 13 },
       { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [744, 338], [796, 334]], w: 5 },
-      { id: 'path-mill', mat: 'path', line: [[1436, 308], [1490, 322], [1514, 360], [1514, 410], [1490, 444], [1458, 446]], w: 5 },
+      { id: 'path-mill', mat: 'path', line: [[1436, 308], [1484, 328], [1502, 372], [1502, 440], [1478, 484], [1428, 490]], w: 5 },
       { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1606, 660], [1640, 670]], w: 5 },
       // the weir and the walk along it; the tailrace from the wheel back to the river
       { id: 'weir', mat: 'weir', line: WEIR, w: 36, walk: 17, rough: .25 },
       { id: 'walk', mat: 'bridge', line: WEIR, w: 17, rough: 0, worn: 1, bridge: { ux: wux, uy: wuy } },
     ],
     objects: [
-      // the mill on the bank's very edge, its wheel hanging over the river at its west wall (the lower buckets in the water, which runs off
-      // downstream from under it), fed from above by the flume: from a sluice in the pond above the weir, on trestles over the weir and the walk
-      { id: 'mill', p: 'house', x: 1456, y: 432, w: 76, d: 58, h: 50, wall: 'log', col: [124, 96, 68], roof: 'shingle', roofCol: [92, 82, 70], porch: false, wins: [-24, 24], door: 0, chim: 'none', sideWin: false, deco: ['ladder'], seed: 71, decay: .7, loft: { x: 12, wins: [-22, 30] } },
-      { id: 'sacks-door', p: 'sacks', x: 1432, y: 448, seed: 3, n: 6 }, { id: 'cart', p: 'cart', x: 1540, y: 474, seed: 4 },
-      { id: 'wheel', p: 'wheel', x: 1390, y: 406, r: 20, seed: 3, spin: 1.1 },
-      { id: 'flume', p: 'flume', x: 1388, y: 402, dx: -34, dn: 146, z: 40, z0: 42, seed: 5 },
+      // the water's way: the pond behind the weir stands higher than the river below it. At the weir's east end a gate in it (the board wound
+      // up and down on a toothed rack by a handwheel from the walk; a rack of iron bars in the pond keeps the leaves out) lets it into a trough
+      // that runs down along the bank on trestles and turns at a box to come in square against the wheel, low on its upstream side; the wheel
+      // turns, its shaft runs into the mill through its front wall, and the water drops out of the paddles into the river below
+      { id: 'mill', p: 'watermill', x: 1412, y: 466, w: 70, d: 46, h: 46, seed: 71, door: 16, wheelX: -29.6, wheelZ: 22 },
+      { id: 'wheel', p: 'wheel', x: 1380, y: 474, r: 20, seed: 3, spin: 1 },
+      { id: 'flume', p: 'flume', x: 1330, y: 474, dx: -42, dn: 140, z: 9, z0: 6, gate: 'weir', rack: 48, box: true, cont: true, seed: 5 },
+      { id: 'flume-b', p: 'flume', x: 1360, y: 475, dx: -30, dn: 0, z: 10, z0: 9, gate: 'none', seed: 6 },
+      { id: 'sacks-door', p: 'sacks', x: 1444, y: 480, seed: 3, n: 6 }, { id: 'cart', p: 'cart', x: 1544, y: 508, seed: 4 },
       { id: 'house-miller', p: 'house', x: 1660, y: 650, w: 50, d: 38, h: 22, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench'], seed: 72, decay: .5, lampX: 6 },
-      { id: 'millstone-1', p: 'millstone', x: 1514, y: 452, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1580, y: 520, r: 5, seed: 12 },
-      { id: 'sacks', p: 'sacks', x: 1532, y: 420, seed: 6, n: 4 }, { id: 'barrels', p: 'barrels', x: 1418, y: 470, seed: 7, n: 2 },
+      { id: 'millstone-1', p: 'millstone', x: 1506, y: 502, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1580, y: 520, r: 5, seed: 12 },
+      { id: 'sacks', p: 'sacks', x: 1518, y: 468, seed: 6, n: 4 }, { id: 'barrels', p: 'barrels', x: 1526, y: 436, seed: 7, n: 2 },
       { id: 'logpile', p: 'logpile', x: 1730, y: 640, seed: 14 },
       { id: 'sign', p: 'signpost', dir: 1, text: 'МЕЛЬНИЦА', x: 610, y: 396 },
       { id: 'bench-w', p: 'bench', x: 700, y: 386 },
@@ -6717,14 +6832,14 @@ const PLACES = {};
     // the miller, between the mill, the sacks and his house; an angler on the near bank below the weir
     npcs: [
       { id: 'miller', look: { id: 'miller', sex: 'm', age: 'old', h: 17.4, build: 1.12, skin: 1, hair: [190, 186, 176], cut: 'short', beard: [196, 192, 182], hat: 'cap', hatCol: [176, 170, 156], top: [176, 168, 150], topKind: 'jacket', legs: [92, 86, 76], boots: [52, 44, 36] },
-        route: [[1458, 452, 18, 180], [1500, 452, 0], [1520, 432, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1650, 672, 25, 0], [1606, 660, 0], [1586, 588, 0], [1546, 500, 0]] },
+        route: [[1424, 490, 18, 180], [1474, 490, 0], [1510, 460, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1650, 672, 25, 0], [1606, 660, 0], [1586, 588, 0], [1546, 500, 0]] },
       { id: 'angler', look: { id: 'angler', sex: 'm', h: 18, build: 1, skin: 2, hair: [70, 52, 40], cut: 'short', hat: 'hood', hatCol: [70, 90, 70], top: [70, 90, 70], topKind: 'jacket', legs: [60, 64, 72], boots: [40, 36, 34], carry: 'bucket' },
         route: [[700, 420, 40, 90], [740, 440, 0], [770, 470, 60, 100], [740, 440, 0]] },
     ],
     poi: [
       { id: 'weir', name: 'Запруда', hint: 'вода переливается через бревенчатый гребень и шумит', x: 1130, y: 318, r: 60 },
-      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1456, y: 450, r: 44 },
-      { id: 'flume', name: 'Жёлоб и щит', hint: 'из пруда по жёлобу вода падает на колесо; щитом её перекрывают', x: 1388, y: 300, r: 26 },
+      { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1420, y: 488, r: 44 },
+      { id: 'flume', name: 'Щит и жёлоб', hint: 'щит в запруде пускает воду из пруда в жёлоб; по нему она бежит вниз к колесу', x: 1330, y: 330, r: 26 },
       { id: 'pond', name: 'Мельничный пруд', hint: 'тихая вода выше запруды, в ней отражается лес', x: 1130, y: 200, r: 70 },
       { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1660, y: 672, r: 30 },
     ],
