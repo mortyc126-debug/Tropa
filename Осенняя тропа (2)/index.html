@@ -5562,11 +5562,29 @@ PF.flume = ({ dx = -50, dn = 140, z = 40, z0 = null, seed = 1, gate = 'pond', ra
     return M }, [0]);
   return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [] } };
 // ---- the mill yard's gates: two posts, the leaves of rails and a brace swung open into the yard (inn: which way is in) ----
-PF.wgate = ({ w = 16, inn = 1, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const Wd = [124, 98, 70], D = [92, 72, 52], hw = w / 2;
-    for (const s of [-1, 1]) { t3cyl(M, s * hw, 0, 1.5, 0, 16, D, { topCol: [150, 124, 92] }); const a = s < 0 ? .95 : 1.2, ex = s * hw - s * Math.cos(a) * hw, en = inn * Math.sin(a) * hw;
-      for (const z of [3, 7.5, 12]) t3line(M, [s * hw, 0, z], [ex, en, z], Wd); t3line(M, [ex, en, 2], [ex, en, 13], D); t3line(M, [s * hw, 0, 3], [ex, en, 12], D) }
-    return M }, [0]);
-  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-w / 2 - 2, -2, -w / 2 + 2, 2], [w / 2 - 2, -2, w / 2 + 2, 2]].map(t3w) } };
+PF.wgate = ({ w = 34, inn = 1, axis = 'x', seed = 1 } = {}) => { const hw = w / 2, ax2 = axis === 'x' ? [1, 0] : [-T3S, 1], sw2 = axis === 'x' ? [0, 1] : [1, 0], Wd = [124, 98, 70], Dk = [92, 72, 52], A = [0, .125, .25, .375, .5, .625, .75, .875, 1];
+  const build = a => { const M = T3(); M.seed = seed; const th = a * 1.62;
+    for (const s2 of [-1, 1]) { t3cyl(M, ax2[0] * s2 * hw, ax2[1] * s2 * hw, 1.6, 0, 17, Dk, { topCol: [150, 124, 92] }); const L = hw - 1.8, al = s2 * (hw - 1.2) - s2 * Math.cos(th) * L, P = (u, z) => { const a2 = s2 * (hw - 1.2) - s2 * Math.cos(th) * u * L, b2 = inn * Math.sin(th) * u * L; return [ax2[0] * a2 + sw2[0] * b2, ax2[1] * a2 + sw2[1] * b2, z] };
+      for (const z of [2.6, 7.4, 12.2]) { t3line(M, P(0, z), P(1, z), Wd); t3line(M, P(0, z + .55), P(1, z + .55), Wd) } // (three rails)
+      for (const u of [.33, .66]) t3line(M, P(u, 2.2), P(u, 13), Wd); t3line(M, P(1, 1.8), P(1, 13.2), Dk); t3line(M, P(0, 2.8), P(1, 12.4), Dk) } // (uprights, the end stile, the brace)
+    return M };
+  const Ms = A.map(build); let x0 = 0, y0 = 0, x1 = 0, y1 = 0; const grow = p => { const q = t3p(p); x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]) };
+  for (const M of Ms) { for (const f of M.faces) f.pts.forEach(grow); for (const L of M.lines) { grow(L.a); grow(L.b) } } const ax = Math.ceil(-x0) + 2, ay = Math.ceil(-y0) + 2, ww = Math.ceil(x1 - x0) + 5, hh = Math.ceil(y1 - y0) + 5;
+  const FR = Ms.map(M => { const s = new Spr(ww, hh); t3draw(s, M, ax, ay, 0, seed); s.outline(.36, .58); rimSpr(s); dnFill(s); return { s, ax, ay } });
+  return { s: FR[0].s, ax, ay, frames: FR.map(g => ({ s: g.s, night: null })), solids: axis === 'x' ? [[-hw - 2, -2, -hw + 2, 2], [hw - 2, -2, hw + 2, 2]].map(t3w) : [[-2, -hw - 2, 2, -hw + 2], [-2, hw - 2, 2, hw + 2]] } };
+// who opens them: anyone coming up to a gate (the rider from further off, by the speed he comes at); it shuts again a little after the last one through
+const WGATES = [];
+function stepGates(dt) { if (!WGATES.length) for (const o of OBJS) if (o.p === 'wgate') WGATES.push(o);
+  for (const o of WGATES) { const hw = (o.params && o.params.w || 34) / 2, vx = o.params && o.params.axis === 'n', near = (x, y, r) => vx ? Math.abs(y - o.y) < hw + r && Math.abs(x - o.x) < r : Math.abs(x - o.x) < hw + r && Math.abs(y - o.y) < r;
+    let want = near(R.x, R.y, R.foot ? 16 : 26 + Math.abs(R.v) * .5); if (!want) for (const P of NPCS) if (near(P.x, P.y, 18)) { want = true; break }
+    if (want) o.gHold = 1.4; else o.gHold = Math.max(0, (o.gHold || 0) - dt); const tgt = o.gHold > 0 ? 1 : 0; o.gv = o.gv ?? 0; const dv = tgt - o.gv; o.gv += Math.sign(dv) * Math.min(Math.abs(dv), dt * (tgt ? 1.5 : .8));
+    if (o.gHold > 0 && o.gv > 0 && o.gv < .2 && !o.gSnd) { o.gSnd = 1; gateCreak(o) } if (o.gv <= 0) o.gSnd = 0 } }
+function wgateIdx(o) { const n = o.pfr.length, v = o.gv ?? 0, e = v * v * (3 - 2 * v); return clamp(Math.round(e * (n - 1)), 0, n - 1) }
+// shut, the leaves stand across the way
+function gateBlocks(o, x, y, rad) { if (o.p !== 'wgate' || (o.gv ?? 0) > .55) return false; const hw = (o.params && o.params.w || 34) / 2; if (o.params && o.params.axis === 'n') return y > o.y - hw - rad && y < o.y + hw + rad && x > o.x - 1.6 - rad && x < o.x + 1.6 + rad; return x > o.x - hw - rad && x < o.x + hw + rad && y > o.y - 1.6 - rad && y < o.y + 1.6 + rad }
+function gateCreak(o) { if (!SND.on || !SND.ctx || !SX.buf) return; const d = Math.hypot(o.x - R.x, o.y - R.y); if (d > 160) return; const A = SND.ctx, t0 = nowA(), os = A.createOscillator(), f = A.createBiquadFilter(), g = A.createGain();
+  os.type = 'sawtooth'; os.frequency.setValueAtTime(320, t0); os.frequency.linearRampToValueAtTime(210, t0 + .5); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 6; const v = .06 * sxAtt(d, 60);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v, t0 + .08); g.gain.linearRampToValueAtTime(v * .4, t0 + .4); g.gain.linearRampToValueAtTime(0, t0 + .55); os.connect(f); f.connect(g); g.connect(SND.master); os.start(t0); os.stop(t0 + .6) }
 // ---- the hitching rail outside the yard: two posts, a worn rail with iron rings, a wisp of hay dropped under it ----
 PF.hitch = ({ len = 24, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const Wd = [118, 92, 64];
     for (const s of [-1, 1]) t3cyl(M, s * len / 2, 0, 1.4, 0, 11, [96, 74, 52], { topCol: [150, 124, 92] });
@@ -6971,14 +6989,14 @@ const PLACES = {};
     trail: { side: ['road-n', 'road-s'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [1110, 420, 840, 380], rough: .32 },
-      { id: 'yard', mat: 'trodden', ellipse: [1486, 492, 86, 40], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1648, 676, 66, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1424, 488, 14, 7], rough: .4 },
+      { id: 'yard', mat: 'trodden', ellipse: [1486, 492, 86, 40], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1640, 646, 70, 30], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1424, 488, 14, 7], rough: .4 },
       { id: 'landing-w', mat: 'trodden', ellipse: [730, 345, 60, 26], rough: .3 },
       // the forest road: down from the north (the dam), along the near bank and on to the south
       { id: 'road-n', mat: 'road', line: [[300, -40], [400, 60], [500, 190], [560, 330]], w: 13 },
       { id: 'road-s', mat: 'road', line: [[560, 330], [566, 520], [552, 680], [470, 900], [410, 1040]], w: 13 },
       { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [744, 338], [796, 334]], w: 5 },
       { id: 'path-mill', mat: 'path', line: [[1436, 308], [1484, 328], [1502, 372], [1502, 440], [1478, 484], [1428, 490]], w: 5 },
-      { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1606, 664], [1650, 680]], w: 5 },
+      { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1610, 630], [1650, 646]], w: 5 },
       // the weir and the walk along it; the tailrace from the wheel back to the river
       { id: 'weir', mat: 'weir', line: WEIR, w: 36, walk: 17, rough: .25, spill: [325, 337] },
       { id: 'walk', mat: 'bridge', line: WEIR, w: 17, rough: 0, worn: 1, fresh: [452, 474], bridge: { ux: wux, uy: wuy } },
@@ -6986,7 +7004,7 @@ const PLACES = {};
       // the banks: a sandy spit on the inside of the bend below the weir; the boards out into the river by the bath-house; the miller's garden, the hens' run, the bath-house's patch
       { id: 'beach-sw', mat: 'beach', ellipse: [756, 580, 70, 80], shore: 42, rough: .2 },
       { id: 'mostki', mat: 'bridge', line: [[1338, 651], [1382, 651]], w: 4.5, rough: 0, bridge: { ux: 1, uy: 0 } },
-      { id: 'garden-m', mat: 'bed', rect: [1620, 540, 1720, 600], rough: .3 }, { id: 'run-hens', mat: 'trodden', rect: [1706, 690, 1774, 748], rough: .4 }, { id: 'yard-banya', mat: 'trodden', ellipse: [1420, 652, 24, 10], rough: .3 },
+      { id: 'garden-m', mat: 'bed', rect: [1604, 504, 1700, 556], rough: .3 }, { id: 'run-hens', mat: 'trodden', rect: [1722, 524, 1790, 586], rough: .4 }, { id: 'yard-banya', mat: 'trodden', ellipse: [1420, 652, 24, 10], rough: .3 },
       { id: 'path-banya', mat: 'path', line: [[1572, 556], [1512, 596], [1452, 648], [1384, 651]], w: 4 },
     ],
     objects: [
@@ -7000,19 +7018,19 @@ const PLACES = {};
       { id: 'flume-b', p: 'flume', x: 1360, y: 475, dx: -30, dn: 0, z: 10, z0: 9, gate: 'none', seed: 6 },
       { id: 'sacks-door', p: 'sacks', x: 1444, y: 480, seed: 3, n: 6 }, { id: 'cart', p: 'cart', x: 1490, y: 514, seed: 4 },
       // the yard's fence and its two gates (from the walk, and out toward the miller's house), the hitching rail outside, the scales, a lean-to with sacks waiting
-      { id: 'yf-n1', p: 'fence', axis: 'x', len: 16, x: 1470, y: 430, seed: 61 }, { id: 'yf-n2', p: 'fence', axis: 'x', len: 48, x: 1518, y: 430, seed: 62 },
-      { id: 'yf-e', p: 'fence', axis: 'n', len: 100, x: 1566, y: 530, seed: 63 }, { id: 'yf-s', p: 'fence', axis: 'x', len: 136, x: 1404, y: 530, seed: 64 },
-      { id: 'ygate-n', p: 'wgate', w: 30, inn: -1, x: 1502, y: 430, seed: 65 }, { id: 'ygate-se', p: 'wgate', w: 26, inn: 1, x: 1553, y: 530, seed: 66 },
+      { id: 'yf-n1', p: 'fence', axis: 'x', len: 15, x: 1470, y: 430, seed: 61 }, { id: 'yf-n2', p: 'fence', axis: 'x', len: 47, x: 1519, y: 430, seed: 62 },
+      { id: 'yf-e', p: 'fence', axis: 'n', len: 100, x: 1566, y: 530, seed: 63 }, { id: 'yf-s', p: 'fence', axis: 'x', len: 128, x: 1404, y: 530, seed: 64 },
+      { id: 'ygate-n', p: 'wgate', w: 34, inn: -1, x: 1502, y: 430, seed: 65 }, { id: 'ygate-se', p: 'wgate', w: 34, inn: 1, x: 1549, y: 530, seed: 66 },
       { id: 'hitch', p: 'hitch', len: 24, x: 1532, y: 414, seed: 67 }, { id: 'trough-h', p: 'trough', len: 16, x: 1556, y: 420 },
       { id: 'canopy', p: 'canopy', w: 30, d: 16, h: 15, x: 1438, y: 526, seed: 68 }, { id: 'scales', p: 'scales', x: 1458, y: 510, seed: 69 },
-      { id: 'house-miller', p: 'house', x: 1660, y: 658, w: 60, d: 44, h: 26, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench', 'kennel'], seed: 72, decay: .5, lampX: 6 },
+      { id: 'house-miller', p: 'house', x: 1650, y: 618, w: 60, d: 44, h: 26, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench', 'kennel'], seed: 72, decay: .5, lampX: 6 },
       // his place: the garden dug over behind its fence with a scarecrow, the well, a shed, the hens' house and run, the bath-house down by the river with its boards out and a boat
-      { id: 'gf-n', p: 'fence', axis: 'x', len: 108, x: 1616, y: 536, seed: 71 }, { id: 'gf-s', p: 'fence', axis: 'x', len: 108, x: 1616, y: 604, seed: 72 }, { id: 'gf-e', p: 'fence', axis: 'n', len: 68, x: 1724, y: 604, seed: 73 },
-      { id: 'gf-w1', p: 'fence', axis: 'n', len: 18, x: 1616, y: 604, seed: 74 }, { id: 'gf-w2', p: 'fence', axis: 'n', len: 34, x: 1616, y: 570, seed: 75 }, { id: 'scarecrow', p: 'scarecrow', x: 1672, y: 568, seed: 3 },
-      { id: 'well-m', p: 'well', x: 1612, y: 692, seed: 8 },
-      { id: 'shed-m', p: 'house', x: 1586, y: 750, w: 40, d: 26, h: 18, wall: 'board', col: [110, 92, 72], roof: 'tin', roofCol: [96, 90, 86], porch: false, wins: [], door: 0, gate: 14, chim: 'none', sideWin: false, deco: [], seed: 74, decay: .85 },
-      { id: 'henhouse', p: 'house', x: 1740, y: 712, w: 30, d: 20, h: 15, wall: 'board', col: [120, 96, 70], roof: 'tin', roofCol: [104, 96, 90], porch: false, wins: [], door: -3, gate: 7, chim: 'none', sideWin: false, deco: [], seed: 73, decay: .8 },
-      { id: 'hf-n', p: 'fence', axis: 'x', len: 72, x: 1704, y: 686, seed: 76 }, { id: 'hf-s', p: 'fence', axis: 'x', len: 72, x: 1704, y: 750, seed: 77 }, { id: 'hf-w', p: 'fence', axis: 'n', len: 64, x: 1704, y: 750, seed: 78 }, { id: 'hf-e', p: 'fence', axis: 'n', len: 64, x: 1776, y: 750, seed: 79 },
+      { id: 'gf-n', p: 'fence', axis: 'x', len: 100, x: 1600, y: 500, seed: 71 }, { id: 'gf-s', p: 'fence', axis: 'x', len: 100, x: 1600, y: 560, seed: 72 }, { id: 'gf-e', p: 'fence', axis: 'n', len: 60, x: 1700, y: 560, seed: 73 },
+      { id: 'gf-w1', p: 'fence', axis: 'n', len: 17, x: 1600, y: 560, seed: 74 }, { id: 'gf-w2', p: 'fence', axis: 'n', len: 17, x: 1600, y: 517, seed: 75 }, { id: 'ggate', p: 'wgate', axis: 'n', w: 26, inn: 1, x: 1600, y: 530, seed: 76 }, { id: 'scarecrow', p: 'scarecrow', x: 1652, y: 532, seed: 3 },
+      { id: 'well-m', p: 'well', x: 1590, y: 668, seed: 8 },
+      { id: 'shed-m', p: 'house', x: 1730, y: 664, w: 40, d: 26, h: 18, wall: 'board', col: [110, 92, 72], roof: 'tin', roofCol: [96, 90, 86], porch: false, wins: [], door: 0, gate: 14, chim: 'none', sideWin: false, deco: [], seed: 74, decay: .85 },
+      { id: 'henhouse', p: 'house', x: 1756, y: 546, w: 30, d: 20, h: 15, wall: 'board', col: [120, 96, 70], roof: 'tin', roofCol: [104, 96, 90], porch: false, wins: [], door: -3, gate: 7, chim: 'none', sideWin: false, deco: [], seed: 73, decay: .8 },
+      { id: 'hf-n', p: 'fence', axis: 'x', len: 72, x: 1720, y: 520, seed: 76 }, { id: 'hf-s', p: 'fence', axis: 'x', len: 72, x: 1720, y: 590, seed: 77 }, { id: 'hf-w', p: 'fence', axis: 'n', len: 70, x: 1720, y: 590, seed: 78 }, { id: 'hf-e', p: 'fence', axis: 'n', len: 70, x: 1792, y: 590, seed: 79 },
       { id: 'banya', p: 'house', x: 1426, y: 642, w: 32, d: 24, h: 24, wall: 'log', col: [104, 80, 58], roof: 'shingle', roofCol: [84, 76, 66], porch: false, wins: [8], door: -6, chim: 'pipe', chimX: 6, sideWin: false, deco: ['logs'], seed: 75, decay: .6 },
       { id: 'mostki-p1', p: 'piling', x: 1338, y: 645, h: 8, seed: 21 }, { id: 'mostki-p2', p: 'piling', x: 1338, y: 657, h: 8, seed: 22 },
       { id: 'boat-m', p: 'boat', x: 1352, y: 674, col: [70, 96, 82], water: true, L: 38, seed: 9 },
@@ -7023,7 +7041,7 @@ const PLACES = {};
       { id: 'log-river-1', t: 'log', x: 1318, y: 790, seed: 6301 }, { id: 'log-river-2', t: 'log', x: 702, y: 828, seed: 6302 },
       { id: 'millstone-1', p: 'millstone', x: 1546, y: 452, r: 6, seed: 11 }, { id: 'millstone-2', p: 'millstone', x: 1580, y: 520, r: 5, seed: 12 },
       { id: 'sacks', p: 'sacks', x: 1518, y: 468, seed: 6, n: 4 }, { id: 'barrels', p: 'barrels', x: 1478, y: 448, seed: 7, n: 2 },
-      { id: 'logpile', p: 'logpile', x: 1730, y: 640, seed: 14 },
+      { id: 'logpile', p: 'logpile', x: 1712, y: 616, seed: 14 },
       { id: 'sign', p: 'signpost', dir: 1, text: 'МЕЛЬНИЦА', x: 610, y: 396 },
       { id: 'bench-w', p: 'bench', x: 700, y: 386 },
       { id: 'birch-1', t: 'birch', x: 660, y: 430, sz: 1.2, seed: 6101 }, { id: 'willow-1', t: 'decid', x: 820, y: 250, sz: 1.3, seed: 6102 },
@@ -7040,12 +7058,12 @@ const PLACES = {};
         under: [['barebush', 4], ['bush', 1.6], ['log', 1.2], ['branch', 1.4], ['sapling', .5], ['stump', .5]], extra: { p: .55, kinds: [['barebush', 3], ['bush', 1]] } },
       { id: 'bor', share: .12, keep: .55, size: 1.05, kinds: [['pine', 6], ['birch', 1.2], ['spruce', .8]], underKeep: .5,
         under: [['juniper', 1.6], ['lowshrub', 2], ['branch', 1.4], ['grass', 1.2], ['mush', .8]] } ] },
-    hens: [{ coat: 'rooster', x: 1730, y: 730, box: [1710, 718, 1770, 744] }, ...['brown', 'white', 'speck', 'ginger', 'brown'].map((coat, i) => ({ coat, x: 1714 + i * 12, y: 726 + (i % 2) * 10, box: [1710, 718, 1770, 744] }))],
-    dogs: [{ x: 1692, y: 680, home: [1690, 674], r: 24 }],
+    hens: [{ coat: 'rooster', x: 1748, y: 566, box: [1726, 556, 1786, 584] }, ...['brown', 'white', 'speck', 'ginger', 'brown'].map((coat, i) => ({ coat, x: 1730 + i * 12, y: 562 + (i % 2) * 12, box: [1726, 556, 1786, 584] }))],
+    dogs: [{ x: 1678, y: 640, home: [1676, 634], r: 20 }],
     // the miller, between the mill, the sacks and his house; an angler on the near bank below the weir
     npcs: [
       { id: 'miller', look: { id: 'miller', sex: 'm', age: 'old', h: 17.4, build: 1.12, skin: 1, hair: [190, 186, 176], cut: 'short', beard: [196, 192, 182], hat: 'cap', hatCol: [176, 170, 156], top: [176, 168, 150], topKind: 'jacket', legs: [92, 86, 76], boots: [52, 44, 36] },
-        route: [[1424, 490, 18, 180], [1474, 490, 0], [1500, 452, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1656, 682, 25, 0], [1606, 664, 0], [1586, 588, 0], [1546, 500, 0]] },
+        route: [[1424, 490, 18, 180], [1474, 490, 0], [1500, 452, 12, 0], [1546, 500, 0], [1586, 588, 0], [1610, 630, 0], [1648, 652, 25, 0], [1610, 630, 0], [1586, 588, 0], [1546, 500, 0]] },
       { id: 'angler', look: { id: 'angler', sex: 'm', h: 18, build: 1, skin: 2, hair: [70, 52, 40], cut: 'short', hat: 'hood', hatCol: [70, 90, 70], top: [70, 90, 70], topKind: 'jacket', legs: [60, 64, 72], boots: [40, 36, 34], carry: 'bucket' },
         route: [[700, 420, 40, 90], [740, 440, 0], [770, 470, 60, 100], [740, 440, 0]] },
     ],
@@ -7054,7 +7072,7 @@ const PLACES = {};
       { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1420, y: 488, r: 44 },
       { id: 'flume', name: 'Щит и жёлоб', hint: 'щит в запруде пускает воду из пруда в жёлоб; по нему она бежит вниз к колесу', x: 1330, y: 330, r: 26 },
       { id: 'pond', name: 'Мельничный пруд', hint: 'тихая вода выше запруды, в ней отражается лес', x: 1130, y: 200, r: 70 },
-      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1660, y: 682, r: 34 },
+      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1650, y: 652, r: 34 },
     ],
     exits: [
       { id: 'north', x: 330, y: -10, to: 'дамба и Рыбацкая деревушка', km: 5.4, road: 'road-n' },
@@ -7940,7 +7958,7 @@ function wantDir(raw) { let x = 0, y = 0; if (KEYS.has('ArrowUp') || KEYS.has('K
 // ---- what stops the bike: tree trunks, stones, buildings; the edge of the sandbox ----
 function blocked(x, y, rad) { if (inPond(x, y, -7) || damWater(x, y)) return true; { const k = deckBlocked(x, y, rad); if (k) return k } { const p = npcBlocks(x, y, rad); if (p) return p }
   for (const o of objsIn(x - 30, y - 30, x + 30, y + 30)) { stage1(o); if (o.circle && Math.hypot(o.circle[0] - x, o.circle[1] - y) < o.circle[2] + rad) return o;
-    if (o.solids) for (const S of o.solids) if (inSolid(S, x, y, rad)) return o;
+    if (o.solids) for (const S of o.solids) if (inSolid(S, x, y, rad)) return o; if (o.p === 'wgate' && gateBlocks(o, x, y, rad)) return o;
     if (o.caps) for (const [ax, ay, bx, by, r] of o.caps) if (segD([[ax, ay], [bx, by]], x, y) < r + rad) return o } return false }
 // the bike's footprint: the front tyre's leading edge, the back tyre's trailing edge, the pedals between
 const bikeBlocked = (x, y, psi) => { const sx = Math.sin(psi), sy = -Math.cos(psi); return blocked(x + sx * 12, y + sy * 12, 1.4) || blocked(x + sx * 6, y + sy * 6, 1.8) || blocked(x - sx * 7.5, y - sy * 7.5, 1.4) || blocked(x, y, 2.2) };
@@ -8313,11 +8331,29 @@ function stepLeaves(dt, vis) {
   leaves = leaves.filter(l => l.life > 0 && l.x > CAM.x - 60 && l.x < CAM.x + W + 60 && l.y > CAM.y - 80 && l.y < CAM.y + H + 60) }
 function drawLeaves(onGround) { for (const l of leaves) { if ((l.state === 0) === onGround) continue; ctx.globalAlpha = l.state ? clamp(l.life / 3, 0, 1) * (l.fi === undefined ? 1 : l.fi) : 1; drawLeafK(l.state === 2 ? Object.assign({}, l, { state: 1 }) : l, Math.round(l.x), Math.round(l.y - (l.hop || 0))) } ctx.globalAlpha = 1 }
 let RAINSL = 0;
-function stepRain(dt) { const nd = Math.round(WX.rain * W * H / 360); while (drops.length < nd) drops.push({ x: Math.random() * (W + 40) - 20, y: Math.random() * H - H, gy: Math.random() * H, v: 150 + Math.random() * 80 }); if (drops.length > nd) drops.length = nd;
-  const rv = WIND.s * (.65 + .5 * gustNow()) * 75, wx = WINDX * rv, wyv = WINDY * rv * .45; RAINSL = wx / (185 + wyv);
-  for (const d of drops) { d.y += (d.v + wyv) * dt; d.x += wx * dt; if (d.y >= d.gy) { if (Math.random() < .7) splashes.push({ x: d.x, y: d.gy, t: 0 }); d.y = -4 - Math.random() * 20; d.gy = Math.random() * H * 1.05; d.x = Math.random() * (W + 80) - 40 - wx * .4 } }
-  for (const s of splashes) s.t += dt; splashes = splashes.filter(s => s.t < .22) }
-
+// The rain: each drop a streak as long as it falls in the eye's moment (longer for the nearer, faster ones, slanted by the wind), in three
+// depths (far: many, short, faint and slower; near: few, long, bright and fast); a near drop that lands throws a tiny crown, two droplets
+// out and back; in heavy rain, wide grey curtains of it drift across with the wind.
+function newDrop(top) { const z = Math.random(), l = z < .5 ? 0 : z < .85 ? 1 : 2; return { x: Math.random() * (W + 80) - 40, y: top ? -4 - Math.random() * 30 : Math.random() * H - H * .2, gy: Math.random() * H * 1.05, l, v: [150, 205, 265][l] * (.9 + Math.random() * .2) } }
+function stepRain(dt) { const nd = Math.round(Math.pow(WX.rain, 1.15) * W * H / 165); while (drops.length < nd) drops.push(newDrop(false)); if (drops.length > nd) drops.length = nd;
+  const rv = WIND.s * (.65 + .5 * gustNow()) * 75, wx = WINDX * rv, wyv = WINDY * rv * .45; RAINSL = wx / (205 + wyv); RAINW = wx;
+  for (const d of drops) { d.y += (d.v + wyv) * dt; d.x += wx * dt * (.6 + .2 * d.l); if (d.y >= d.gy) { if (d.l > 0 && Math.random() < (d.l === 2 ? .9 : .5)) splashes.push({ x: d.x, y: d.gy, t: 0, s: Math.random() < .5 ? -1 : 1, b: d.l }); Object.assign(d, newDrop(true)) } }
+  for (const s of splashes) s.t += dt; splashes = splashes.filter(s => s.t < .26) }
+let RAINW = 0;
+function drawRain() { if (!drops.length && !splashes.length) return; const r = WX.rain, inten = clamp(r * 1.3, .35, 1.3);
+  // the curtains of a downpour: broad bands a shade paler, leaning with the wind, drifting
+  if (r > .4) { const k = (r - .4) / .6, sl = RAINSL * H; for (let i = 0; i < 3; i++) { const wdt = 70 + 50 * h2(i, 1, 404), sp = 18 + RAINW * .8 + 10 * i, x = ((t * sp + i * (W + 260) / 3) % (W + 260)) - 130, a = (.035 + .03 * Math.sin(t * .4 + i * 2)) * k;
+    const g = ctx.createLinearGradient(x, 0, x + wdt, 0); g.addColorStop(0, 'rgba(196,206,218,0)'); g.addColorStop(.5, `rgba(196,206,218,${a.toFixed(3)})`); g.addColorStop(1, 'rgba(196,206,218,0)'); ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(x - sl, 0); ctx.lineTo(x + wdt - sl, 0); ctx.lineTo(x + wdt, H); ctx.lineTo(x, H); ctx.closePath(); ctx.fill() } }
+  // the streaks, far to near: the tail faint, the head brighter
+  // (pixel by pixel, crisp like everything else: the tail a fainter grey-blue, the last two pixels at the head brighter)
+  for (let l = 0; l < 3; l++) { const len = Math.round([3, 5, 8][l] * inten), al = [.3, .45, .62][l];
+    ctx.fillStyle = `rgba(170,188,212,${(al * .6).toFixed(3)})`; for (const d of drops) if (d.l === l) for (let i = 2; i <= len; i++) ctx.fillRect(Math.round(d.x - RAINSL * i), Math.round(d.y) - i, 1, 1);
+    ctx.fillStyle = `rgba(214,226,240,${al.toFixed(3)})`; for (const d of drops) if (d.l === l) { ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, 1); ctx.fillRect(Math.round(d.x - RAINSL), Math.round(d.y) - 1, 1, 1) } }
+  // the splashes: a flat spot as the drop hits, then two droplets thrown out and falling back
+  for (const s of splashes) { const x = Math.round(s.x), y = Math.round(s.y), u = s.t / .26, a = (s.b === 2 ? .85 : .6) * (1 - u * .8);
+    ctx.fillStyle = `rgba(214,226,238,${a.toFixed(2)})`; if (s.t < .05) { ctx.fillRect(x - 1, y, 3, 1); continue }
+    const dx = 1 + u * (s.b === 2 ? 5 : 3), dy = (s.b === 2 ? 5 : 3) * Math.sin(Math.PI * Math.min(1, u * 1.25)); ctx.fillRect(Math.round(x - dx), Math.round(y - dy), 1, 1); ctx.fillRect(Math.round(x + dx * .8), Math.round(y - dy * .8), 1, 1); if (s.t < .12) ctx.fillRect(x, y, 1, 1) } }
 // ================= drawing =================
 const VIS = []; let visCount = 0;
 // running water: glints carried down each brook at the speed of its current, and the pour from the spring's pipe
@@ -8434,7 +8470,7 @@ function drawWorld() {
     if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); if (R.xf && R.xf.k === 'in') { const X = R.xf; ctx.globalAlpha = 1 - clamp(X.t / .32, 0, 1); ctx.drawImage(X.cv, Math.round(X.x) - X.ax, Math.round(X.y) - X.ay); ctx.globalAlpha = 1 } RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS }
       for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 3); continue }
     const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));
-    if (o.fcv || o.bp && Math.abs(o.bp) > .02) drawSway(o, x, y); else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : o.p === 'wheel' ? wheelIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
+    if (o.fcv || o.bp && Math.abs(o.bp) > .02) drawSway(o, x, y); else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : o.p === 'wgate' ? wgateIdx(o) : o.p === 'wheel' ? wheelIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
   // the rider behind a crown: his shape shows faintly through it, so he is never lost in the wood
   { const rx = Math.round(R.x) - ROXS, ry = Math.round(R.y) - ROYS; if (VIS.some(o => o.nk && o.y > R.y && R.x > o.x - o.ax && R.x < o.x - o.ax + o.mw && R.y - 10 > o.y - o.ay && R.y - 10 < o.y - o.ay + o.mh && o.mask[Math.round(R.y - 10 - o.y + o.ay) * o.mw + Math.round(R.x - o.x + o.ax)])) {
     if (HF) { ctx.globalAlpha = .42; ctx.drawImage(HF.cv, Math.round(R.x) - HF.ax, Math.round(R.y - RLIFT) - HF.ay); ctx.globalAlpha = 1; GHOSTN++ }
@@ -8442,8 +8478,7 @@ function drawWorld() {
   drawDripsSplash(); drawWheelWater();
   // the falling rain, its splashes (screen space)
   scrT();
-  if (drops.length) { ctx.fillStyle = 'rgba(176,196,220,.55)'; for (const d of drops) { const x = Math.round(d.x), y = Math.round(d.y); ctx.fillRect(x, y, 1, 1); ctx.fillRect(Math.round(d.x - RAINSL * 2), y - 1, 1, 1); ctx.fillRect(Math.round(d.x - RAINSL * 4), y - 2, 1, 1) } }
-  ctx.fillStyle = 'rgba(200,214,232,.7)'; for (const s of splashes) { const x = Math.round(s.x), y = Math.round(s.y); if (s.t < .1) ctx.fillRect(x, y, 1, 1); else { ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1) } }
+  drawRain();
 }
 // a swaying thing: its two nearest poses blended by how far between them it is, so it moves smoothly; pushed by the bike, it leans
 // away from it too (further over, and the sprite sheared about its foot). clipY: only what is below that line (the front of a bush
@@ -8588,7 +8623,8 @@ function drawSparks() { drawBreath(); for (const p of STEAM) { const u = p.t / p
 
 // ================= light: the hour's light, the bike's lamp, the lit windows and lanterns =================
 const litCv = document.createElement('canvas'), litCtx = litCv.getContext('2d'), beamCv = document.createElement('canvas'), beamCtx = beamCv.getContext('2d');
-function rLamp() { const yaw = R.yi * YSTEP, f = rProj(yaw, 22.5, 17), r = rProj(yaw, .95, 13.75); return { f: [R.x - ROXS + f[0], R.y - ROYS + f[1]], r: [R.x - ROXS + r[0], R.y - ROYS + r[1]] } }
+function lampSrc() { if (!R.foot) return { x: R.x, y: R.y, yi: R.yi, psi: R.psi }; if (BIKE && BIKE.p === 'riderbike') { const yi = BIKE.params.yi; return { x: BIKE.x, y: BIKE.y, yi, psi: yi * YSTEP * D2R } } return null }
+function rLamp() { const S = lampSrc(); if (!S) return null; const yaw = S.yi * YSTEP, f = rProj(yaw, 22.5, 17), r = rProj(yaw, .95, 13.75); return { f: [S.x - ROXS + f[0], S.y - ROYS + f[1]], r: [S.x - ROXS + r[0], S.y - ROYS + r[1]], psi: S.psi, x: S.x, y: S.y } }
 function drawLight() {
   const c = clamp(WX.cloud * .75 + WX.fog * .5 + WX.rain * .35, 0, 1), nf = .45 + .55 * LT.day;
   const sun = (1 - WX.cloud) * (1 - WX.fog * .7) * LT.day; scrT(); if (sun > .02) { ctx.fillStyle = `rgba(255,168,84,${.08 * sun})`; ctx.fillRect(0, 0, W, H) }
@@ -8600,7 +8636,7 @@ function drawLight() {
   L.globalCompositeOperation = 'lighter'; L.setTransform(1, 0, 0, 1, -Math.floor(CAM.x), -Math.floor(CAM.y));
   const dark = LT.dark, lit = LT.lamp * clamp(dark * 1.6, 0, 1);
   // the bike's lamp: a widening beam along the way it points, a spill on the rider, the rear light on the ground
-  if (lit > .01) { const lp = rLamp(), [fx, fy] = lp.f, dx = Math.sin(R.psi), dy = -Math.cos(R.psi), nx = -dy, ny = dx, Lb = Math.round(Math.min(W, H) * .42) + 30;
+  const LP = rLamp(); if (lit > .01 && LP) { const lp = LP, [fx, fy] = lp.f, dx = Math.sin(lp.psi), dy = -Math.cos(lp.psi), nx = -dy, ny = dx, Lb = Math.round(Math.min(W, H) * .42) + 30;
     // the beam stops at the first solid thing on each of its rays (a wall, a car, a tree's trunk): it lights that
     // thing's face and leaves the ground behind it dark
     const NR = 13, hit = [], HITS = []; for (let i = 0; i < NR; i++) { const l = (i / (NR - 1) * 2 - 1) * 30, ex = dx * Lb + nx * l, ey = dy * Lb + ny * l, len = Math.hypot(ex, ey), ux = ex / len, uy = ey / len; let d = 6;
@@ -8617,7 +8653,7 @@ function drawLight() {
     B.globalCompositeOperation = 'destination-out'; const inBeam = (x, y) => { const px = x - fx, py = y - fy, u = px * dx + py * dy, l = px * nx + py * ny; if (u < -2 || u > Lb) return false; const sp = 30 * u / Lb + 2; return Math.abs(l) <= sp && u <= at(clamp(l / Math.max(1, u / Lb), -30, 30)) * Lb + 3 };
     for (const o of VIS) { if (o.flat || !o.cv || struck.has(o) || inBeam(o.x, o.y)) continue; const x = Math.round(o.x - o.ax), y = Math.round(o.y - o.ay); if (x > fx + Lb + 40 || x + o.mw < fx - Lb - 40 || y > fy + Lb + 40 || y + o.mh < fy - Lb - 40) continue; B.drawImage(o.fcv ? o.fcv[o.fi || 0] : o.cv, x, y) }
     L.save(); L.setTransform(1, 0, 0, 1, 0, 0); L.drawImage(beamCv, 0, 0); L.restore();
-    let g = L.createRadialGradient(R.x, R.y - 14, 0, R.x, R.y - 14, 22); g.addColorStop(0, `rgba(255,232,196,${.42 * lit})`); g.addColorStop(1, 'rgba(255,232,196,0)'); L.fillStyle = g; L.fillRect(R.x - 22, R.y - 36, 44, 44);
+    let g = L.createRadialGradient(lp.x, lp.y - 14, 0, lp.x, lp.y - 14, 22); g.addColorStop(0, `rgba(255,232,196,${(R.foot ? .2 : .42) * lit})`); g.addColorStop(1, 'rgba(255,232,196,0)'); L.fillStyle = g; L.fillRect(lp.x - 22, lp.y - 36, 44, 44);
     const [gx, gy] = lp.r, p = .6 + .4 * Math.sin(t * 5.2); g = L.createRadialGradient(gx, gy + 6, 0, gx, gy + 6, 13); g.addColorStop(0, `rgba(255,70,50,${.32 * lit * p})`); g.addColorStop(1, 'rgba(255,70,50,0)'); L.fillStyle = g; L.fillRect(gx - 13, gy - 7, 26, 26) }
   if (R.foot && dark > .1) { const k = clamp((dark - .1) / .45, 0, 1), g = L.createRadialGradient(R.x, R.y - 5, 0, R.x, R.y - 5, 38); g.addColorStop(0, `rgba(170,182,214,${.3 * k})`); g.addColorStop(.6, `rgba(150,162,196,${.12 * k})`); g.addColorStop(1, 'rgba(150,162,196,0)'); L.fillStyle = g; L.fillRect(R.x - 38, R.y - 43, 76, 76) }
   foxfire(L, dark);
@@ -8632,7 +8668,7 @@ function drawLight() {
     L.save(); L.translate(S.x, S.y); L.scale(1, S.sy || 1); const r = S.r * .85, g = L.createRadialGradient(0, 0, 0, 0, 0, r); g.addColorStop(0, `rgba(${S.tint},${.75 * fl})`); g.addColorStop(.5, `rgba(${S.tint},${.35 * fl})`); g.addColorStop(1, `rgba(${S.tint},0)`); L.fillStyle = g; L.fillRect(-r, -r, r * 2, r * 2); L.restore() } }
   scrT(); ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(litCv, 0, 0); ctx.restore();
   // the lamps themselves, seen in the dark: the bulb, the red tail light
-  if (lit > .01) { worldT(); const lp = rLamp(); ctx.fillStyle = `rgba(255,244,214,${.9 * lit})`; ctx.fillRect(Math.round(lp.f[0]) - 1, Math.round(lp.f[1]), 2, 1); const p = .55 + .45 * Math.sin(t * 5.2); ctx.fillStyle = `rgba(255,70,50,${(.5 + .4 * p) * lit})`; ctx.fillRect(Math.round(lp.r[0]) - 1, Math.round(lp.r[1]), 2, 1) } }
+  if (lit > .01 && rLamp()) { worldT(); const lp = rLamp(); ctx.fillStyle = `rgba(255,244,214,${.9 * lit})`; ctx.fillRect(Math.round(lp.f[0]) - 1, Math.round(lp.f[1]), 2, 1); const p = .55 + .45 * Math.sin(t * 5.2); ctx.fillStyle = `rgba(255,70,50,${(.5 + .4 * p) * lit})`; ctx.fillRect(Math.round(lp.r[0]) - 1, Math.round(lp.r[1]), 2, 1) } }
 // ---- fog: two drifting textures over everything, thinner toward the bottom of the screen ----
 let FOGG = null;
 function drawFog() { if (WX.fog < .03) return; scrT(); if (!fogTex || fogTex.width !== W) buildFog(); const fh = fogTex.height, f = WX.fog * .85, NB = 16, bands = [];
@@ -8665,7 +8701,7 @@ function drawGlare() { if (LT.dark < .12) return; worldT(); ctx.save(); ctx.glob
     if (haze > .15) { const h = 50 * haze, gg = ctx.createLinearGradient(S.x, S.y, S.x, S.y + h); gg.addColorStop(0, `rgba(255,180,100,${.12 * haze * v})`); gg.addColorStop(1, 'rgba(255,180,100,0)'); ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(S.x - 2, S.y); ctx.lineTo(S.x + 2, S.y); ctx.lineTo(S.x + 16, S.y + h); ctx.lineTo(S.x - 16, S.y + h); ctx.closePath(); ctx.fill() } }
   ctx.restore() }
 function drawMurk() { const murk = clamp(Math.max(LT.murk, LT.dark * (.14 + .86 * LT.murk)), 0, 1) * LT.lamp * (1 - .5 * LT.dark); if (murk < .04) return;
-  worldT(); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const lp = rLamp(), [fx, fy] = lp.f, dx = Math.sin(R.psi), dy = -Math.cos(R.psi), nx = -dy, ny = dx, Lb = Math.round(Math.min(W, H) * .38) + 30;
+  const lp = rLamp(); if (!lp) return; worldT(); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const [fx, fy] = lp.f, dx = Math.sin(lp.psi), dy = -Math.cos(lp.psi), nx = -dy, ny = dx, Lb = Math.round(Math.min(W, H) * .38) + 30;
   for (const [sp, a] of [[26, .045], [16, .06], [8, .07]]) { ctx.beginPath(); ctx.moveTo(fx - nx * 1.5, fy - ny * 1.5); ctx.lineTo(fx + nx * 1.5, fy + ny * 1.5); ctx.lineTo(fx + dx * Lb + nx * sp, fy + dy * Lb + ny * sp); ctx.lineTo(fx + dx * Lb - nx * sp, fy + dy * Lb - ny * sp); ctx.closePath();
     const g = ctx.createLinearGradient(fx, fy, fx + dx * Lb, fy + dy * Lb); g.addColorStop(0, `rgba(255,234,190,${a * murk})`); g.addColorStop(.3, `rgba(255,228,178,${a * .6 * murk})`); g.addColorStop(1, 'rgba(255,220,165,0)'); ctx.fillStyle = g; ctx.fill() }
   const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 6); g.addColorStop(0, `rgba(255,240,205,${.3 * murk})`); g.addColorStop(1, 'rgba(255,240,205,0)'); ctx.fillStyle = g; ctx.fillRect(fx - 6, fy - 6, 12, 12); ctx.restore() }
@@ -8898,7 +8934,7 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.xf) { if (R.xf.k === 'hold') { if (!R.foot || R.v > .4 && !R.mountReq) R.xf = null } else { R.xf.t += dt; if (R.xf.t > .32) R.xf = null } } if (R.dm) stepDM(dt); else if (R.foot) { if (R.mountReq) { if (!BIKE || Math.hypot(BIKE.x - R.x, BIKE.y - R.y) > 18 || wantDir(true)) { R.mountReq = false; AUTOW = null; R.mwT = 0 } else mountTry(dt) } if (R.foot) stepFoot(dt) } else { if (R.offReq) offStep(dt); stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.xf) { if (R.xf.k === 'hold') { if (!R.foot || R.v > .4 && !R.mountReq) R.xf = null } else { R.xf.t += dt; if (R.xf.t > .32) R.xf = null } } if (R.dm) stepDM(dt); else if (R.foot) { if (R.mountReq) { if (!BIKE || Math.hypot(BIKE.x - R.x, BIKE.y - R.y) > 18 || wantDir(true)) { R.mountReq = false; AUTOW = null; R.mwT = 0 } else mountTry(dt) } if (R.foot) stepFoot(dt) } else { if (R.offReq) offStep(dt); stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepGates(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
   sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); if (!INTRO.on) dmWarm(); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
   if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
