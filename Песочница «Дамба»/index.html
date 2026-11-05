@@ -2331,7 +2331,7 @@ function personModel(L, pose = {}) { const M = personBody(L, pose); for (const f
 function personBody(L, pose) { const M = T3(), H = L.h || 17.6, bd = L.build || 1, f = L.sex === 'f', skin = SKINS[L.skin || 0], top = L.top || [60, 110, 80], legs = L.legs || [60, 64, 76], boots = L.boots || [52, 44, 40];
   const head = H / 4.5, legH = H * .42, shZ = H - head * 1.05 - .3, hipZ = legH + .2, shW = (f ? 2.25 : 2.7) * bd, hipW = (f ? 2.15 : 1.95) * bd, dep = (f ? 1.25 : 1.35) * bd, hz = H - head * .55;
   const run = pose.run != null, walk = run ? pose.run : pose.walk, sw = walk == null ? 0 : Math.sin(walk * TAU), cw = walk == null ? 0 : Math.cos(walk * TAU), bob = walk == null ? 0 : run ? .3 + (1 - Math.abs(cw)) * 1.1 : Math.abs(cw) * .6, sway = pose.sway || 0, look = pose.look || 0, sit = pose.sit;
-  const lift = z => z + bob, sx = sway * .35, SA = run ? 1.45 : 1, LN = run ? 1.1 : 0; // (SA: the stride; LN: how far the shoulders lean forward)
+  const lift = z => z + bob, sx = sway * .35, SA = run ? 1.45 : 1, LN = pose.lean ?? (run ? 1.1 : 0); // (SA: the stride; LN: how far the shoulders lean forward)
   const det = !!L.det, fine = !!pose.fine, SG = fine ? { seg: 9 } : {}, KN = {};
   if (pose.chair) { // sitting on a chair (seat height pose.seat), the hands on a desk before them (at pose.desk), typing (pose.type: the hands' frame), or in the lap
     const C = pose.chair, sz = C.seat ?? legH * .62, dz = C.desk, ty = C.type || 0, lean = C.lean ?? .5;
@@ -2357,7 +2357,7 @@ function personBody(L, pose) { const M = T3(), H = L.h || 17.6, bd = L.build || 
   // ground as it passes the other, the leg behind rises on its toes before it leaves, the leg in front reaches out nearly straight
   for (const s of [-1, 1]) { const ph = s * sw, sg = Math.max(0, s * cw), x = s * hipW * .48, hip = [x, 1, lift(hipZ)], knee = run ? [x, 1 - ph * 1.9 - sg * 1.6, lift(legH * .52) + sg * 2.4 + Math.max(0, ph) * .5] : [x, 1 - ph * 1.3 - sg * .9, lift(legH * .52) + sg * .8 + Math.max(0, ph) * .2],
       foot = run ? [x, 1 - ph * 3.2 + Math.max(0, -ph) * 1.2 + sg * .6, bob + .6 + sg * 1.8 + Math.max(0, -ph - .2) * 3.4] : [x, 1 - ph * 2.3 + (ph < 0 ? .3 : 0) - sg * .3, .6 + sg * 1.1 + Math.max(0, -ph - .55) * 1.1];
-    t3limb(M, hip, knee, 1.05 * bd, .85, legs, SG); t3limb(M, knee, foot, .85, .65, legs, SG); KN[s] = knee; if (det) heroShoe(M, L, foot); else t3box(M, foot[0] - .75, foot[1] - 1.5, foot[2] - .6, foot[0] + .75, foot[1] + .7, foot[2] + .7, boots, { noAO: true }) }
+    const LO = pose.legs && pose.legs[s], kn = LO ? LO.k : knee, ft = LO ? LO.f : foot; t3limb(M, hip, kn, 1.05 * bd, .85, legs, SG); t3limb(M, kn, ft, .85, .65, legs, SG); KN[s] = kn; if (det) heroShoe(M, L, ft); else t3box(M, ft[0] - .75, ft[1] - 1.5, ft[2] - .6, ft[0] + .75, ft[1] + .7, ft[2] + .7, boots, { noAO: true }) }
   // the body: hips to waist to shoulders
   const waistZ = lift(hipZ + (shZ - hipZ) * .38), LW = -LN * .38, hem = lift(hipZ - (det && L.topKind === 'blazer' ? .9 : .3)); t3torso(M, hem, waistZ, hipW * (det ? 1.12 : 1), dep * (det ? 1.08 : 1), hipW * (f ? .82 : .95), dep * .95, L.topKind === 'vest' ? (L.shirt || [180, 60, 50]) : top, { tex: det ? heroTopTex(L, hem, waistZ, 0, LW, dep, waistZ, lift(shZ)) : torsoTex(L, 0, 0), dn1: LW, seg: SG.seg });
   t3torso(M, waistZ, lift(shZ), hipW * (f ? .82 : .95), dep * .95, shW, dep * 1.05, top, { tex: det ? heroTopTex(L, waistZ, lift(shZ), LW, -LN, dep, waistZ, lift(shZ)) : torsoTex(L, waistZ, lift(shZ)), dn0: LW, dn1: -LN, seg: SG.seg });
@@ -5662,48 +5662,71 @@ function drawCow(C) { const w = C.state === 'walk', g = C.state === 'graze', k =
 // ---- hens in their run, and a rooster: pecking, standing, trotting off a little way; scattering from a bike or a walker that comes close ----
 const HENCOAT = { brown: { base: [150, 92, 50] }, white: { base: [232, 228, 214] }, speck: { base: [74, 68, 62], speck: [214, 210, 200] }, ginger: { base: [196, 130, 64] }, rooster: { base: [158, 66, 34], tail: [34, 56, 46] } };
 const HENS = [], HENSPR = new Map();
-function henModel(M, coat, pose) { const C = HENCOAT[coat] || HENCOAT.brown, c = C.base, roo = coat === 'rooster', walk = pose[0] === 'w', peck = pose[0] === 'p', lg = walk ? (pose[1] === '0' ? 1 : -1) : 0;
+function henModel(M, coat, pose) { const C = HENCOAT[coat] || HENCOAT.brown, c = C.base, roo = coat === 'rooster', p0 = pose[0], f = +pose[1] || 0;
+  const walk = p0 === 'w', run = p0 === 'r', peck = p0 === 'p', scr = p0 === 's', crow = p0 === 'c';
   const tex = (x, n, z) => C.speck && h2(Math.round(x * 2) + 9, Math.round(z * 2 + n), 5) < .32 ? C.speck : (z > 4 && x < 1 && x > -2 ? cmul(c, .84) : c);
-  t3box(M, -2.4, -1.5, 1.8, 1.8, 1.5, 4.8, c, { clean: true, tex }); t3box(M, 1.2, -1.3, 2.2, 2.8, 1.3, 4.6, c, { clean: true, tex });
-  if (roo) { for (const [a, b] of [[[-2.2, 0, 4.4], [-4.4, 0, 8.6]], [[-2.2, .5, 4.2], [-4.8, .5, 7]], [[-2.2, -.5, 4.6], [-3.6, -.5, 9]]]) t3line(M, a, b, C.tail); t3line(M, [-4.4, 0, 8.6], [-5.2, 0, 6.4], C.tail); t3line(M, [-3.6, -.5, 9], [-4.6, -.5, 7.4], C.tail) }
-  else t3box(M, -3.4, -.8, 4, -2.2, .8, 6.4, cmul(c, .9), { clean: true, tex });
-  for (const s of [-1, 1]) t3line(M, [0, s * .6, 1.8], [s * lg, s * .6, 0], [214, 168, 60]);
-  const hx = peck ? (pose[1] === '0' ? 3.4 : 3) : 2.4, hz = peck ? (pose[1] === '0' ? .9 : 2.8) : 5;
+  const tilt = scr ? .6 : run ? .4 : 0, by = run && f % 2 ? .5 : 0; // (scratching the body tips forward; running it bounds)
+  t3box(M, -2.4, -1.5, 1.8 + by, 1.8, 1.5, 4.8 + by - tilt, c, { clean: true, tex }); t3box(M, 1.2, -1.3, 2.2 + by - tilt, 2.8, 1.3, 4.6 + by - tilt, c, { clean: true, tex });
+  if (roo) { for (const [a2, b2] of [[[-2.2, 0, 4.4], [-4.4, 0, 8.6]], [[-2.2, .5, 4.2], [-4.8, .5, 7]], [[-2.2, -.5, 4.6], [-3.6, -.5, 9]]]) t3line(M, [a2[0], a2[1], a2[2] + by], [b2[0], b2[1], b2[2] + by], C.tail); t3line(M, [-4.4, 0, 8.6 + by], [-5.2, 0, 6.4 + by], C.tail); t3line(M, [-3.6, -.5, 9 + by], [-4.6, -.5, 7.4 + by], C.tail) }
+  else t3box(M, -3.4, -.8, 4 + by, -2.2, .8, 6.4 + by + tilt, cmul(c, .9), { clean: true, tex });
+  if (run) for (const s2 of [-1, 1]) { const up = f % 2 ? 2.4 : .6; t3face(M, [[-1.6, s2 * 1.5, 4.2 + by], [1.2, s2 * 1.5, 4.4 + by], [.4, s2 * 3.6, 4.6 + by + up], [-2, s2 * 3.4, 4.2 + by + up]], cmul(c, .88), null, { both: true, clean: true }) } // (wings out, beating)
+  // legs: walking, the feet step in turn (four frames); scratching, one foot raked back
+  for (const s2 of [-1, 1]) { const ph = walk || run ? Math.sin((f / 4 + (s2 > 0 ? .5 : 0)) * TAU) : 0, lf = walk || run ? Math.max(0, Math.cos((f / 4 + (s2 > 0 ? .5 : 0)) * TAU)) * .7 : 0, rake = scr && s2 === (f ? 1 : -1);
+    t3line(M, [0, s2 * .6, 1.8 + by], rake ? [-1.8, s2 * .6, .5] : [ph * (run ? 1.4 : 1), s2 * .6, lf], [214, 168, 60]) }
+  // the head: bobbing with the step (thrust forward, then the body catches up), down to the ground pecking, thrown back crowing
+  const bob = walk ? (f % 2 ? .7 : 0) : 0, hx = peck ? (f ? 3 : 3.4) : scr ? 3.1 : crow ? 1.8 : 2.4 + bob, hz = peck ? (f ? 2.8 : .9) : scr ? 3.2 : crow ? 6.2 : 5 + by;
   if (roo) t3box(M, hx - .8, -1.1, hz - 1.8, hx + .8, 1.1, hz + .4, [210, 126, 44], { clean: true });
   t3box(M, hx, -.8, hz, hx + 1.4, .8, hz + 1.6, c, { clean: true }); t3box(M, hx + .2, -.25, hz + 1.6, hx + 1.3, .25, hz + (roo ? 3 : 2.2), [206, 40, 36], { clean: true });
-  M.dots.push([[hx + 1.9, 0, hz + .7], [222, 170, 60]], [[hx + 1.1, -.85, hz + 1.1], [20, 20, 20]], [[hx + 1.3, 0, hz - .1], [196, 40, 36]]) }
+  M.dots.push([[hx + 1.9, 0, hz + (crow ? 1.1 : .7)], [222, 170, 60]], [[hx + 1.1, -.85, hz + 1.1], [20, 20, 20]], [[hx + 1.3, 0, hz - .1], [196, 40, 36]]); if (crow) M.dots.push([[hx + 1.9, 0, hz + .4], [222, 170, 60]]) }
 function henSpr(coat, dir, pose) { const key = coat + dir + pose; let r = HENSPR.get(key); if (r) return r; const sp = t3sprite(() => { const M = T3(); henModel(M, coat, pose); return dir < 0 ? t3flipX(M) : M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay }; HENSPR.set(key, r); return r }
 function hensInit() { for (const W of PLW) for (const c of (W.P.hens || [])) { const [x, y] = W.toW(c.x, c.y), [x0, y0] = W.toW(c.box[0], c.box[1]), [x1, y1] = W.toW(c.box[2], c.box[3]); HENS.push({ coat: c.coat, x, y, box: [x0, y0, x1, y1], dir: Math.random() < .5 ? -1 : 1, state: 'peck', t: Math.random() * 3, ph: 0, tx: x, ty: y, sd: Math.random() * 9 }) } }
-function stepHens(dt) { for (const H of HENS) { H.t -= dt; const [x0, y0, x1, y1] = H.box, rd = Math.hypot(R.x - H.x, R.y - H.y);
-    if (rd < 30 && (Math.abs(R.v) > 3 || R.foot)) { const dx = H.x - R.x, dy = H.y - R.y, d = rd || 1, sp = 32 * dt; H.state = 'run'; H.x = clamp(H.x + dx / d * sp + (Math.random() - .5) * 2 * sp, x0, x1); H.y = clamp(H.y + dy / d * sp, y0, y1); H.ph += dt * 14; H.dir = dx > 0 ? 1 : -1; H.t = .5; continue }
-    if (H.state === 'walk' || H.state === 'run') { const dx = H.tx - H.x, dy = H.ty - H.y, d = Math.hypot(dx, dy), sp = (H.state === 'run' ? 26 : 9) * dt;
-      if (d <= sp || H.t < -6) { H.state = Math.random() < .65 ? 'peck' : 'stand'; H.t = 1 + Math.random() * 3 } else { H.x += dx / d * sp; H.y += dy / d * sp; H.ph += dt * (H.state === 'run' ? 14 : 8); if (Math.abs(dx) > .4) H.dir = dx > 0 ? 1 : -1 } }
-    else if (H.t <= 0) { const r = Math.random(); if (r < .45) { H.state = 'peck'; H.t = 1 + Math.random() * 3 } else if (r < .62) { H.state = 'stand'; H.t = .6 + Math.random() * 2 } else { H.state = 'walk'; H.t = 0; H.tx = clamp(H.x + (Math.random() - .5) * 40, x0, x1); H.ty = clamp(H.y + (Math.random() - .5) * 24, y0, y1) } } } }
-function drawHen(H) { const k = H.state === 'walk' || H.state === 'run' ? 'w' + (Math.floor(H.ph) % 2) : H.state === 'peck' ? 'p' + (Math.floor(t * 2.6 + H.sd) % 3 === 0 ? 1 : 0) : 'st', S = henSpr(H.coat, H.dir, k);
-  ctx.fillStyle = 'rgba(10,14,8,.22)'; ctx.beginPath(); ctx.ellipse(H.x + .5, H.y + .5, 3.4, 1.3, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(H.x) - S.ax, Math.round(H.y) - S.ay) }
+function stepHens(dt) { for (const H of HENS) { H.t -= dt; H.v = H.v || 0; const [x0, y0, x1, y1] = H.box, rd = Math.hypot(R.x - H.x, R.y - H.y), roo = H.coat === 'rooster';
+    // (a bike or a walker coming close: off they run, wings going, and settle again a little way off)
+    if (rd < 30 && (Math.abs(R.v) > 3 || R.foot)) { const d = rd || 1; H.state = 'run'; H.tx = clamp(H.x + (H.x - R.x) / d * 26 + (Math.random() - .5) * 10, x0, x1); H.ty = clamp(H.y + (H.y - R.y) / d * 18, y0, y1); H.t = 0 }
+    if (H.state === 'walk' || H.state === 'run') { const dx = H.tx - H.x, dy = H.ty - H.y, d = Math.hypot(dx, dy), top = H.state === 'run' ? 30 : 9, want = d < 4 ? top * d / 4 : top; H.v += (want - H.v) * Math.min(1, dt * (H.state === 'run' ? 9 : 5));
+      const sp = Math.min(d, H.v * dt); if (d < .6 || H.t < -7) { H.state = H.state === 'run' ? 'stand' : (Math.random() < .5 ? 'peck' : 'scratch'); H.t = .8 + Math.random() * 2.4; H.v = 0 } else { H.x += dx / d * sp; H.y += dy / d * sp; H.ph += sp * (H.state === 'run' ? .5 : .55); if (Math.abs(dx) > .4) H.dir = dx > 0 ? 1 : -1 } continue }
+    if (H.state === 'crow' && H.t > 0) continue;
+    if (H.t <= 0) { const r = Math.random(); if (roo && r < .06 && LT.day > .3) { H.state = 'crow'; H.t = 1.6 }
+      else if (r < .4) { H.state = 'peck'; H.t = .8 + Math.random() * 2.4 } else if (r < .55) { H.state = 'scratch'; H.t = .7 + Math.random() * 1.2 } else if (r < .68) { H.state = 'stand'; H.t = .5 + Math.random() * 1.6 }
+      else { H.state = 'walk'; H.t = 0; H.tx = clamp(H.x + (Math.random() - .5) * 36, x0, x1); H.ty = clamp(H.y + (Math.random() - .5) * 20, y0, y1) } } } }
+function drawHen(H) { const st = H.state, k = st === 'walk' ? 'w' + (Math.floor(H.ph) % 4) : st === 'run' ? 'r' + (Math.floor(H.ph) % 4) : st === 'peck' ? 'p' + (Math.floor(t * 3.4 + H.sd) % 4 === 0 ? 0 : 1) : st === 'scratch' ? 's' + (Math.floor(t * 5 + H.sd) % 2) : st === 'crow' ? 'c0' : 'st', S = henSpr(H.coat, H.dir, k);
+  ctx.fillStyle = 'rgba(10,14,8,.22)'; ctx.beginPath(); ctx.ellipse(H.x + .5, H.y + .5, 3.4, 1.3, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(H.x) - S.ax, Math.round(H.y) - S.ay - (st === 'run' && Math.floor(H.ph) % 2 ? 1 : 0)) }
 // ---- a yard dog on a chain by its kennel: lying, sitting; up when someone comes, to the end of the chain, barking ----
 const DOGS = [], DOGSPR = new Map();
-function dogModel(M, pose) { const C = [134, 104, 72], B = [190, 168, 132], K = [56, 44, 34], lie = pose === 'lie', sit = pose === 'sit', walk = pose[0] === 'w', bark = pose[0] === 'b', ph = walk ? +pose[1] / 4 * TAU : 0;
-  const coat = (x, n, z) => z < bz0 + 1.3 && !sit ? B : (vn(x * .4, z * .4 + n * .2, 7) > .7 ? cmul(C, .82) : C), bz0 = lie ? .2 : 4.4;
-  if (sit) { t3box(M, -4.4, -2.3, 0, .6, 2.3, 4.6, C, { clean: true, tex: coat }); t3box(M, -1.2, -2, 3.4, 3.4, 2, 9, C, { clean: true, tex: (x, n, z) => x > 2.6 ? B : coat(x, n, z) }); for (const s of [-1, 1]) t3box(M, 2.2, s * 1.4 - .6, 0, 3.4, s * 1.4 + .6, 4.4, C, { clean: true }); t3line(M, [-4.4, 0, 1.4], [-7.4, 0, .6], C) }
-  else { t3box(M, -6, -2.3, bz0, 5, 2.3, bz0 + 4, C, { clean: true, tex: coat });
-    if (!lie) for (const [lx, side, off] of [[3.6, -1, 0], [3.6, 1, Math.PI], [-4.6, -1, Math.PI], [-4.6, 1, 0]]) { const sw = walk ? Math.sin(ph + off) * 1.6 : 0; t3box(M, lx - .6 + sw, side * 1.4 - .6, 0, lx + .6 + sw, side * 1.4 + .6, 4.6, C, { clean: true }) }
-    else for (const s of [-1, 1]) t3box(M, 5, s * 1.3 - .6, 0, 8, s * 1.3 + .6, 1.2, C, { clean: true });
-    const tz = lie ? 1.4 : bz0 + 3.4, up = lie ? -.4 : walk || bark ? 3.6 : 1.4; t3line(M, [-6, 0, tz], [-8.4, 0, tz + up], C); t3line(M, [-8.4, 0, tz + up], [-9.4, 0, tz + up * 1.3], cmul(C, .8)) }
-  const hx = sit ? 2.8 : lie ? 5.2 : 4.4, hz = sit ? 8.6 : lie ? .9 : bark ? bz0 + 4.8 : bz0 + 3.6;
-  t3box(M, hx - .5, -2, hz - .7, hx + .4, 2, hz + .5, [168, 40, 32], { clean: true });
-  t3box(M, hx, -1.7, hz, hx + 3.2, 1.7, hz + 3.2, C, { clean: true }); t3box(M, hx + 3.2, -1, hz + (bark && pose[1] === '1' ? .5 : 0), hx + 5.4, 1, hz + 1.7, [104, 82, 60], { clean: true });
-  if (bark && pose[1] === '1') { t3box(M, hx + 3.2, -.9, hz - 1, hx + 5, .9, hz - .2, [104, 82, 60], { clean: true }); M.dots.push([[hx + 4.6, 0, hz - .1], [200, 70, 70]]) }
-  M.dots.push([[hx + 5.6, 0, hz + 1.6], [24, 20, 20]], [[hx + 2.4, -1.75, hz + 2.2], [24, 20, 20]]); for (const s of [-1, 1]) t3box(M, hx + .2, s * 1.9 - .5, hz + 1.6, hx + 1.4, s * 1.9 + .5, hz + 3.6, K, { clean: true }) }
+function dogModel(M, pose) { const C = [150, 112, 74], B = [210, 190, 154], K = [64, 48, 36], MZ = [184, 150, 108], lie = pose === 'lie', sit = pose === 'sit', walk = pose[0] === 'w', bark = pose[0] === 'b', ph = walk ? +pose[1] / 4 * TAU : 0, wag = pose === 'st0' ? -1 : pose === 'st1' ? 1 : 0;
+  const zb = lie ? .3 : 4.4, coat = (x, n, z) => z < zb + 1.2 || (x > 2.4 && z < zb + 2.6) ? B : (vn(x * .5, z * .5 + n * .3, 7) > .72 ? cmul(C, .84) : C), L = (a, b, r0, r1, col) => t3limb(M, a, b, r0, r1, col, { seg: 6 });
+  let hx, hz, nk;
+  if (sit) { t3ball(M, [-2.4, 0, 2.3], 2.6, 2.2, 2.2, C, { seg: 8, tex: coat }); L([-1.6, 0, 3.4], [1.6, 0, 7.4], 2, 1.6, C); t3ball(M, [1.7, 0, 6.4], 1.5, 1.5, 1.8, B, { seg: 6 });
+    for (const s2 of [-1, 1]) { L([1.8, s2 * .9, 5.6], [2.4, s2 * .9, .4], .5, .42, C); t3box(M, 2, s2 * .9 - .45, 0, 3.4, s2 * .9 + .45, .6, B) } for (const s2 of [-1, 1]) t3box(M, -1.4, s2 * 1.6 - .5, 0, .8, s2 * 1.6 + .5, .7, C);
+    hx = 2; hz = 8.2; nk = [1.6, 0, 7.4] }
+  else { // the body: a barrel deep at the chest, tucked up at the loins
+    const rings = []; for (let i = 0; i <= 7; i++) { const x = -5.4 + 10.2 * i / 7, u = (x + .4) / 5.4, w = 1.9 * Math.pow(Math.max(.08, 1 - u * u), .4) + .15, top = zb + 3.7 + (x > 1.5 ? .3 : 0), bot = zb + (x < -1.5 ? 1.3 : x < 1 ? .6 : 0);
+      rings.push([[x, -w * .55, bot], [x, -w, (bot + top) / 2], [x, -w * .6, top], [x, w * .6, top], [x, w, (bot + top) / 2], [x, w * .55, bot]]) }
+    for (let i = 0; i < 7; i++) for (let j = 0; j < 6; j++) t3face(M, [rings[i][j], rings[i][(j + 1) % 6], rings[i + 1][(j + 1) % 6], rings[i + 1][j]], C, [0, 0, zb + 2], { tex: coat, clean: true });
+    for (const k of [0, 7]) t3face(M, rings[k], C, [k ? -3 : 3, 0, zb + 2], { tex: coat, clean: true });
+    if (!lie) for (const [lx, s2, off] of [[3.4, -1, 0], [3.4, 1, Math.PI], [-4.2, -1, Math.PI], [-4.2, 1, 0]]) { const sw = walk ? Math.sin(ph + off) * 1.5 : 0, up = walk ? Math.max(0, Math.cos(ph + off)) * .9 : 0, back = lx < 0, top = [lx, s2 * 1.1, zb + 1.4], knee = [lx + sw * .5 + (back ? -.9 : .3), s2 * 1.1, zb * .5 + up], foot = [lx + sw + (back ? -.2 : .4), s2 * 1.1, .35 + up];
+      L(top, knee, back ? .75 : .55, .42, C); L(knee, foot, .42, .36, C); t3box(M, foot[0] - .4, s2 * 1.1 - .45, foot[2] - .35, foot[0] + .9, s2 * 1.1 + .45, foot[2] + .25, B) }
+    else for (const s2 of [-1, 1]) { L([4, s2 * 1.1, 1.2], [7.2, s2 * 1.1, .5], .5, .42, C); t3box(M, 6.8, s2 * 1.1 - .45, .1, 8, s2 * 1.1 + .45, .7, B) }
+    hx = lie ? 5.4 : 4.6; hz = lie ? 1.2 : bark ? zb + 4.9 : zb + 4; nk = [4, 0, zb + 2.8] }
+  // the neck, the collar, the head: a round skull, a long muzzle, the ears pricked
+  L(nk, [hx + .6, 0, hz + 1], 1.35, 1.1, C); L([hx - .1, 0, hz + .2], [hx + .4, 0, hz + 1.9], 1.25, 1.25, [168, 40, 32]);
+  t3ball(M, [hx + 1.3, 0, hz + 1.5], 1.7, 1.45, 1.45, C, { seg: 8 }); const open = bark && pose[1] === '1';
+  L([hx + 2.4, 0, hz + 1.1 + (open ? .25 : 0)], [hx + 4.6, 0, hz + .9 + (open ? .35 : 0)], .85, .55, MZ); if (open) { L([hx + 2.4, 0, hz + .4], [hx + 4.1, 0, hz - .3], .55, .4, MZ); M.dots.push([[hx + 4, 0, hz + .2], [200, 70, 70]]) }
+  M.dots.push([[hx + 5, 0, hz + 1.1], [24, 20, 20]], [[hx + 2.2, -1.25, hz + 2], [24, 20, 20]], [[hx + 2.2, 1.25, hz + 2], [24, 20, 20]]);
+  for (const s2 of [-1, 1]) t3face(M, [[hx + .5, s2 * .9, hz + 2.5], [hx + 1.7, s2 * 1, hz + 2.6], [hx + 1, s2 * 1.25, hz + 4.3]], K, [hx + 1, 0, hz + 1], { both: true, clean: true });
+  // the tail curled up over the back in a ring, as a village dog carries it (wagging: swung to one side, then the other)
+  if (!lie) { const cx = -5, cz = (sit ? 1.8 : zb + 4.2), pts = []; for (let i = 0; i <= 7; i++) { const a = -Math.PI / 2 - i / 7 * Math.PI * 1.5; pts.push([cx - 1 + Math.cos(a) * 1.4, wag * (i / 7) * 1.4, cz + 1.4 + Math.sin(a) * 1.4]) } for (let i = 0; i < 7; i++) L(pts[i], pts[i + 1], .62 - i * .04, .58 - i * .04, i > 4 ? B : C) }
+  else L([-5.4, 0, 1.4], [-8.4, .6, .5], .55, .4, C) }
 function dogSpr(dir, pose) { const key = dir + pose; let r = DOGSPR.get(key); if (r) return r; const sp = t3sprite(() => { const M = T3(); dogModel(M, pose); return dir < 0 ? t3flipX(M) : M }, [0])[0]; r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay }; DOGSPR.set(key, r); return r }
 function dogsInit() { for (const W of PLW) for (const c of (W.P.dogs || [])) { const [x, y] = W.toW(c.x, c.y), [hx, hy] = W.toW(c.home[0], c.home[1]); DOGS.push({ x, y, hx, hy, r: c.r || 22, dir: -1, state: 'lie', t: 4, ph: 0, alert: 0, bt: 0, bark: 0, open: 0 }) } }
-function stepDogs(dt) { for (const D of DOGS) { const rd = Math.hypot(R.x - D.x, R.y - D.y); D.t -= dt; D.open = Math.max(0, D.open - dt);
-    if (rd < 100) { D.alert = 7; D.dir = R.x > D.x ? 1 : -1; let tx = D.hx + (R.x - D.hx), ty = D.hy + (R.y - D.hy); const cd = Math.hypot(tx - D.hx, ty - D.hy); if (cd > D.r) { tx = D.hx + (tx - D.hx) / cd * D.r; ty = D.hy + (ty - D.hy) / cd * D.r }
-      const dx = tx - D.x, dy = ty - D.y, d = Math.hypot(dx, dy); if (d > 2 && rd > 26) { D.state = 'walk'; const sp = Math.min(d, 30 * dt); D.x += dx / d * sp; D.y += dy / d * sp; D.ph += dt * 10 } else D.state = 'bark';
-      if (rd < 85) { D.bt -= dt; if (D.bt <= 0) { D.bt = Math.random() < .3 ? 1 + Math.random() * 1.6 : .3 + Math.random() * .14; D.bark++; D.open = .15 } } }
-    else if (D.alert > 0) { D.alert -= dt; D.state = 'st' }
-    else { const dx = D.hx - D.x, dy = D.hy + 5 - D.y, d = Math.hypot(dx, dy); if (d > 2.5) { D.state = 'walk'; const sp = Math.min(d, 9 * dt); D.x += dx / d * sp; D.y += dy / d * sp; D.ph += dt * 6; D.dir = dx > 0 ? 1 : -1 } else if (D.t <= 0 || D.state === 'walk' || D.state === 'st') { D.state = Math.random() < .7 ? 'lie' : 'sit'; D.t = 6 + Math.random() * 10 } } } }
-function drawDog(D) { const k = D.open > 0 ? 'b1' : D.state === 'walk' ? 'w' + (Math.floor(D.ph) % 4) : D.state === 'bark' ? 'b0' : D.state, S = dogSpr(D.dir, k), cx = D.x + D.dir * (D.state === 'lie' ? 5 : 4), cz = D.state === 'lie' ? 2 : D.state === 'sit' ? 8 : 7;
+function stepDogs(dt) { for (const D of DOGS) { const rd = Math.hypot(R.x - D.x, R.y - D.y); D.t -= dt; D.open = Math.max(0, D.open - dt); D.v = D.v || 0;
+    const go = (tx, ty, top) => { const dx = tx - D.x, dy = ty - D.y, d = Math.hypot(dx, dy), want = d < 6 ? top * d / 6 : top; D.v += (want - D.v) * Math.min(1, dt * 6); const sp = Math.min(d, D.v * dt); if (d > .5) { D.x += dx / d * sp; D.y += dy / d * sp; D.ph += sp * .32; if (Math.abs(dx) > .6) D.dir = dx > 0 ? 1 : -1 } return d };
+    if (rd < 100) { D.seen = (D.seen || 0) + dt; D.away = 0; D.alert = 7; let tx = D.hx + (R.x - D.hx), ty = D.hy + (R.y - D.hy); const cd = Math.hypot(tx - D.hx, ty - D.hy), reach = D.seen > 5 ? D.r * .45 : D.r; if (cd > reach) { tx = D.hx + (tx - D.hx) / cd * reach; ty = D.hy + (ty - D.hy) / cd * reach }
+      const d = rd > 26 ? go(tx, ty, D.seen > 5 ? 10 : 32) : 0; D.state = d > 2 ? 'walk' : D.seen > 5 ? 'wag' : 'bark'; if (D.state !== 'walk') { D.dir = R.x > D.x ? 1 : -1; D.v *= .8 }
+      if (D.seen < 5 && rd < 85) { D.bt -= dt; if (D.bt <= 0) { D.bt = Math.random() < .3 ? 1 + Math.random() * 1.4 : .3 + Math.random() * .14; D.bark++; D.open = .15 } } } // (a few barks, then it knows whoever it is, and only watches, the tail going)
+    else { D.away = (D.away || 0) + dt; if (D.away > 12) D.seen = 0;
+      if (D.alert > 0) { D.alert -= dt; D.state = 'st' } else { const d = go(D.hx, D.hy + 5, 9); if (d > 2.5) D.state = 'walk'; else if (D.t <= 0 || D.state === 'walk' || D.state === 'st' || D.state === 'wag') { D.state = Math.random() < .7 ? 'lie' : 'sit'; D.t = 6 + Math.random() * 10; D.v = 0 } } } } }
+function drawDog(D) { const k = D.open > 0 ? 'b1' : D.state === 'walk' ? 'w' + (Math.floor(D.ph) % 4) : D.state === 'bark' ? 'b0' : D.state === 'wag' ? 'st' + (Math.floor(t * (R.foot && Math.hypot(R.x - D.x, R.y - D.y) < 34 ? 9 : 5)) % 2) : D.state, S = dogSpr(D.dir, k), cx = D.x + D.dir * (D.state === 'lie' ? 5 : 4), cz = D.state === 'lie' ? 2 : D.state === 'sit' ? 8 : 7;
   const hx = D.hx, hy = D.hy, sag = Math.max(0, D.r - Math.hypot(D.x - hx, D.y - hy)) * .5 + 1; ctx.strokeStyle = 'rgba(58,56,54,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx + .5, hy - 1.5); ctx.quadraticCurveTo((hx + cx) / 2, Math.max(hy, D.y) + sag, cx + .5, D.y - cz); ctx.stroke();
   ctx.fillStyle = 'rgba(10,14,8,.24)'; ctx.beginPath(); ctx.ellipse(D.x + .5, D.y + .5, 7, 2.4, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(D.x) - S.ax, Math.round(D.y) - S.ay) }
 // the mill wheel's voice: its shaft groaning in the bearing, the buckets slapping in, twice a turn
@@ -6895,14 +6918,14 @@ const PLACES = {};
     trail: { side: ['road-n', 'road-s'] },
     ground: [
       { id: 'clearing', mat: 'glade', ellipse: [1110, 420, 840, 380], rough: .32 },
-      { id: 'yard', mat: 'trodden', ellipse: [1486, 492, 86, 40], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1640, 664, 64, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1424, 488, 14, 7], rough: .4 },
+      { id: 'yard', mat: 'trodden', ellipse: [1486, 492, 86, 40], rough: .3 }, { id: 'yard-house', mat: 'trodden', ellipse: [1648, 676, 66, 28], rough: .3 }, { id: 'door-mill', mat: 'dirt', ellipse: [1424, 488, 14, 7], rough: .4 },
       { id: 'landing-w', mat: 'trodden', ellipse: [730, 345, 60, 26], rough: .3 },
       // the forest road: down from the north (the dam), along the near bank and on to the south
       { id: 'road-n', mat: 'road', line: [[300, -40], [400, 60], [500, 190], [560, 330]], w: 13 },
       { id: 'road-s', mat: 'road', line: [[560, 330], [566, 520], [552, 680], [470, 900], [410, 1040]], w: 13 },
       { id: 'path-weir', mat: 'path', line: [[566, 360], [660, 350], [744, 338], [796, 334]], w: 5 },
       { id: 'path-mill', mat: 'path', line: [[1436, 308], [1484, 328], [1502, 372], [1502, 440], [1478, 484], [1428, 490]], w: 5 },
-      { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1606, 660], [1640, 670]], w: 5 },
+      { id: 'path-house', mat: 'path', line: [[1500, 440], [1546, 500], [1586, 588], [1606, 664], [1650, 680]], w: 5 },
       // the weir and the walk along it; the tailrace from the wheel back to the river
       { id: 'weir', mat: 'weir', line: WEIR, w: 36, walk: 17, rough: .25, spill: [325, 337] },
       { id: 'walk', mat: 'bridge', line: WEIR, w: 17, rough: 0, worn: 1, fresh: [452, 474], bridge: { ux: wux, uy: wuy } },
@@ -6910,7 +6933,7 @@ const PLACES = {};
       // the banks: a sandy spit on the inside of the bend below the weir; the boards out into the river by the bath-house; the miller's garden, the hens' run, the bath-house's patch
       { id: 'beach-sw', mat: 'beach', ellipse: [756, 580, 70, 80], shore: 42, rough: .2 },
       { id: 'mostki', mat: 'bridge', line: [[1338, 651], [1382, 651]], w: 4.5, rough: 0, bridge: { ux: 1, uy: 0 } },
-      { id: 'garden-m', mat: 'bed', rect: [1620, 540, 1720, 600], rough: .3 }, { id: 'run-hens', mat: 'trodden', rect: [1706, 696, 1774, 744], rough: .4 }, { id: 'yard-banya', mat: 'trodden', ellipse: [1420, 652, 24, 10], rough: .3 },
+      { id: 'garden-m', mat: 'bed', rect: [1620, 540, 1720, 600], rough: .3 }, { id: 'run-hens', mat: 'trodden', rect: [1706, 690, 1774, 748], rough: .4 }, { id: 'yard-banya', mat: 'trodden', ellipse: [1420, 652, 24, 10], rough: .3 },
       { id: 'path-banya', mat: 'path', line: [[1572, 556], [1512, 596], [1452, 648], [1384, 651]], w: 4 },
     ],
     objects: [
@@ -6924,20 +6947,20 @@ const PLACES = {};
       { id: 'flume-b', p: 'flume', x: 1360, y: 475, dx: -30, dn: 0, z: 10, z0: 9, gate: 'none', seed: 6 },
       { id: 'sacks-door', p: 'sacks', x: 1444, y: 480, seed: 3, n: 6 }, { id: 'cart', p: 'cart', x: 1490, y: 514, seed: 4 },
       // the yard's fence and its two gates (from the walk, and out toward the miller's house), the hitching rail outside, the scales, a lean-to with sacks waiting
-      { id: 'yf-n1', p: 'fence', axis: 'x', len: 24, x: 1470, y: 430, seed: 61 }, { id: 'yf-n2', p: 'fence', axis: 'x', len: 56, x: 1510, y: 430, seed: 62 },
+      { id: 'yf-n1', p: 'fence', axis: 'x', len: 16, x: 1470, y: 430, seed: 61 }, { id: 'yf-n2', p: 'fence', axis: 'x', len: 48, x: 1518, y: 430, seed: 62 },
       { id: 'yf-e', p: 'fence', axis: 'n', len: 100, x: 1566, y: 530, seed: 63 }, { id: 'yf-s', p: 'fence', axis: 'x', len: 136, x: 1404, y: 530, seed: 64 },
-      { id: 'ygate-n', p: 'wgate', w: 16, inn: -1, x: 1502, y: 430, seed: 65 }, { id: 'ygate-se', p: 'wgate', w: 26, inn: 1, x: 1553, y: 530, seed: 66 },
+      { id: 'ygate-n', p: 'wgate', w: 30, inn: -1, x: 1502, y: 430, seed: 65 }, { id: 'ygate-se', p: 'wgate', w: 26, inn: 1, x: 1553, y: 530, seed: 66 },
       { id: 'hitch', p: 'hitch', len: 24, x: 1532, y: 414, seed: 67 }, { id: 'trough-h', p: 'trough', len: 16, x: 1556, y: 420 },
-      { id: 'canopy', p: 'canopy', w: 30, d: 16, h: 15, x: 1438, y: 526, seed: 68 }, { id: 'scales', p: 'scales', x: 1456, y: 500, seed: 69 },
-      { id: 'house-miller', p: 'house', x: 1660, y: 650, w: 50, d: 38, h: 22, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench', 'kennel'], seed: 72, decay: .5, lampX: 6 },
+      { id: 'canopy', p: 'canopy', w: 30, d: 16, h: 15, x: 1438, y: 526, seed: 68 }, { id: 'scales', p: 'scales', x: 1458, y: 510, seed: 69 },
+      { id: 'house-miller', p: 'house', x: 1660, y: 658, w: 60, d: 44, h: 26, wall: 'log', col: [118, 92, 66], roof: 'shingle', roofCol: [88, 80, 72], porch: true, wins: [-14, 14], chim: 'brick', deco: ['logs', 'bench', 'kennel'], seed: 72, decay: .5, lampX: 6 },
       // his place: the garden dug over behind its fence with a scarecrow, the well, a shed, the hens' house and run, the bath-house down by the river with its boards out and a boat
       { id: 'gf-n', p: 'fence', axis: 'x', len: 108, x: 1616, y: 536, seed: 71 }, { id: 'gf-s', p: 'fence', axis: 'x', len: 108, x: 1616, y: 604, seed: 72 }, { id: 'gf-e', p: 'fence', axis: 'n', len: 68, x: 1724, y: 604, seed: 73 },
       { id: 'gf-w1', p: 'fence', axis: 'n', len: 18, x: 1616, y: 604, seed: 74 }, { id: 'gf-w2', p: 'fence', axis: 'n', len: 34, x: 1616, y: 570, seed: 75 }, { id: 'scarecrow', p: 'scarecrow', x: 1672, y: 568, seed: 3 },
       { id: 'well-m', p: 'well', x: 1612, y: 692, seed: 8 },
-      { id: 'shed-m', p: 'house', x: 1590, y: 744, w: 34, d: 22, h: 15, wall: 'board', col: [110, 92, 72], roof: 'tin', roofCol: [96, 90, 86], porch: false, wins: [], door: 0, gate: 14, chim: 'none', sideWin: false, deco: [], seed: 74, decay: .85 },
-      { id: 'henhouse', p: 'house', x: 1740, y: 708, w: 24, d: 16, h: 13, wall: 'board', col: [120, 96, 70], roof: 'tin', roofCol: [104, 96, 90], porch: false, wins: [], door: -3, gate: 7, chim: 'none', sideWin: false, deco: [], seed: 73, decay: .8 },
-      { id: 'hf-n', p: 'fence', axis: 'x', len: 72, x: 1704, y: 690, seed: 76 }, { id: 'hf-s', p: 'fence', axis: 'x', len: 72, x: 1704, y: 746, seed: 77 }, { id: 'hf-w', p: 'fence', axis: 'n', len: 56, x: 1704, y: 746, seed: 78 }, { id: 'hf-e', p: 'fence', axis: 'n', len: 56, x: 1776, y: 746, seed: 79 },
-      { id: 'banya', p: 'house', x: 1424, y: 640, w: 28, d: 22, h: 22, wall: 'log', col: [104, 80, 58], roof: 'shingle', roofCol: [84, 76, 66], porch: false, wins: [8], door: -6, chim: 'pipe', chimX: 6, sideWin: false, deco: ['logs'], seed: 75, decay: .6 },
+      { id: 'shed-m', p: 'house', x: 1586, y: 750, w: 40, d: 26, h: 18, wall: 'board', col: [110, 92, 72], roof: 'tin', roofCol: [96, 90, 86], porch: false, wins: [], door: 0, gate: 14, chim: 'none', sideWin: false, deco: [], seed: 74, decay: .85 },
+      { id: 'henhouse', p: 'house', x: 1740, y: 712, w: 30, d: 20, h: 15, wall: 'board', col: [120, 96, 70], roof: 'tin', roofCol: [104, 96, 90], porch: false, wins: [], door: -3, gate: 7, chim: 'none', sideWin: false, deco: [], seed: 73, decay: .8 },
+      { id: 'hf-n', p: 'fence', axis: 'x', len: 72, x: 1704, y: 686, seed: 76 }, { id: 'hf-s', p: 'fence', axis: 'x', len: 72, x: 1704, y: 750, seed: 77 }, { id: 'hf-w', p: 'fence', axis: 'n', len: 64, x: 1704, y: 750, seed: 78 }, { id: 'hf-e', p: 'fence', axis: 'n', len: 64, x: 1776, y: 750, seed: 79 },
+      { id: 'banya', p: 'house', x: 1426, y: 642, w: 32, d: 24, h: 24, wall: 'log', col: [104, 80, 58], roof: 'shingle', roofCol: [84, 76, 66], porch: false, wins: [8], door: -6, chim: 'pipe', chimX: 6, sideWin: false, deco: ['logs'], seed: 75, decay: .6 },
       { id: 'mostki-p1', p: 'piling', x: 1338, y: 645, h: 8, seed: 21 }, { id: 'mostki-p2', p: 'piling', x: 1338, y: 657, h: 8, seed: 22 },
       { id: 'boat-m', p: 'boat', x: 1352, y: 674, col: [70, 96, 82], water: true, L: 38, seed: 9 },
       // the banks: reeds in the still water of the pond and the slack below, a boat turned over on the spit, stones in the race below the weir, trees down into the river
@@ -6964,12 +6987,12 @@ const PLACES = {};
         under: [['barebush', 4], ['bush', 1.6], ['log', 1.2], ['branch', 1.4], ['sapling', .5], ['stump', .5]], extra: { p: .55, kinds: [['barebush', 3], ['bush', 1]] } },
       { id: 'bor', share: .12, keep: .55, size: 1.05, kinds: [['pine', 6], ['birch', 1.2], ['spruce', .8]], underKeep: .5,
         under: [['juniper', 1.6], ['lowshrub', 2], ['branch', 1.4], ['grass', 1.2], ['mush', .8]] } ] },
-    hens: [{ coat: 'rooster', x: 1730, y: 726, box: [1710, 714, 1770, 740] }, ...['brown', 'white', 'speck', 'ginger', 'brown'].map((coat, i) => ({ coat, x: 1714 + i * 12, y: 722 + (i % 2) * 10, box: [1710, 714, 1770, 740] }))],
-    dogs: [{ x: 1688, y: 670, home: [1685, 664], r: 24 }],
+    hens: [{ coat: 'rooster', x: 1730, y: 730, box: [1710, 718, 1770, 744] }, ...['brown', 'white', 'speck', 'ginger', 'brown'].map((coat, i) => ({ coat, x: 1714 + i * 12, y: 726 + (i % 2) * 10, box: [1710, 718, 1770, 744] }))],
+    dogs: [{ x: 1692, y: 680, home: [1690, 674], r: 24 }],
     // the miller, between the mill, the sacks and his house; an angler on the near bank below the weir
     npcs: [
       { id: 'miller', look: { id: 'miller', sex: 'm', age: 'old', h: 17.4, build: 1.12, skin: 1, hair: [190, 186, 176], cut: 'short', beard: [196, 192, 182], hat: 'cap', hatCol: [176, 170, 156], top: [176, 168, 150], topKind: 'jacket', legs: [92, 86, 76], boots: [52, 44, 36] },
-        route: [[1424, 490, 18, 180], [1474, 490, 0], [1510, 460, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1650, 672, 25, 0], [1606, 660, 0], [1586, 588, 0], [1546, 500, 0]] },
+        route: [[1424, 490, 18, 180], [1474, 490, 0], [1500, 452, 12, 0], [1546, 500, 0], [1586, 588, 0], [1606, 660, 0], [1656, 682, 25, 0], [1606, 664, 0], [1586, 588, 0], [1546, 500, 0]] },
       { id: 'angler', look: { id: 'angler', sex: 'm', h: 18, build: 1, skin: 2, hair: [70, 52, 40], cut: 'short', hat: 'hood', hatCol: [70, 90, 70], top: [70, 90, 70], topKind: 'jacket', legs: [60, 64, 72], boots: [40, 36, 34], carry: 'bucket' },
         route: [[700, 420, 40, 90], [740, 440, 0], [770, 470, 60, 100], [740, 440, 0]] },
     ],
@@ -6978,7 +7001,7 @@ const PLACES = {};
       { id: 'mill', name: 'Мельница', hint: 'колесо скрипит и плещет; жернова мелют по субботам', x: 1420, y: 488, r: 44 },
       { id: 'flume', name: 'Щит и жёлоб', hint: 'щит в запруде пускает воду из пруда в жёлоб; по нему она бежит вниз к колесу', x: 1330, y: 330, r: 26 },
       { id: 'pond', name: 'Мельничный пруд', hint: 'тихая вода выше запруды, в ней отражается лес', x: 1130, y: 200, r: 70 },
-      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1660, y: 672, r: 30 },
+      { id: 'house', name: 'Дом мельника', hint: 'у крыльца поленница, на лавке сохнет тулуп', x: 1660, y: 682, r: 34 },
     ],
     exits: [
       { id: 'north', x: 330, y: -10, to: 'дамба и Рыбацкая деревушка', km: 5.4, road: 'road-n' },
@@ -7507,7 +7530,14 @@ function weirColor(L, x, y) { if (MAPW.on && mapwD(x, y) > 1.5) { SKIPS.push(L);
 // a glade's grass: green, with dry straw in drifts that thin out at their edges
 function gladeColor(x, y) { let c = G.grass[quant(fbm(x * .06, y * .06, SEED + 16) * .85 + .1, x, y, 5, .7)]; const v = vn(x * .045, y * .045, SEED + 14) + (vn(x * .2, y * .2, SEED + 15) - .5) * .2;
   if (v > .56 && h2(x, y, SEED + 17) < (v - .56) * 3) c = BG.gladeS[h2(x, y, SEED + 18) < .5 ? 0 : 1]; return c }
-function groundColor(x, y) {
+const SHORE_SOFT = new Set(['glade', 'forest', 'bor', 'trodden', 'path', 'dirt', 'track', 'grass', 'bog']);
+function groundColor(x, y) { const c = groundColor0(x, y); if (!MAPW.on) return c; const dw = mapwD(x, y); if (dw < 0 || dw > 11) return c;
+  const band = 3.2 + 6.5 * vn(x * .03, y * .03, SEED + 1210); if (dw > band) return c; const h = layerAt(x, y), m = h.L ? h.L.mat : PL.base; if (!SHORE_SOFT.has(m)) return c;
+  const k = 1 - dw / band, g = h2(x, y, SEED + 1211); if (dw > band - 1.4 && g < .5) return c; // (its landward edge ragged, the grass coming down into it)
+  if (g < .06) return g < .025 ? [146, 142, 132] : [112, 108, 100]; // (pebbles)
+  const sand = cmix([170, 152, 116], [192, 176, 138], vn(x * .2, y * .2, SEED + 1212)), wet = cmix(sand, [118, 104, 80], clamp((1.8 - dw) / 1.8, 0, 1) * .8);
+  return cmix(c, wet, clamp(k * 1.6, 0, 1)) }
+function groundColor0(x, y) {
   const h = layerAt(x, y), L = h.L, mat = L ? L.mat : PL.base, d = h.d; let c;
   if (L && L.pier) return pierColor(L, x, y);
   if (mat === 'road' && L.trail && boggy(x, y)) { // a road through a bog: dark water standing in its ruts and hollows
@@ -8036,13 +8066,53 @@ function stepFoot(dt) { slopeStep(dt); R.surf = matAt(R.x, R.y); R.walk = false;
   else if (R.settle) { const g0 = Math.floor(R.gp); R.gp += dt / .07; if (Math.floor(R.gp) > g0 && Math.floor(R.gp) % 4 === 0) { R.gp = Math.floor(R.gp); R.settle = false; R.stepN = (R.stepN || 0) + 1 } }
   else { R.gk = R.ia === 'look' ? 'look' : 'idle'; R.it -= dt; if (R.it <= 0) { if (R.ia === 'look' || Math.random() < .6) { R.ia = 'idle'; R.ib = R.ib ? 0 : 1; R.it = 1.8 + Math.random() * 2.8 } else { R.ia = 'look'; R.ib = Math.random() < .5 ? 0 : 1; R.it = .9 + Math.random() * 1.4 } } }
   R.gf = Math.floor(R.gp) % NPC_WALKN }
+// ---- getting off the bike and on again, as it is done: standing astride it in front of the saddle, the right leg swung back up over the rear
+// wheel, brought down on the near side, then standing beside it, a hand on the bar; and the same the other way to get on. The bike here is
+// built to the person's own scale (the wheels as high as the knee), and is the bike left standing on its stand after ----
+function bikeModel3(M, c, o = {}) { const T = [34, 34, 36], SP = [168, 168, 170], R2 = 3.5, WB = 5.3, I = [84, 84, 86], L = (a, b, col, r = .26) => t3limb(M, a, b, r, r, col, { seg: 5 });
+  for (const wn of [-WB, WB]) { let pv = null; for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU, p = [0, wn + Math.cos(a) * R2, R2 + Math.sin(a) * R2]; if (pv) t3line(M, pv, p, T); pv = p }
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI + .3; t3line(M, [0, wn + Math.cos(a) * (R2 - .5), R2 + Math.sin(a) * (R2 - .5)], [0, wn - Math.cos(a) * (R2 - .5), R2 - Math.sin(a) * (R2 - .5)], [104, 104, 108]) } M.dots.push([[0, wn, R2], [60, 60, 62]]) }
+  const BB = [0, .4, 2.3], ST = [0, 2.3, 7], H0 = [0, -3.6, 6.3], H1 = [0, -3.9, 7.3];
+  L(BB, ST, c); L(ST, [0, -3.6, 6.9], c); L(BB, H0, c, .3); L(H0, H1, c, .3); L(H0, [0, -WB, R2], I, .2); L(BB, [0, WB, R2], c, .2); L(ST, [0, WB, R2], c, .18);
+  L(ST, [0, 2.5, 7.7], I, .16); t3box(M, -.55, 1.7, 7.6, .55, 3.5, 8.1, [34, 32, 32]); L(H1, [0, -4.1, 8.2], I, .17); L([-2.1, -4.2, 8.2], [2.1, -4.2, 8.2], [96, 96, 98], .15);
+  for (const s of [-1, 1]) t3box(M, s * 1.5 - .3, -4.45, 7.95, s * 2.3 + .3, -3.95, 8.45, [30, 30, 30]);
+  L(BB, [.6, -.6, 1.4], I, .12); L(BB, [-.6, 1.4, 3.2], I, .12); t3box(M, .4, -1.1, 1.2, 1.4, -.2, 1.5, [40, 40, 40]); t3box(M, -1.4, .9, 3, -.4, 1.8, 3.3, [40, 40, 40]);
+  { let pv = null; for (let i = 0; i <= 12; i++) { const a = i / 12 * TAU, p = [.35, .4 + Math.cos(a) * .9, 2.3 + Math.sin(a) * .9]; if (pv) t3line(M, pv, p, [70, 70, 72]); pv = p } } t3line(M, [.35, .4, 3.2], [.35, WB, R2 + .5], [70, 70, 72]); t3line(M, [.35, .4, 1.4], [.35, WB, R2 - .5], [70, 70, 72]);
+  t3box(M, -.7, WB - 1.6, R2 + 3.4, .7, WB + 1, R2 + 3.7, [60, 60, 62]); // (a rack over the back wheel)
+  if (o.stand) L([-.3, 1.2, 2.2], [-1.7, 2.1, 0], I, .12);
+  if (o.lean) { const seen = new Set(), F = p => { if (!seen.has(p)) { seen.add(p); p[0] += p[2] * o.lean } }; for (const f of M.faces) f.pts.forEach(F); for (const l of M.lines) { F(l.a); F(l.b) } for (const [p] of M.dots) F(p) } }
+PF.ownbike = ({ c = [52, 108, 104], rot = 0 } = {}) => { const sp = t3sprite(() => { const M = T3(); bikeModel3(M, c, { stand: true, lean: -.09 }); t3rot(M, rot); t3scale(M, NPC_K); return M }, [0]);
+  const a = rot * Math.PI / 180, hx = Math.abs(Math.sin(a)) * 7.5 + 2, hy = Math.abs(Math.cos(a)) * 6.5 + 1.5; return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-hx, -hy, hx, hy]] } };
+// the four poses between: where the person stands against the bike (x, n), the legs, the lean, the hands (all in the bike's own frame, unscaled)
+const DMPOSE = [
+  { at: [0, 0], pose: { lean: .9, legs: { '-1': { k: [-1.5, .2, 4], f: [-2.5, .6, .6] }, '1': { k: [1.5, .2, 4], f: [2.5, .6, .6] } }, handL: [-2.1, -4.2, 8.2], handR: [2.1, -4.2, 8.2] } },
+  { at: [-.8, .4], pose: { lean: 2, legs: { '-1': { k: [-1.1, .6, 4], f: [-1.3, .8, .6] }, '1': { k: [1, 3.8, 7.4], f: [.6, 6.6, 8.8] } }, handL: [-1.3, -4.6, 8.2], handR: [2.9, -4.6, 8.2] } },
+  { at: [-2.2, .2], pose: { lean: 1.1, legs: { '-1': { k: [-1.3, .4, 4], f: [-1.5, .6, .6] }, '1': { k: [-.3, 2.4, 4.8], f: [-.6, 3, 1.5] } }, handL: [.1, -4.4, 8.2], handR: [2.2, -1.2, 7.2] } },
+  { at: [-3.6, -.4], pose: { lean: .3, handR: [1.5, -3.8, 8.2] } }];
+const DMF = new Map();
+function dmFrame(d, k) { const c = R.bikeC || [52, 108, 104], key = HERO.id + '/' + d + '/' + k + '/' + c.join(','); let r = DMF.get(key); if (r) return r; const P = DMPOSE[k];
+  const sp = t3sprite(() => { const M = T3(); bikeModel3(M, c, { lean: k === 3 ? -.05 : 0 }); const Hm = personModel(HERO.look, P.pose); t3shift(Hm, P.at[0], P.at[1], 0); M.faces.push(...Hm.faces); M.lines.push(...Hm.lines); M.dots.push(...Hm.dots); t3rot(M, d * 360 / HDIRS); t3scale(M, NPC_K); return M }, [0])[0];
+  r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; DMF.set(key, r); return r }
+function dmWarm(ms) { if (R.foot && !BIKE || R.dm) return; const t0 = performance.now(), d = R.foot ? BIKE.params.d ?? 0 : ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; if (!R.foot && Math.abs(R.v) > 6) return;
+  for (let k = 0; k < 4; k++) { if (!DMF.has(HERO.id + '/' + d + '/' + k + '/' + (R.bikeC || [52, 108, 104]).join(','))) { dmFrame(d, k); if (performance.now() - t0 > ms) return } } }
+const DMT = [.22, .26, .24, .3]; // (how long each pose is held)
+function dmNow() { const D = R.dm; let t = D.t, k = 0; const seq = D.k === 'off' ? [0, 1, 2, 3] : [3, 2, 1, 0]; for (let i = 0; i < 4; i++) { const dur = DMT[seq[i]]; if (t < dur || i === 3) { k = seq[i]; break } t -= dur } return dmFrame(D.d, k) }
+// (where the person ends up, standing beside the bike: the last pose's place, turned and scaled as the picture is)
+function dmBeside(d) { const P = DMPOSE[3].at, a = (d * 360 / HDIRS - 180) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), x = P[0] * NPC_K, n = P[1] * NPC_K; return [x * c + n * s, -(-x * s + n * c)] }
+function stepDM(dt) { const D = R.dm; D.t += dt; R.v = 0; if (D.t < DMT.reduce((a, b) => a + b, 0)) return; R.dm = null;
+  if (D.k === 'off') { const rot = D.d * 360 / HDIRS, b = addPrefab('bike-own-' + (++BIKEN), 'ownbike', D.x, D.y, { c: R.bikeC || [52, 108, 104], rot, d: D.d }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
+    const [ox, oy] = dmBeside(D.d); R.x = D.x + ox; R.y = D.y + oy; R.psi = D.d * TAU / HDIRS; R.hd16 = D.d; R.foot = true; R.gp = 0; R.settle = false; R.ia = 'idle'; R.it = 1.5; STAND.k = 0; STAND.go = 0; STAND.cv = null }
+  else { R.x = D.x; R.y = D.y; R.psi = D.d * TAU / HDIRS; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.foot = false; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = 0; RORDER = null }
+  ACTK = null; heroActHud() }
 // ---- getting a bike, getting off it and on again: the camp's rental lets one have a bike (one of those in its rack); off it,
 // the bike stands where it was left, the way it was going, and one gets on it there again ----
 let BIKE = null, ACTK = null, BIKEN = 0; // (BIKE: the bike left standing, a thing of the world)
-function heroActNow() { if (R.foot) { if (BIKE && Math.hypot(BIKE.x - R.x, BIKE.y - R.y) < 15) return { k: 'mount', t: 'Сесть на велосипед' };
+function heroActNow() { if (R.dm) return null; if (R.foot) { if (BIKE && Math.hypot(BIKE.x - R.x, BIKE.y - R.y) < 15) return { k: 'mount', t: 'Сесть на велосипед' };
     let best = null, bd = 16; for (const o of OBJS) if (o.p === 'bike' && o !== BIKE && !o.gone) { const d = Math.hypot(o.x - R.x, o.y - R.y); if (d < bd) { bd = d; best = o } } return best ? { k: 'rent', t: 'Взять велосипед', o: best } : null }
   return Math.abs(R.v) < 2 && !R.walk ? { k: 'off', t: 'Слезть с велосипеда' } : null }
 function heroAct() { const A = heroActNow(); if (!A) return;
+  if (A.k === 'off') { const d = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; R.v = 0; R.dm = { k: 'off', t: 0, d, x: R.x, y: R.y }; dmWarm(200); ACTK = null; heroActHud(); return }
+  if (A.k === 'mount' && BIKE.p === 'ownbike') { const o = BIKE, d = o.params.d ?? 0; o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); BIKE = null; R.x = o.x; R.y = o.y; R.v = 0; R.dm = { k: 'on', t: 0, d, x: o.x, y: o.y }; ACTK = null; heroActHud(); return }
   if (A.k === 'rent' || A.k === 'mount') { const o = A.k === 'rent' ? A.o : BIKE, rot = o.params && o.params.rot; o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); if (o === BIKE) BIKE = null;
     R.x = o.x; R.y = o.y + (A.k === 'rent' ? 4 : 0); R.psi = rot !== undefined ? rot * D2R : Math.PI; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.foot = false; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = 0; RORDER = null; R.bikeC = o.params && o.params.c }
   else { const rot = ((Math.round(R.psi / D2R) % 360) + 360) % 360, b = addPrefab('bike-own-' + (++BIKEN), 'bike', R.x, R.y, { c: R.bikeC || [52, 108, 104], rot }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
@@ -8307,6 +8377,7 @@ function drawWorld() {
     if (o && o.bsh) { drawBirdShadow(o.bsh); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }
+    if (!o && R.dm) { const F = dmNow(), x = Math.round(R.dm.x) - F.ax, y = Math.round(R.dm.y) - F.ay; ctx.drawImage(F.cv, x, y); RF.img = F.cv; RF.rx = x; RF.ry = y; continue }
     if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay; ctx.drawImage(HF.cv, x, y); RF.img = HF.cv; RF.rx = x; RF.ry = y;
       for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 2); continue }
     if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS }
@@ -8694,6 +8765,7 @@ function drawMap() { if (!MAPX || t - mapT < .35) return; mapT = t; const g = MA
     if (L.ellipse) { const [ex, ey, rx, ry] = L.ellipse; g.beginPath(); g.ellipse(X(ex), Y(ey), Math.max(1, rx / K), Math.max(1, ry / K), 0, 0, TAU); g.fill() }
     else if (L.line) { g.lineWidth = Math.max(1, L.w * 2 / K); g.lineCap = 'round'; g.beginPath(); L.line.forEach((p, k) => k ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.stroke() } }
   g.fillStyle = '#f2e4c8'; g.fillRect(Math.round(X(R.x)) - 1, Math.round(Y(R.y)) - 1, 3, 3); g.fillStyle = '#e3a03c'; g.fillRect(Math.round(X(R.x + Math.sin(R.psi) * 30)), Math.round(Y(R.y - Math.cos(R.psi) * 30)), 1, 1) }
+$('bAct').addEventListener('click', e => { e.preventDefault(); heroAct() });
 { const bR = $('bBack'), on = e => { e.preventDefault(); REVHOLD = true }, off = () => { REVHOLD = false }; bR.addEventListener('pointerdown', on); bR.addEventListener('pointerup', off); bR.addEventListener('pointerleave', off); bR.addEventListener('pointercancel', off) }
 const m1 = v => (v / 10).toFixed(1).replace('.', ',');
 // where a point is on the dam's way (from the turning off the village road): how far along it and how far to the right (+) or the
@@ -8775,8 +8847,8 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
-  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.dm) stepDM(dt); else if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); if (!INTRO.on) dmWarm(paused ? 6 : 2); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
   if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
   drawWorld(); ft('мир'); drawSmoke(); drawFog(); drawLight(); drawLife(); ft('свет'); drawGlare(); drawMurk();
@@ -8789,7 +8861,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { HENS, DOGS, walkHole, JOLT, get RLIFT() { return RLIFT }, DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { HENS, DOGS, dogSpr, henSpr, walkHole, JOLT, get RLIFT() { return RLIFT }, DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
