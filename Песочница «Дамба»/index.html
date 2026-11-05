@@ -5586,6 +5586,30 @@ function gateBlocks(o, x, y, rad) { if (o.p !== 'wgate' || (o.gv ?? 0) > .55) re
 function gateCreak(o) { if (!SND.on || !SND.ctx || !SX.buf) return; const d = Math.hypot(o.x - R.x, o.y - R.y); if (d > 160) return; const A = SND.ctx, t0 = nowA(), os = A.createOscillator(), f = A.createBiquadFilter(), g = A.createGain();
   os.type = 'sawtooth'; os.frequency.setValueAtTime(320, t0); os.frequency.linearRampToValueAtTime(210, t0 + .5); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 6; const v = .06 * sxAtt(d, 60);
   g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v, t0 + .08); g.gain.linearRampToValueAtTime(v * .4, t0 + .4); g.gain.linearRampToValueAtTime(0, t0 + .55); os.connect(f); f.connect(g); g.connect(SND.master); os.start(t0); os.stop(t0 + .6) }
+// ---- a hen-house: a small coop up on short stilts, its walls washed a faded ochre, a mono-pitch roof of tarred felt, the pop-hole with a
+// slatted ramp down to the run, a nesting box on the side under its own lid, a little window of wire mesh, straw kicked out at the ramp's foot ----
+PF.henhouse = ({ seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const W2 = 13, D = 18, Z0 = 4.5, ZH = 16, ZL = 11.5, WC = [178, 152, 104], DK = [86, 68, 48], TAR = [58, 58, 62], r = mulberry(seed);
+    const wash = (u, z) => { const k = Math.floor(u / 2.6), f = u / 2.6 - k; let c = f < .14 ? cmul(WC, .72) : cmul(WC, .9 + .16 * h2(k, 1, seed)); if (vn(u * .3, z * .3, seed + 3) > .64) c = cmix(c, [128, 110, 86], .55); if (z < Z0 + 2.2 && vn(u, z, seed + 4) > .45) c = cmix(c, [96, 84, 62], .5); return c };
+    for (const [x, n] of [[-W2 + 1, 1], [W2 - 1, 1], [-W2 + 1, D - 1], [W2 - 1, D - 1]]) t3box(M, x - .7, n - .7, 0, x + .7, n + .7, Z0, DK);
+    t3box(M, -W2 - .5, -.5, Z0 - .9, W2 + .5, D + .5, Z0, DK);
+    const zt = n => ZH + (ZL - ZH) * n / D;
+    t3face(M, [[-W2, 0, Z0], [W2, 0, Z0], [W2, 0, ZH], [-W2, 0, ZH]], WC, [0, D / 2, 8], { tex: (x, n, z) => wash(x + 20, z) });
+    t3face(M, [[-W2, D, Z0], [W2, D, Z0], [W2, D, ZL], [-W2, D, ZL]], WC, [0, D / 2, 8], { tex: (x, n, z) => wash(x + 50, z) });
+    for (const x of [-W2, W2]) t3face(M, [[x, 0, Z0], [x, D, Z0], [x, D, ZL], [x, 0, ZH]], WC, [0, D / 2, 8], { tex: (xx, n, z) => wash(n + 80, z) });
+    t3face(M, [[-W2 - 1.6, -1.8, ZH + .7], [W2 + 1.6, -1.8, ZH + .7], [W2 + 1.6, D + 1.6, zt(D + 1.6) - .3], [-W2 - 1.6, D + 1.6, zt(D + 1.6) - .3]], TAR, [0, D / 2, 0], { tex: (x, n, z) => { let c = ((x + 30) % 4.2) < .5 ? [40, 40, 44] : TAR; if (vn(x * .2, n * .3, seed + 6) > .7) c = cmix(c, [84, 100, 60], .4); if (h2(Math.floor(x), Math.floor(n / 3), seed) < .03) c = [96, 92, 86]; return c } });
+    t3line(M, [-W2 - 1.6, -1.8, ZH + .6], [W2 + 1.6, -1.8, ZH + .6], [36, 36, 40]);
+    // the man's door, boarded, a wooden turn-button; the pop-hole with its little shutter up; the mesh window
+    t3face(M, [[-9, -.35, Z0], [-3, -.35, Z0], [-3, -.35, Z0 + 9.5], [-9, -.35, Z0 + 9.5]], DK, null, { both: true, zb: .3, tex: (x, n, z) => Math.abs(z - Z0 - 2) < .4 || Math.abs(z - Z0 - 7.6) < .4 || Math.abs((z - Z0) - (x + 9) * 1.4) < .5 ? [62, 48, 34] : ((Math.floor(x + 20) % 2) ? [104, 82, 58] : DK) });
+    t3box(M, -3.4, -.9, Z0 + 4.4, -2.6, -.3, Z0 + 5.4, [140, 112, 80]);
+    t3face(M, [[3.5, -.35, Z0], [7.5, -.35, Z0], [7.5, -.35, Z0 + 4.4], [3.5, -.35, Z0 + 4.4]], [26, 22, 20], null, { both: true, inside: true, zb: .3 }); t3box(M, 3.2, -.8, Z0 + 4.4, 7.8, -.3, Z0 + 7.6, [112, 88, 62]);
+    t3face(M, [[-.5, -.35, Z0 + 6.2], [2.5, -.35, Z0 + 6.2], [2.5, -.35, Z0 + 9.6], [-.5, -.35, Z0 + 9.6]], [40, 44, 46], null, { both: true, zb: .3, tex: (x, n, z) => ((Math.round(x * 2) + Math.round(z * 2)) % 2 === 0) ? [150, 150, 146] : [40, 44, 46] });
+    // the ramp: a plank with cleats, from the pop-hole down to the ground
+    t3face(M, [[3.8, -.4, Z0], [7.2, -.4, Z0], [7.2, -9.5, 0], [3.8, -9.5, 0]], [146, 118, 82], [5.5, -20, 20], { tex: (x, n, z) => (((n % 1.7) + 1.7) % 1.7) < .45 ? [96, 74, 52] : [146, 118, 82] });
+    // the nesting box out on the east side, its lid
+    t3box(M, W2, 5, Z0 + .6, W2 + 4.4, 13, Z0 + 5.6, [150, 124, 88], { tex: (x, n, z) => z > Z0 + 5.4 ? [110, 86, 60] : wash(n + 120, z) }); t3face(M, [[W2, 4.6, Z0 + 7.4], [W2 + 5, 4.6, Z0 + 5.8], [W2 + 5, 13.4, Z0 + 5.8], [W2, 13.4, Z0 + 7.4]], TAR, [W2 + 10, 9, 0]);
+    for (let i = 0; i < 26; i++) M.dots.push([[3 + r() * 6, -9 - r() * 4, .2], r() < .6 ? [214, 188, 110] : [190, 160, 90]]); for (let i = 0; i < 6; i++) M.dots.push([[-12 + r() * 26, -2 - r() * 10, .2], [236, 232, 222]]);
+    return M }, [0]);
+  return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-14, -19, 18, 0]].map(t3w) } };
 // ---- the hitching rail outside the yard: two posts, a worn rail with iron rings, a wisp of hay dropped under it ----
 PF.hitch = ({ len = 24, seed = 1 } = {}) => { const sp = t3sprite(() => { const M = T3(); M.seed = seed; const Wd = [118, 92, 64];
     for (const s of [-1, 1]) t3cyl(M, s * len / 2, 0, 1.4, 0, 11, [96, 74, 52], { topCol: [150, 124, 92] });
@@ -7029,8 +7053,8 @@ const PLACES = {};
       { id: 'gf-n', p: 'fence', axis: 'x', len: 100, x: 1600, y: 500, seed: 71 }, { id: 'gf-s', p: 'fence', axis: 'x', len: 100, x: 1600, y: 560, seed: 72 }, { id: 'gf-e', p: 'fence', axis: 'n', len: 60, x: 1700, y: 560, seed: 73 },
       { id: 'gf-w1', p: 'fence', axis: 'n', len: 17, x: 1600, y: 560, seed: 74 }, { id: 'gf-w2', p: 'fence', axis: 'n', len: 17, x: 1600, y: 517, seed: 75 }, { id: 'ggate', p: 'wgate', axis: 'n', w: 26, inn: 1, x: 1600, y: 530, seed: 76 }, { id: 'scarecrow', p: 'scarecrow', x: 1652, y: 532, seed: 3 },
       { id: 'well-m', p: 'well', x: 1590, y: 668, seed: 8 },
-      { id: 'shed-m', p: 'house', x: 1730, y: 664, w: 40, d: 26, h: 18, wall: 'board', col: [110, 92, 72], roof: 'tin', roofCol: [96, 90, 86], porch: false, wins: [], door: 0, gate: 14, chim: 'none', sideWin: false, deco: [], seed: 74, decay: .85 },
-      { id: 'henhouse', p: 'house', x: 1756, y: 546, w: 30, d: 20, h: 15, wall: 'board', col: [120, 96, 70], roof: 'tin', roofCol: [104, 96, 90], porch: false, wins: [], door: -3, gate: 7, chim: 'none', sideWin: false, deco: [], seed: 73, decay: .8 },
+      { id: 'shed-m', p: 'house', x: 1734, y: 668, w: 44, d: 28, h: 20, wall: 'log', col: [112, 86, 62], roof: 'shingle', roofCol: [84, 76, 66], porch: false, wins: [], door: 0, gate: 18, chim: 'none', sideWin: false, deco: ['ladder'], seed: 74, decay: .75 },
+      { id: 'henhouse', p: 'henhouse', x: 1754, y: 548, seed: 73 },
       { id: 'hf-n', p: 'fence', axis: 'x', len: 72, x: 1720, y: 520, seed: 76 }, { id: 'hf-s', p: 'fence', axis: 'x', len: 72, x: 1720, y: 590, seed: 77 }, { id: 'hf-w', p: 'fence', axis: 'n', len: 70, x: 1720, y: 590, seed: 78 }, { id: 'hf-e', p: 'fence', axis: 'n', len: 70, x: 1792, y: 590, seed: 79 },
       { id: 'banya', p: 'house', x: 1426, y: 642, w: 32, d: 24, h: 24, wall: 'log', col: [104, 80, 58], roof: 'shingle', roofCol: [84, 76, 66], porch: false, wins: [8], door: -6, chim: 'pipe', chimX: 6, sideWin: false, deco: ['logs'], seed: 75, decay: .6 },
       { id: 'mostki-p1', p: 'piling', x: 1338, y: 645, h: 8, seed: 21 }, { id: 'mostki-p2', p: 'piling', x: 1338, y: 657, h: 8, seed: 22 },
@@ -7080,6 +7104,7 @@ const PLACES = {};
       { id: 'south', x: 420, y: 1010, to: 'Пасека в бору', km: 3.3, road: 'road-s' },
     ],
     sounds: [{ k: 'weir', x: 1130, y: 330 }, { k: 'weir', x: 1380, y: 470 }],
+    zones: [[1360, 420, 1840, 720]], // (the mill's yard, the miller's house and all about it are the mill, right to the trees)
     spawn: { x: 600, y: 300, heading: 100 },
   } }
 
@@ -7426,7 +7451,7 @@ const FCELL = 22, CROWN_R = { spruce: 16, pine: 20, larch: 15, birch: 15, aspen:
 // edge between the two woods wandering)
 const forestAt = !GAMEMODE ? (x, y) => PLW[0].P.forest : (x, y) => { for (let i = 1; i < FWS.length; i++) { const W = FWS[i], F = W.F; if (!F.reach) continue; const d = Math.hypot(x - W.cx, y - W.cy); if (d < F.reach * (.8 + .4 * vn(x * .0015, y * .0015, SEED + 510))) return F } return FWS[0].F };
 const standAt = (x, y) => { const F = forestAt(x, y), z = vn(x * F.zone, y * F.zone, SEED + 500) + (vn(x * .03, y * .03, SEED + 501) - .5) * .12; let acc = 0; for (const S of F.stands) { acc += S.share; if (z < acc) return S } return F.stands[F.stands.length - 1] };
-function inPlace(x, y, pad) { for (const W of PLW) if (layerD(W.C, x, y) < pad) return true; return false }
+function inPlace(x, y, pad) { for (const W of PLW) { if (layerD(W.C, x, y) < pad) return true; for (const Z of W.P.zones || []) { const [lx, ly] = W.toL(x, y); if (lx > Z[0] && lx < Z[2] && ly > Z[1] && ly < Z[3]) return true } } return false }
 // how far a point lies outside the nearest place's clearing (px; less than nought inside it)
 const edgeD = (x, y) => { let m = 1e9; for (const W of PLW) { const d = layerD(W.C, x, y); if (d < m) m = d } return m };
 // how far from the edge of the nearest way: any (a road, a path, gravel, a brook, a bridge, a river), or a road or a path only
