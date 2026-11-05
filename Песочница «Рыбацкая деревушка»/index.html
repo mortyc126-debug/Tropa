@@ -809,13 +809,15 @@ const RIDER_N=16,ROX=16;
 const R3B=.5,R3SS=3,R3W=32+2*ROX,R3H=44;
 const R3Z=new Float32Array(R3W*R3SS*R3H*R3SS),R3C=new Int32Array(R3W*R3SS*R3H*R3SS),R3T=new Uint8Array(R3W*R3SS*R3H*R3SS);
 const rgbI=c=>(c[0]<<16)|(c[1]<<8)|c[2];
-function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
+function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null,dm=0,solo=0){
   const SS=R3SS,Wd=R3W,Ht=R3H,SW=Wd*SS,SH=Ht*SS,B=R3B,D=Math.PI/180,zb=R3Z,cb=R3C,tb=R3T;zb.fill(-1e9);cb.fill(-1);tb.fill(0);
   // ps (0..1): the foot of side fs (-1 left, 1 right) put down on the ground, the bike leaning a little toward it;
   // br (0..1): the breath of the standing rider
   // gk, gu: an idle gesture (1 look left, 2 look right, 3 look up, 4 a hand to the beanie, 5 a shift of weight, 6 a sigh)
   // and how far it has gone (0..1)
-  const pe=ps*ps*(3-2*ps),GE=gu*gu*(3-2*gu),ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),LN=lean+6*pe*fs-(gk===5?2.6*GE*fs:0),ls=Math.sin(LN*D),lc=Math.cos(LN*D);
+  // dm (0..1): getting off, from the foot down (0) to standing beside the bike, which is let down on its stand (1); solo: the bike alone, on its stand
+  const DMLN=solo?-6:dm>0?(()=>{const T2=[0,.42,.6,.76,.86,.93,1],V2=[6*fs,5*fs,4.2*fs,3*fs,1.5*fs,-6,-6];let i=0;while(i<T2.length-2&&dm>T2[i+1])i++;const u=Math.min(1,Math.max(0,(dm-T2[i])/(T2[i+1]-T2[i])));return V2[i]+(V2[i+1]-V2[i])*u*u*(3-2*u)})():null;
+  const pe=ps*ps*(3-2*ps),GE=gu*gu*(3-2*gu),ys=Math.sin(yaw*D),yc=Math.cos(yaw*D),LN=DMLN!==null?DMLN:lean+6*pe*fs-(gk===5?2.6*GE*fs:0),ls=Math.sin(LN*D),lc=Math.cos(LN*D);
   // the model's own axes in the world (X right on screen, N away from the camera along the ground, H up)
   const Fw=[ys,yc,0],Sw=[lc*yc,-lc*ys,-ls],Hw=[ls*yc,-ls*ys,lc];
   const BBF=8,OX=16+ROX,OY=31.75; // the bottom bracket's ground point sits here on the sprite at every heading
@@ -913,7 +915,58 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
   // ---- legs: hip, knee and ankle; the knee from a two-bone leg pointing forward and a little out ----
   const ik=(a,b,L1,L2,pole)=>{const ab=sub(b,a),dd=Math.min(len(ab),L1+L2-.02),u=nrm(ab),x=(L1*L1-L2*L2+dd*dd)/(2*dd),y=Math.sqrt(Math.max(0,L1*L1-x*x));
     const pp=nrm(sub(pole,mul(u,dot(pole,u))));return add(a,add(mul(u,x),mul(pp,y)))};
-  const RC3=2.8;
+  const RC3=2.8;let KN=[12,0,28];
+  if(solo||dm>0){
+    const w=-fs,cl=(v,a,b)=>v<a?a:v>b?b:v,sm=v=>{v=cl(v,0,1);return v*v*(3-2*v)},lerp=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t),
+      R2=(p,a)=>{const c=Math.cos(a*D),s=Math.sin(a*D);return[p[0],p[1]*c+p[2]*s,-p[1]*s+p[2]*c]},W2M=p=>R2(p,-LN),M2W=p=>R2(p,LN);
+    const ped=side=>{const a=thc+(side>0?Math.PI:0);return[BBX+RC3*Math.cos(-a),side*3.5,BBH+RC3*Math.sin(-a)]};
+    // the cranks at the standing position, the pedals; the kickstand on the left, folded up until it is kicked down
+    for(const side of[-1,1]){const pd=ped(side);tube([BBX,side*1.9,BBH],[pd[0],side*2.9,pd[2]],.32,.32,d=>tone(d,CRK),1);box(add(pd,[0,side*.5,-.1]),[[1.05,0,0],[0,.75,0],[0,0,.22]],d=>tone(d,PED))}
+    const KS=solo?1:sm((dm-.8)/.07);tube([6.6,-1.5,4.6],lerp([1.6,-1.7,5.7],W2M([4.3,-3.5,.18]),KS),.24,.2,d=>tone(d,CRK),1);
+    if(!solo){
+      // the keys of the movement: their times, and at each the place of the hips, the lean of the body, how far it has come upright off the bike...
+      const T=[0,.2,.3,.42,.5,.6,.76,.88,1],n=T.length;let ki=0;while(ki<n-2&&dm>T[ki+1])ki++;
+      // ...through which every quantity runs on a smooth curve (it passes each key at its time and its speed never jumps)
+      const herm=V=>{const i=ki,t0=T[i],t1=T[i+1],u=cl((dm-t0)/(t1-t0),0,1),u2=u*u,u3=u2*u,h00=2*u3-3*u2+1,h10=u3-2*u2+u,h01=-2*u3+3*u2,h11=u3-u2,dt=t1-t0,vec=Array.isArray(V[0]);
+        const m=k=>{if(k<=0||k>=n-1)return vec?V[k].map(()=>0):0;const d2=T[k+1]-T[k-1];return vec?V[k].map((v,j)=>(V[k+1][j]-V[k-1][j])/d2):(V[k+1]-V[k-1])/d2};const mi=m(i),mj=m(i+1);
+        return vec?V[i].map((v,j)=>h00*v+h10*dt*mi[j]+h01*V[i+1][j]+h11*dt*mj[j]):h00*V[i]+h10*dt*mi+h01*V[i+1]+h11*dt*mj};
+      const H=herm([[6.4,.45*fs,18.2],[8.6,2.2*fs,18.4],[9.2,2.9*fs,18.2],[9.6,3.4*fs,17.9],[9.6,4*fs,17.8],[9.2,5.2*fs,17.6],[8.7,7.2*fs,17.5],[8.6,8*fs,17.7],[8.6,8.2*fs,17.8]]),
+        AL=herm([43.7,34,40,50,48,38,18,9,6])*D,UA=cl(herm([0,.45,.65,.8,.9,1,1,1,1]),0,1),TS2=herm([.45,.3,.2,.1,0,0,0,0,0])*fs,PA=-LN*UA,P2M=p=>R2(p,PA);
+      // the ground foot stays where it was put down (in the world, whatever the bike does), then squares up the stance at the end
+      const G0=R2([BBX+1.4,6.5*fs,(1+6.5*fs*Math.sin(6*fs*D))/Math.cos(6*fs*D)+.225],6*fs),GW=herm([G0,G0,G0,G0,G0,G0,G0,[9,6.9*fs,1.22],[9,6.9*fs,1.22]]);
+      // the other foot: on its pedal, lifted up and back, over the rack behind the saddle, down past the wheel, onto the ground on the near side
+      const PW=M2W(add(ped(w),[-1.1,0,1.05])),SAw=herm([PW,PW,[3.6,w*2.6,12.4],[.6,w*1.2,19.2],[.4,fs*1.4,19],[2.4,fs*5.6,12.2],[7.4,fs*9.7,1.22],[7.6,fs*9.7,1.22],[7.6,fs*9.7,1.22]]),
+        STo=herm([[2,0,-1.05],[2,0,-1.05],[-.6,0,-1.6],[-1.7,0,-1],[-1.7,0,-.9],[.8,0,-1.6],[2,0,-.35],[2,0,-.35],[2,0,-.35]]),
+        SPole=herm([[.95,w*.16,.3],[.95,w*.16,.3],[.4,w*.3,-.6],[-.1,w*.2,-1],[-.1,fs*.2,-1],[.5,fs*.5,-.4],[.95,fs*.2,.3],[.95,fs*.2,.3],[.95,fs*.2,.3]]);
+      const ua=[Math.sin(AL),0,Math.cos(AL)],nb=[-ua[2],0,ua[0]],P0=add(H,[-.3,TS2,.7]),P1=add(P0,mul(ua,9.68)),TC=mul(add(P0,P1),.5);
+      // hips, legs, boots
+      ell(P2M(add(H,[-.4,0,.7])),P2M([3,0,0]),P2M([0,5,0]),P2M([0,0,2.6]),d=>tone(d,C.coat?JK:PN,.5,-.1));
+      for(const side of[-1,1]){const hip=P2M(add(H,[0,side*3.2,0]));let ank,toe,pole;
+        if(side===fs){ank=W2M(GW);toe=W2M(add(GW,[2,0,-.35]));pole=[.95,fs*.16,.3]}else{ank=W2M(SAw);toe=W2M(add(SAw,STo));pole=W2M(SPole)}
+        const knee=ik(hip,ank,8.9,8.6,pole);
+        tube(hip,knee,1.65,1.2,d=>tone(d,PN,.45,-.15));if(C.coat)tube(hip,add(hip,mul(sub(knee,hip),.5)),1.78,1.5,d=>tone(d,JK,.45,-.15));tube(knee,ank,1.2,.95,d=>tone(d,PN,.62,.05));
+        const bc=add(mul(add(ank,toe),.5),[0,0,-.05]);ell(bc,mul(nrm(sub(toe,ank)),2.15),W2M([0,1,0]),W2M([0,0,.95]),d=>NH<-.45?SOLE:tone(d,BOOT,.5,-.1))}
+      // the body
+      ell(P2M(TC),P2M(mul(ua,5.8)),P2M([0,5.9,0]),P2M(mul(nb,3.5)),d=>U0<-.78?JKD:tone(d,JK,.5,-.12));
+      // the hands: the near one on its grip till the bike is on its stand; the far one off the bar as the body leaves it, to the stem, the top tube, then down
+      const relax=side=>P2M(add(H,[.9,side*5.3,-7.2])),gr=side=>BARP(side*6.4),STEM=[16.2,w*.4,18.4],TT=[11.5,0,16.4];
+      const far=dm<.5?gr(w):dm<.62?lerp(gr(w),STEM,sm((dm-.5)/.12)):dm<.74?lerp(STEM,TT,sm((dm-.62)/.12)):dm<.9?lerp(TT,relax(w),sm((dm-.74)/.16)):relax(w),near=dm<.88?gr(fs):lerp(gr(fs),relax(fs),sm((dm-.88)/.12));
+      for(const side of[-1,1]){const sh=P2M(add(TC,add(mul(ua,4.3),[0,side*4.9,0])));let hd=side===fs?near:far;const v=sub(hd,sh),L=len(v);if(L>9.1)hd=add(sh,mul(v,9.1/L));
+        const el=ik(sh,hd,4.7,4.5,P2M([-.5,side*.55,-.7]));tube(sh,el,1.2,1.0,d=>tone(d,JK,.45,-.1));tube(el,hd,1.0,.85,d=>tone(d,JK,.45,-.1));ell(add(hd,[.1,side*.2,.25]),[1.1,0,0],[0,1.0,0],[0,0,.9],d=>tone(d,GLV,.45,-.15))}
+      if(C.pack!==false){const PKC=add(TC,add(mul(ua,2.4),mul(nb,4.35)));box(P2M(PKC),[P2M(mul(ua,3.1)),P2M([0,3.9,0]),P2M(mul(nb,.95))],d=>{
+          if(U0===4){if(U1>.3)return Math.abs(U2)<.2&&U1<.58?BUCK:PKD;if(U1<-.85)return PKD;if(U2<-.86)return PKL;return PKc}return tone(d,PK,.4,-.1)});
+        for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(P2M(t0),P2M(t1),.42,.42,()=>STRAP,1)}}
+      // the scarf or the collar, the head (level as the body comes upright)
+      const at=(a,b)=>add(P1,add(mul(ua,a),mul(nb,b)));KN=P2M(add(at(.53,1.76),[0,2.5,0]));
+      if(C.scarf!==false){ell(P2M(at(.668,1.47)),P2M(add(mul(ua,2.31),mul(nb,-1.39))),P2M([0,4.2,0]),P2M(add(mul(ua,1.03),mul(nb,1.82))),d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});ball(KN,.95,d=>d>-.05?SCF:SCD)}
+      else ell(P2M(at(1.3,1.245)),P2M(add(mul(ua,1.32),mul(nb,-.95))),P2M([0,3.4,0]),P2M(add(mul(ua,.8),mul(nb,1.19))),d=>COLL?tone(d,COLL,.3,-.25):tone(d,JK,.5,-.12));
+      const HCp=at(4.05,.83),hth=14*UA*D,hcp=Math.cos(hth),hsp=Math.sin(hth),HRd=v=>P2M([v[0]*hcp-v[2]*hsp,v[1],v[0]*hsp+v[2]*hcp]),HCm=P2M(HCp),FD=nrm([1,0,-.45]);
+      if(C.hat===false){const HRT=T3([C.hairL||C.hair.map(v=>Math.min(255,v+36)),C.hair,C.hairD||C.hair.map(v=>v*.62|0)]);
+        ell(HCm,HRd([3.0,0,0]),HRd([0,3.75,0]),HRd([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;if(fd>.34&&hh<.42)return d>.2?SKIN:SKIND;return tone(d,HRT,.5,-.1)});
+        if(C.tail){ell(add(HCm,HRd([-3.1,0,.1])),HRd([1.1,0,.5]),HRd([0,.95,0]),HRd([.6,0,-1.6]),d=>tone(d,HRT,.45,-.15));ell(add(HCm,HRd([-3.9,0,-2.3])),HRd([.75,0,.2]),HRd([0,.7,0]),HRd([.4,0,-1.4]),d=>tone(d,HRT,.45,-.15))}}
+      else{ell(HCm,HRd([3.0,0,0]),HRd([0,3.75,0]),HRd([0,0,3.0]),d=>{const fd=U0*FD[0]+U2*FD[2],hh=U2;if(fd>.42&&hh<.32)return d>.2?SKIN:SKIND;if(hh<-.38&&fd<.3)return HAIR;
+          if(hh<-.02&&fd<.62)return Math.floor((Math.atan2(U1,U0)+Math.PI)*3.6)%2?BND:BN;return tone(d,BNT,.55,-.05)});ball(add(HCm,HRd([1.0,0,3.5])),1.3,d=>d>-.05?POM:POMD)}}
+  }else{
   for(const side of[-1,1]){const a=thc+(side>0?Math.PI:0),pd=[BBX+RC3*Math.cos(-a),side*3.5,BBH+RC3*Math.sin(-a)];
     let ank=add(pd,[-1.1,0,1.05]),toe=add(pd,[.9,0,0]),pole=[.95,side*.16,.3];const hip=[5.9+PDF,side*3.2+o*.5,18.9-PDZ];
     if(side===fs&&pe>0){ // that foot leaves its pedal, swings out and comes down flat on the ground beside the bike
@@ -943,7 +996,7 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
       return tone(d,PK,.4,-.1)});
   for(const side of[-1,1]){const t0=add(PKC,add(mul(ua,3.5),[0,side*2.7,0])),t1=add(TC,add(mul(ua,5.4),[0,side*2.9,.2]));tube(t0,t1,.42,.42,()=>STRAP,1)}}
   const HC=[14.5+PDF-(gk===3?.5*GE:0),o+(gk===1?-.7:gk===2?.7:0)*GE,30.1-PDZ+PBZ+(gk===3?.6*GE:0)];
-  const KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];if(C.scarf!==false){
+  KN=[11.4+PDF,o+2.5,28.2-PDZ+PBZ];if(C.scarf!==false){
   ell([11.7+PDF,o,28.1-PDZ+PBZ],[2.6,0,.7],[0,4.2,0],[-.6,0,2.0],d=>{const k=Math.floor((Math.atan2(U1,U0)+Math.PI)/(Math.PI*2)*11);return k%3===1?SCS:d<-.15?SCD:SCF});
   ball(KN,.95,d=>d>-.05?SCF:SCD)}else ell([12.3+PDF,o,28.4-PDZ+PBZ],[1.6,0,.3],[0,3.4,0],[-.3,0,1.4],d=>COLL?tone(d,COLL,.3,-.25):tone(d,JK,.5,-.12)); // (no scarf: the jacket's collar, or the shirt's over it)
   // head: the beanie over the crown and the back, a ribbed band, hair at the nape, a sliver of face in front
@@ -960,6 +1013,7 @@ function riderPixels(fr,yaw,lean,steer=0,ps=0,br=0,fs=-1,gk=0,gu=0,hr=null){
       if(hh<-.02&&fd<.62)return Math.floor((Math.atan2(U1,U0)+Math.PI)*3.6)%2?BND:BN;
       return tone(d,BNT,.55,-.05)});
   ball(add(HC,HR([1.0,0,3.5])),1.3,d=>d>-.05?POM:POMD)}
+  }
   // ---- resolve: majority colour per pixel (thin parts count for more so a crank or a stay does not vanish) ----
   const s=new Spr(Wd,Ht),kc=new Int32Array(9),kw=new Float32Array(9),dd=s.d;
   for(let y=0;y<Ht;y++)for(let x=0;x<Wd;x++){let n=0,wsum=0;
@@ -7846,7 +7900,7 @@ function rStore(yi, li, f, d) { let a = RSETS.get(rk(yi, li)); if (!a) { a = new
   if (a.n === RIDER_N) { const m = new Uint8Array(RW * RH), dd = c.getContext('2d').getImageData(0, 0, RW, RH).data; for (let i = 0; i < m.length; i++) m[i] = dd[i * 4 + 3] ? 1 : 0; a.mask = m; a.sh = [] } }
 const rReady = (yi, li) => { const a = RSETS.get(rk(yi, li)); return !!a && a.n === RIDER_N };
 const RWORK = [];
-try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs,j.gk,j.gu,j.hr);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,g:j.g,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
+try { const url = URL.createObjectURL(new Blob([RIDER_SRC + 'onmessage=e=>{const j=e.data,r=riderPixels(j.f,j.yaw,j.lean,j.steer,j.ps,j.br,j.fs,j.gk,j.gu,j.hr,j.dm||0,j.solo||0);postMessage({yi:j.yi,li:j.li,f:j.f,sk:j.sk,g:j.g,d:r.d},[r.d.buffer])};'], { type: 'text/javascript' }));
   for (let i = 0; i < Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); i++) { const w = new Worker(url); w.busy = 0; w.onmessage = e => { const m = e.data; w.busy--; if (m.g !== HGEN) return; if (m.sk !== undefined) { stStore(m.sk, m.d); return } RPND.delete(rk(m.yi, m.li) * 32 + m.f); rStore(m.yi, m.li, m.f, m.d) }; w.onerror = () => { const k = RWORK.indexOf(w); if (k >= 0) RWORK.splice(k, 1); RPND.clear(); SPND.clear(); for (const x of RWORK) x.busy = 0 }; RWORK.push(w) } } catch (e) { }
 function rJob(yi, li, f) { const yaw = yi * YSTEP; return { yi, li, f, yaw, lean: li * LEAN_DEG, steer: li * STEER_DEG, hr: HERO.rc, g: HGEN } }
 function rNext() { // the next sprite to make: the present heading and lean; then the upright headings, coarse ones first
@@ -7858,9 +7912,9 @@ function rNext() { // the next sprite to make: the present heading and lean; the
 let RORDER = null;
 function rWarm() { if (RWORK.length) { let busy = RWORK.reduce((a, w) => a + w.busy, 0);
     // (the frames of a foot going down come first)
-    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi), gk: sp.gk, gu: sp.gu, hr: HERO.rc, g: HGEN }) }
+    while (SQ.length && busy < RWORK.length * 6 + 4) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag); SPND.add(k); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage({ sk: k, f: f0, yaw: yi * YSTEP, lean: 0, steer: 0, ps: sp.ps, br: sp.br, fs: stSide(yi), gk: sp.gk, gu: sp.gu, hr: HERO.rc, dm: sp.dm || 0, solo: sp.solo || 0, g: HGEN }) }
     while (busy < RWORK.length * 6) { const j = rNext(); if (!j) return; RPND.add(rk(j[0], j[1]) * 32 + j[2]); let w = RWORK[0]; for (const x of RWORK) if (x.busy < w.busy) w = x; w.busy++; busy++; w.postMessage(rJob(...j)) } return }
-  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi), sp.gk, sp.gu, HERO.rc); stStore(k, r.d); return }
+  if (SQ.length) { const [k, yi, f0, tag] = SQ.shift(), sp = stSpec(tag), r = riderLocal(f0, yi * YSTEP, 0, 0, sp.ps, sp.br, stSide(yi), sp.gk, sp.gu, HERO.rc, sp.dm || 0, sp.solo || 0); stStore(k, r.d); return }
   const j = rNext(); if (j) { const q = rJob(...j), r = riderLocal(q.f, q.yaw, q.lean, q.steer, 0, 0, -1, 0, 0, q.hr); rStore(j[0], j[1], j[2], r.d) } }
 function rPick(yi, li) { if (rReady(yi, li)) return [yi, li]; let best = null, bd = 1e9; for (const [k, a] of RSETS) { if (a.n !== RIDER_N) continue; const yy = Math.floor(k / 3), ll = k % 3 - 1, dy = Math.min(Math.abs(yy - yi), NY - Math.abs(yy - yi)), d = dy + Math.abs(ll - li) * 1.5; if (d < bd) { bd = d; best = [yy, ll] } } return best }
 // where the lamps are on the sprite for a heading: the front lamp on the handlebar, the rear light on the rack
@@ -7879,8 +7933,9 @@ const BIKE_L = 14; // wheelbase, px
 const KEYS = new Set(); const STICK = { on: false, id: -1, x0: 0, y0: 0, dx: 0, dy: 0 };
 addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); if (INTRO.on) { introKey(e); return } KEYS.add(e.code); if (e.code === 'KeyE' || e.code === 'Enter') heroAct(); if (e.code === 'KeyG' || e.code === 'F2') toggleDev(); if (e.code === 'KeyP') togglePause() });
 addEventListener('keyup', e => { KEYS.delete(e.code); if (INTRO.on) introKeyUp(e) }); addEventListener('blur', () => KEYS.clear());
-function wantDir() { let x = 0, y = 0; if (KEYS.has('ArrowUp') || KEYS.has('KeyW')) y -= 1; if (KEYS.has('ArrowDown') || KEYS.has('KeyS')) y += 1; if (KEYS.has('ArrowLeft') || KEYS.has('KeyA')) x -= 1; if (KEYS.has('ArrowRight') || KEYS.has('KeyD')) x += 1;
-  if (x || y) { const m = Math.hypot(x, y); return [x / m, y / m, 1] } if (STICK.on) { const m = Math.hypot(STICK.dx, STICK.dy); if (m > 6) return [STICK.dx / m, STICK.dy / m, Math.min(1, (m - 6) / 40)] } return null }
+let AUTOW = null; // (a walk the game takes for the player, a few steps: up to his place beside the bike)
+function wantDir(raw) { let x = 0, y = 0; if (KEYS.has('ArrowUp') || KEYS.has('KeyW')) y -= 1; if (KEYS.has('ArrowDown') || KEYS.has('KeyS')) y += 1; if (KEYS.has('ArrowLeft') || KEYS.has('KeyA')) x -= 1; if (KEYS.has('ArrowRight') || KEYS.has('KeyD')) x += 1;
+  if (x || y) { const m = Math.hypot(x, y); return [x / m, y / m, 1] } if (STICK.on) { const m = Math.hypot(STICK.dx, STICK.dy); if (m > 6) return [STICK.dx / m, STICK.dy / m, Math.min(1, (m - 6) / 40)] } return raw ? null : AUTOW }
 // ---- what stops the bike: tree trunks, stones, buildings; the edge of the sandbox ----
 function blocked(x, y, rad) { if (inPond(x, y, -7) || damWater(x, y)) return true; { const k = deckBlocked(x, y, rad); if (k) return k } { const p = npcBlocks(x, y, rad); if (p) return p }
   for (const o of objsIn(x - 30, y - 30, x + 30, y + 30)) { stage1(o); if (o.circle && Math.hypot(o.circle[0] - x, o.circle[1] - y) < o.circle[2] + rad) return o;
@@ -7979,8 +8034,10 @@ const ST_N = 8, ST_I = 4, ST_IDLE = [0, 1, 0, 3], ST_G = 4, // (the breath: base
   STAND = { k: 0, go: 0, t: 0, yi: 0, f0: 0, cv: null, still: 0, m: 0, mt: 0, bt: .6, w: 0, cool: 0, g: null, gp: 0, gw: 0, gt: 3, ghist: [] }, SPR_ST = new Map(), SPND = new Set(), SQ = [];
 const stKey = (yi, f0, tag) => yi + '|' + f0 + '|' + tag;
 const stSide = yi => Math.sin(yi * YSTEP * D2R) > .01 ? 1 : -1; // the foot goes down on the side that faces the camera (his right when he heads east, his left heading west)
-const stSpec = tag => tag[0] === 't' ? { ps: +tag.slice(1) / ST_N, br: 0, gk: 0, gu: 0 } : tag[0] === 'g' ? { ps: 1, br: 0, gk: +tag[1], gu: +tag.slice(3) / ST_G } : { ps: 1, br: +tag.slice(1) / ST_I, gk: 0, gu: 0 };
+const DM_N = 36, DMDUR = 1.4; // (getting off: its frames, and how long it takes)
+const stSpec = tag => tag[0] === 'd' ? { ps: 1, br: 0, gk: 0, gu: 0, dm: +tag.slice(1) / DM_N } : tag === 'pb' ? { ps: 1, br: 0, gk: 0, gu: 0, dm: 1, solo: 1 } : tag[0] === 't' ? { ps: +tag.slice(1) / ST_N, br: 0, gk: 0, gu: 0 } : tag[0] === 'g' ? { ps: 1, br: 0, gk: +tag[1], gu: +tag.slice(3) / ST_G } : { ps: 1, br: +tag.slice(1) / ST_I, gk: 0, gu: 0 };
 function stWant(yi, f0) { SQ.length = 0; const L = []; for (let j = 1; j <= ST_N; j++) L.push('t' + j); for (const m of ST_IDLE) if (m) L.push('i' + m);
+  for (let j = 1; j <= DM_N; j++) L.push('d' + j); L.push('pb');
   for (const tag of L) { const k = stKey(yi, f0, tag); if (!SPR_ST.has(k) && !SPND.has(k)) SQ.push([k, yi, f0, tag]) } }
 function stWantG(id) { for (let j = 1; j <= ST_G; j++) { const tag = 'g' + id + '_' + j, k = stKey(STAND.yi, STAND.f0, tag); if (!SPR_ST.has(k) && !SPND.has(k) && !SQ.some(q => q[0] === k)) SQ.push([k, STAND.yi, STAND.f0, tag]) } }
 function stStore(k, d) { const c = document.createElement('canvas'); c.width = RW; c.height = RH; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(d), RW, RH), 0, 0);
@@ -8064,53 +8121,48 @@ function stepFoot(dt) { slopeStep(dt); R.surf = matAt(R.x, R.y); R.walk = false;
   else if (R.settle) { const g0 = Math.floor(R.gp); R.gp += dt / .07; if (Math.floor(R.gp) > g0 && Math.floor(R.gp) % 4 === 0) { R.gp = Math.floor(R.gp); R.settle = false; R.stepN = (R.stepN || 0) + 1 } }
   else { R.gk = R.ia === 'look' ? 'look' : 'idle'; R.it -= dt; if (R.it <= 0) { if (R.ia === 'look' || Math.random() < .6) { R.ia = 'idle'; R.ib = R.ib ? 0 : 1; R.it = 1.8 + Math.random() * 2.8 } else { R.ia = 'look'; R.ib = Math.random() < .5 ? 0 : 1; R.it = .9 + Math.random() * 1.4 } } }
   R.gf = Math.floor(R.gp) % NPC_WALKN }
-// ---- getting off the bike and on again, as it is done: standing astride it in front of the saddle, the right leg swung back up over the rear
-// wheel, brought down on the near side, then standing beside it, a hand on the bar; and the same the other way to get on. The bike here is
-// built to the person's own scale (the wheels as high as the knee), and is the bike left standing on its stand after ----
-function bikeModel3(M, c, o = {}) { const T = [34, 34, 36], SP = [168, 168, 170], R2 = 3.2, WB = 5.6, I = [84, 84, 86], L = (a, b, col, r = .26) => t3limb(M, a, b, r, r, col, { seg: 5 });
-  for (const wn of [-WB, WB]) { for (const rr of [R2, R2 - .38]) { let pv = null; for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU, p = [0, wn + Math.cos(a) * rr, R2 + Math.sin(a) * rr]; if (pv) t3line(M, pv, p, T); pv = p } }
-    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI + .3; t3line(M, [0, wn + Math.cos(a) * (R2 - .5), R2 + Math.sin(a) * (R2 - .5)], [0, wn - Math.cos(a) * (R2 - .5), R2 - Math.sin(a) * (R2 - .5)], [104, 104, 108]) } M.dots.push([[0, wn, R2], [60, 60, 62]]) }
-  const BB = [0, .4, 2.3], ST = [0, 2.3, 7], H0 = [0, -3.6, 6.3], H1 = [0, -3.9, 7.3];
-  L(BB, ST, c); L(ST, [0, -3.6, 6.9], c); L(BB, H0, c, .3); L(H0, H1, c, .3); L(H0, [0, -WB, R2], I, .2); L(BB, [0, WB, R2], c, .2); L(ST, [0, WB, R2], c, .18);
-  L(ST, [0, 2.5, 7.7], I, .16); t3box(M, -.55, 1.7, 7.6, .55, 3.5, 8.1, [34, 32, 32]); L(H1, [0, -4.1, 8.2], I, .17); L([-2.1, -4.2, 8.2], [2.1, -4.2, 8.2], [96, 96, 98], .15);
-  for (const s of [-1, 1]) t3box(M, s * 1.5 - .3, -4.45, 7.95, s * 2.3 + .3, -3.95, 8.45, [30, 30, 30]);
-  L(BB, [.6, -.6, 1.4], I, .12); L(BB, [-.6, 1.4, 3.2], I, .12); t3box(M, .4, -1.1, 1.2, 1.4, -.2, 1.5, [40, 40, 40]); t3box(M, -1.4, .9, 3, -.4, 1.8, 3.3, [40, 40, 40]);
-  { let pv = null; for (let i = 0; i <= 12; i++) { const a = i / 12 * TAU, p = [.35, .4 + Math.cos(a) * .9, 2.3 + Math.sin(a) * .9]; if (pv) t3line(M, pv, p, [70, 70, 72]); pv = p } } t3line(M, [.35, .4, 3.2], [.35, WB, R2 + .5], [70, 70, 72]); t3line(M, [.35, .4, 1.4], [.35, WB, R2 - .5], [70, 70, 72]);
-  t3box(M, -.7, WB - 1.6, 6.4, .7, WB + .9, 6.7, [60, 60, 62]); L([0, WB - .2, 6.4], [0, WB, R2], [60, 60, 62], .1); // (a rack over the back wheel)
-  if (o.stand) L([-.3, 1.2, 2.2], [-1.7, 2.1, 0], I, .12);
-  if (o.lean) { const seen = new Set(), F = p => { if (!seen.has(p)) { seen.add(p); p[0] += p[2] * o.lean } }; for (const f of M.faces) f.pts.forEach(F); for (const l of M.lines) { F(l.a); F(l.b) } for (const [p] of M.dots) F(p) } }
-PF.ownbike = ({ c = [52, 108, 104], rot = 0 } = {}) => { const sp = t3sprite(() => { const M = T3(); bikeModel3(M, c, { stand: true, lean: -.09 }); t3rot(M, rot); t3scale(M, NPC_K); return M }, [0]);
-  const a = rot * Math.PI / 180, hx = Math.abs(Math.sin(a)) * 7.5 + 2, hy = Math.abs(Math.cos(a)) * 6.5 + 1.5; return { s: sp[0].s, ax: sp[0].ax, ay: sp[0].ay, solids: [[-hx, -hy, hx, hy]] } };
-// the four poses between: where the person stands against the bike (x, n), the legs, the lean, the hands (all in the bike's own frame, unscaled)
-const DMPOSE = [
-  { at: [0, .6], dz: -1.8, pose: { lean: 1.5, legs: { '-1': { k: [-1.8, -1, 5.4], f: [-2.5, .2, 2.4] }, '1': { k: [1.8, -1, 5.4], f: [2.5, .2, 2.4] } }, handL: [-2.1, -4.8, 10], handR: [2.1, -4.8, 10] } },
-  { at: [-.8, .4], pose: { lean: 2, legs: { '-1': { k: [-1.1, .6, 4], f: [-1.3, .8, .6] }, '1': { k: [1, 3.8, 7.4], f: [.6, 6.6, 8.8] } }, handL: [-1.3, -4.6, 8.2], handR: [2.9, -4.6, 8.2] } },
-  { at: [-2.2, .2], pose: { lean: 1.1, legs: { '-1': { k: [-1.3, .4, 4], f: [-1.5, .6, .6] }, '1': { k: [-.3, 2.4, 4.8], f: [-.6, 3, 1.5] } }, handL: [.1, -4.4, 8.2], handR: [2.2, -1.2, 7.2] } },
-  { at: [-3.6, -.4], pose: { lean: .3, handR: [1.5, -3.8, 8.2] } }];
-const DMF = new Map();
-function dmFrame(d, k) { const c = R.bikeC || [52, 108, 104], key = HERO.id + '/' + d + '/' + k + '/' + c.join(','); let r = DMF.get(key); if (r) return r; const P = DMPOSE[k];
-  const sp = t3sprite(() => { const M = T3(); bikeModel3(M, c, { lean: k === 3 ? -.05 : 0 }); const Hm = personModel(HERO.look, P.pose); t3shift(Hm, P.at[0], P.at[1], P.dz || 0); M.faces.push(...Hm.faces); M.lines.push(...Hm.lines); M.dots.push(...Hm.dots); t3rot(M, d * 360 / HDIRS); t3scale(M, NPC_K); return M }, [0])[0];
-  r = { cv: sp.s.canvas(), ax: sp.ax, ay: sp.ay, w: sp.s.w, h: sp.s.h }; DMF.set(key, r); return r }
-function dmWarm(ms) { if (R.foot && !BIKE || R.dm) return; const t0 = performance.now(), d = R.foot ? BIKE.params.d ?? 0 : ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; if (!R.foot && Math.abs(R.v) > 6) return;
-  for (let k = 0; k < 4; k++) { if (!DMF.has(HERO.id + '/' + d + '/' + k + '/' + (R.bikeC || [52, 108, 104]).join(','))) { dmFrame(d, k); if (performance.now() - t0 > ms) return } } }
-const DMT = [.22, .26, .24, .3]; // (how long each pose is held)
-function dmNow() { const D = R.dm; let t = D.t, k = 0; const seq = D.k === 'off' ? [0, 1, 2, 3] : [3, 2, 1, 0]; for (let i = 0; i < 4; i++) { const dur = DMT[seq[i]]; if (t < dur || i === 3) { k = seq[i]; break } t -= dur } return dmFrame(D.d, k) }
-// (where the person ends up, standing beside the bike: the last pose's place, turned and scaled as the picture is)
-function dmBeside(d) { const P = DMPOSE[3].at, a = (d * 360 / HDIRS - 180) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), x = P[0] * NPC_K, n = P[1] * NPC_K; return [x * c + n * s, -(-x * s + n * c)] }
-function stepDM(dt) { const D = R.dm; D.t += dt; R.v = 0; if (D.t < DMT.reduce((a, b) => a + b, 0)) return; R.dm = null;
-  if (D.k === 'off') { const rot = D.d * 360 / HDIRS, b = addPrefab('bike-own-' + (++BIKEN), 'ownbike', D.x, D.y, { c: R.bikeC || [52, 108, 104], rot, d: D.d }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
-    const [ox, oy] = dmBeside(D.d); R.x = D.x + ox; R.y = D.y + oy; R.psi = D.d * TAU / HDIRS; R.hd16 = D.d; R.foot = true; R.gp = 0; R.settle = false; R.ia = 'idle'; R.it = 1.5; STAND.k = 0; STAND.go = 0; STAND.cv = null }
-  else { R.x = D.x; R.y = D.y; R.psi = D.d * TAU / HDIRS; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.foot = false; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = 0; RORDER = null }
+// ---- getting off the bike and on again: the rider's own model does it, frame by frame from the foot-down pose the standing rider is already in
+// (the same kind of frames, made the same way by the workers): up off the saddle, the leg over the back, down beside it, the bike let down on its
+// stand. The bike left standing is that same model, alone; and getting on is the same frames played back. Only once he stands clear of the
+// bike does the walking figure take over from the riding one, the two crossing over a moment where he stands ----
+function stWantD(yi, f0, first) { const want = []; for (let j = 1; j <= DM_N; j++) want.push('d' + j); want.push('pb');
+  for (let i = want.length - 1; i >= 0; i--) { const k = stKey(yi, f0, want[i]); if (SPR_ST.has(k) || SPND.has(k)) continue; const at = SQ.findIndex(q => q[0] === k); if (at >= 0) { if (!first) continue; SQ.splice(at, 1) } if (first) SQ.unshift([k, yi, f0, want[i]]); else SQ.push([k, yi, f0, want[i]]) } }
+const dmHave = (yi, f0, j) => j <= 0 || SPR_ST.has(stKey(yi, f0, 'd' + Math.min(j, DM_N)));
+const dmReady = (yi, f0) => { for (let j = 1; j <= DM_N; j++) if (!SPR_ST.has(stKey(yi, f0, 'd' + j))) return false; return SPR_ST.has(stKey(yi, f0, 'pb')) };
+const stReady = (yi, f0) => { for (let j = 1; j <= ST_N; j++) if (!SPR_ST.has(stKey(yi, f0, 't' + j))) return false; return true };
+function dmWarm() { if (!R.foot && !R.dm && STAND.k === ST_N && STAND.go === 0 && !SQ.length) stWantD(STAND.yi, STAND.f0) } // (made ahead while he stands, when the workers have nothing else)
+// where he stands when off: between his feet at the end of the movement, from the bottom bracket's ground point (in the model's units, to the sprite's scale)
+function dmFeet(yi, fs) { const a = yi * YSTEP * D2R, df = 8.3 - 8, sd = 8.3 * fs; return [RS * (df * Math.sin(a) + sd * Math.cos(a)), -RS * (df * Math.cos(a) - sd * Math.sin(a))] }
+PF.riderbike = ({ key, yaw = 0 } = {}) => { const c = SPR_ST.get(key), s = new Spr(RW, RH); if (c) s.d.set(c.getContext('2d').getImageData(0, 0, RW, RH).data);
+  const a = yaw * D2R, hx = Math.abs(Math.sin(a)) * 7.5 + 2, hy = Math.abs(Math.cos(a)) * 6.5 + 1.5; return { s, ax: ROXS, ay: ROYS, solids: [[-hx, -hy, hx, hy]] } };
+function offStep(dt) { // asked to get off: stop, let the foot go down, wait for the frames, then go
+  if (wantDir() || KEYS.has('KeyX') || REVHOLD) { R.offReq = false; return } R.v *= Math.exp(-dt * 8); STAND.gt = Math.max(STAND.gt, 2); STAND.gp = 0;
+  if (STAND.k > 0) stWantD(STAND.yi, STAND.f0, true); else if (STAND.go === 0 && Math.abs(R.v) < .8) STAND.still = Math.max(STAND.still, .3);
+  if (STAND.k === ST_N && STAND.go === 0 && !STAND.g && dmHave(STAND.yi, STAND.f0, 6)) { R.offReq = false; R.dm = { k: 'off', t: 0, yi: STAND.yi, f0: STAND.f0, fs: stSide(STAND.yi) } } }
+function mountTry(dt = 0) { const o = BIKE, P = o.params; if (!dmReady(P.yi, P.f0) || !stReady(P.yi, P.f0)) { if (!SQ.length) { stWant(P.yi, P.f0); stWantD(P.yi, P.f0, true) } R.mountReq = true; return }
+  const [fx, fy] = dmFeet(P.yi, stSide(P.yi)), tx = o.x + fx, ty = o.y + fy, d = Math.hypot(tx - R.x, ty - R.y), hold = R.xf && R.xf.k === 'hold';
+  if (!hold && d > 1.5 && (R.mwT = (R.mwT || 0) + dt) < 1.6) { AUTOW = [(tx - R.x) / d, (ty - R.y) / d, d < 4 ? .35 : .55]; R.mountReq = true; return }
+  AUTOW = null; R.mwT = 0; R.mountReq = false; R.xf = null;
+  o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); BIKE = null;
+  R.foot = false; R.x = o.x; R.y = o.y; R.yi = P.yi; R.li = 0; R.psi = P.yi * YSTEP * D2R; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.f = P.f0; RORDER = null;
+  Object.assign(STAND, { k: ST_N, go: 0, yi: P.yi, f0: P.f0, t: 0, w: 0, g: null, gp: 0, gt: 3, m: 0, mt: 0 }); R.dm = { k: 'on', t: 0, yi: P.yi, f0: P.f0, fs: stSide(P.yi) } }
+function stepDM(dt) { const D = R.dm; R.v = 0; if (D.k === 'off') { const nx = Math.round(clamp((D.t + dt) / DMDUR, 0, 1) * DM_N); if (!dmHave(D.yi, D.f0, nx) || nx >= DM_N && !SPR_ST.has(stKey(D.yi, D.f0, 'pb'))) stWantD(D.yi, D.f0, true); else D.t += dt } else D.t += dt;
+  const u = clamp(D.t / DMDUR, 0, 1), q = D.k === 'off' ? u : 1 - u, j = Math.round(q * DM_N);
+  STAND.cv = (j > 0 ? SPR_ST.get(stKey(D.yi, D.f0, 'd' + j)) : null) || stGet(ST_N); if (u < 1) return; R.dm = null;
+  if (D.k === 'off') { const key = stKey(D.yi, D.f0, 'pb'), b = addPrefab('bike-own-' + (++BIKEN), 'riderbike', R.x, R.y, { key, yaw: D.yi * YSTEP, yi: D.yi, f0: D.f0 }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
+    R.xf = { cv: SPR_ST.get(stKey(D.yi, D.f0, 'd' + DM_N)), ax: ROXS, ay: ROYS, x: R.x, y: R.y, t: 0, k: 'hold' };
+    const [ox, oy] = dmFeet(D.yi, D.fs); R.x += ox; R.y += oy; R.hd16 = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; R.foot = true; R.gp = 0; R.settle = false; R.ia = 'idle'; R.it = 1.5; STAND.k = 0; STAND.go = 0; STAND.cv = null }
+  else { STAND.k = ST_N; STAND.go = 0; STAND.cv = stGet(ST_N) }
   ACTK = null; heroActHud() }
 // ---- getting a bike, getting off it and on again: the camp's rental lets one have a bike (one of those in its rack); off it,
 // the bike stands where it was left, the way it was going, and one gets on it there again ----
 let BIKE = null, ACTK = null, BIKEN = 0; // (BIKE: the bike left standing, a thing of the world)
-function heroActNow() { if (R.dm) return null; if (R.foot) { if (BIKE && Math.hypot(BIKE.x - R.x, BIKE.y - R.y) < 15) return { k: 'mount', t: 'Сесть на велосипед' };
+function heroActNow() { if (R.dm || R.offReq || R.mountReq) return null; if (R.foot) { if (BIKE && Math.hypot(BIKE.x - R.x, BIKE.y - R.y) < 15) return { k: 'mount', t: 'Сесть на велосипед' };
     let best = null, bd = 16; for (const o of OBJS) if (o.p === 'bike' && o !== BIKE && !o.gone) { const d = Math.hypot(o.x - R.x, o.y - R.y); if (d < bd) { bd = d; best = o } } return best ? { k: 'rent', t: 'Взять велосипед', o: best } : null }
   return Math.abs(R.v) < 2 && !R.walk ? { k: 'off', t: 'Слезть с велосипеда' } : null }
 function heroAct() { const A = heroActNow(); if (!A) return;
-  if (A.k === 'off') { const d = ((Math.round(R.psi / (TAU / HDIRS)) % HDIRS) + HDIRS) % HDIRS; R.v = 0; R.dm = { k: 'off', t: 0, d, x: R.x, y: R.y }; dmWarm(200); ACTK = null; heroActHud(); return }
-  if (A.k === 'mount' && BIKE.p === 'ownbike') { const o = BIKE, d = o.params.d ?? 0; o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); BIKE = null; R.x = o.x; R.y = o.y; R.v = 0; R.dm = { k: 'on', t: 0, d, x: o.x, y: o.y }; ACTK = null; heroActHud(); return }
+  if (A.k === 'off') { R.offReq = true; ACTK = null; heroActHud(); return }
+  if (A.k === 'mount' && BIKE.p === 'riderbike') { mountTry(); ACTK = null; heroActHud(); return }
   if (A.k === 'rent' || A.k === 'mount') { const o = A.k === 'rent' ? A.o : BIKE, rot = o.params && o.params.rot; o.gone = true; bucketRemove(o); shadowDirty(o); const k = OBJS.indexOf(o); if (k >= 0) OBJS.splice(k, 1); if (o === BIKE) BIKE = null;
     R.x = o.x; R.y = o.y + (A.k === 'rent' ? 4 : 0); R.psi = rot !== undefined ? rot * D2R : Math.PI; R.v = 0; R.steer = 0; R.walk = false; R.autoRev = 0; R.foot = false; R.yi = ((Math.round(R.psi / D2R / YSTEP) % NY) + NY) % NY; R.li = 0; RORDER = null; R.bikeC = o.params && o.params.c }
   else { const rot = ((Math.round(R.psi / D2R) % 360) + 360) % 360, b = addPrefab('bike-own-' + (++BIKEN), 'bike', R.x, R.y, { c: R.bikeC || [52, 108, 104], rot }, 'world'); bucketAdd(b); while (!stage2(b)); BIKE = b;
@@ -8375,10 +8427,10 @@ function drawWorld() {
     if (o && o.bsh) { drawBirdShadow(o.bsh); continue }
     if (o && o.leaf) { drawLeafK(o.leaf, Math.round(o.leaf.x), Math.round(o.leaf.y - (o.leaf.hop || 0))); continue }
     if (o && o.npc) { const P = o.npc, S = npcSpr(P); ctx.fillStyle = 'rgba(10,14,8,.22)'; const pl = deckLift(P.x, P.y); ctx.beginPath(); ctx.ellipse(P.x + .5, P.y + .5 - pl, 3.9, 1.7, 0, 0, TAU); ctx.fill(); ctx.drawImage(S.cv, Math.round(P.x) - S.ax, Math.round(P.y - pl) - S.ay); continue }
-    if (!o && R.dm) { const F = dmNow(), x = Math.round(R.dm.x) - F.ax, y = Math.round(R.dm.y) - F.ay; ctx.drawImage(F.cv, x, y); RF.img = F.cv; RF.rx = x; RF.ry = y; continue }
-    if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay; ctx.drawImage(HF.cv, x, y); RF.img = HF.cv; RF.rx = x; RF.ry = y;
+    if (!o && HF && R.xf && R.xf.k === 'hold') { const X = R.xf, x = Math.round(X.x) - X.ax, y = Math.round(X.y) - X.ay; ctx.drawImage(X.cv, x, y); RF.img = X.cv; RF.rx = x; RF.ry = y; continue }
+    if (!o && HF) { const x = Math.round(R.x) - HF.ax, y = Math.round(R.y - RLIFT) - HF.ay, X = R.xf && R.xf.k === 'out' ? R.xf : null, xa = X ? clamp(X.t / .32, 0, 1) : 1; if (X) ctx.globalAlpha = xa; ctx.drawImage(HF.cv, x, y); if (X) { ctx.globalAlpha = 1 - xa; ctx.drawImage(X.cv, Math.round(X.x) - X.ax, Math.round(X.y) - X.ay); ctx.globalAlpha = 1 } RF.img = HF.cv; RF.rx = x; RF.ry = y;
       for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 2); continue }
-    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS }
+    if (!o) { const pk = rPick(R.yi, R.li); if (pk) { const a = RSETS.get(rk(pk[0], pk[1])); const c = STAND.cv || a[R.f] || a.find(Boolean); ctx.drawImage(c, Math.round(R.x) - ROXS, Math.round(R.y - RLIFT) - ROYS); if (R.xf && R.xf.k === 'in') { const X = R.xf; ctx.globalAlpha = 1 - clamp(X.t / .32, 0, 1); ctx.drawImage(X.cv, Math.round(X.x) - X.ax, Math.round(X.y) - X.ay); ctx.globalAlpha = 1 } RF.img = c; RF.rx = Math.round(R.x) - ROXS; RF.ry = Math.round(R.y - RLIFT) - ROYS }
       for (const b of INB) if (b.ready && VIS.includes(b)) drawSway(b, Math.round(b.x - b.ax + (b.kx || 0)), Math.round(b.y - b.ay + (b.ky || 0)), Math.round(R.y - RLIFT) - 3); continue }
     const x = Math.round(o.x - o.ax + (o.kx || 0)), y = Math.round(o.y - o.ay + (o.ky || 0) + (o.wob || 0) - objLift(o));
     if (o.fcv || o.bp && Math.abs(o.bp) > .02) drawSway(o, x, y); else if (o.pfr) { const k = o.p === 'boom' ? gateIdx(o) : o.p === 'wheel' ? wheelIdx(o) : flapIdx(o), lit = night && o.pfrN[k] && objLit(o) > .5; ctx.drawImage(o._img = lit ? o.pfrN[k] : o.pfr[k], x, y) } else ctx.drawImage(o._img = night && o.ncv ? o.ncv : o.cv, x, y); o._dx = x; o._dy = y; if (o._figs) for (const F of o._figs) figOver(o, F); if (o.sp && o.sp.pour) drawPour(o); if (o.sp && o.sp.wins && LT.dark > .25) drawWins(o, x, y) }
@@ -8845,8 +8897,8 @@ function frame(now) {
     stepWind(dt, gm); stepRays(dt, gm);
     PUD = clamp(PUD + (WX.rain > .1 ? gm * WX.rain * .035 : -gm * .0045 * (1 - .5 * WX.cloud) * (.4 + .6 * LT.day)), 0, 1);
     if (WX.rain > .08) { const cap = Math.min(1, .12 + WX.rain * .92); if (WET < cap) WET = Math.min(cap, WET + gm * WX.rain * .045); else WET = Math.max(cap, WET - gm * .006) } else WET = Math.max(0, WET - gm * .011 * (1 - .55 * WX.cloud) * (1 - .5 * WX.fog) * (.3 + .7 * LT.day));
-    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.dm) stepDM(dt); else if (R.foot) stepFoot(dt); else { stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
-  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); if (!INTRO.on) dmWarm(paused ? 6 : 2); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
+    ft('погода'); regionsAbout(R.x, R.y); ft('мир: участки'); if (R.xf) { if (R.xf.k === 'hold') { if (!R.foot || R.v > .4 && !R.mountReq) R.xf = null } else { R.xf.t += dt; if (R.xf.t > .32) R.xf = null } } if (R.dm) stepDM(dt); else if (R.foot) { if (R.mountReq) { if (!BIKE || Math.hypot(BIKE.x - R.x, BIKE.y - R.y) > 18 || wantDir(true)) { R.mountReq = false; AUTOW = null; R.mwT = 0 } else mountTry(dt) } if (R.foot) stepFoot(dt) } else { if (R.offReq) offStep(dt); stepStand(dt); stepRider(dt) } stepBrush(dt); stepLife(dt); stepCam(dt); fireSched(); stepFireRain(dt, gm); stepNpcs(dt); stepBreath(dt); stepCows(dt); stepHens(dt); stepDogs(dt); stepSparks(dt); stepSmoke(dt); stepPuddleRide(dt); stepDrips(dt); stepLeaves(dt, VIS); stepRain(dt) } ft('движение');
+  sndUpdate(dt); ft('звук'); rWarm(); heroWarm(paused ? (INTRO.on ? 2 : 8) : 2.5); if (!INTRO.on) dmWarm(); ft('велосипедист'); buildSome(paused ? (INTRO.on ? 3 : 8) : 4); ft('фоновая сборка');
   if (INTRO.on) { requestAnimationFrame(frame); return } // (the story covers the window: the world behind it is not drawn, only made ready a little at a time)
   scrT(); ctx.fillStyle = '#1a1612'; ctx.fillRect(0, 0, W, H);
   drawWorld(); ft('мир'); drawSmoke(); drawFog(); drawLight(); drawLife(); ft('свет'); drawGlare(); drawMurk();
@@ -8859,7 +8911,7 @@ function frame(now) {
   drawMap(); hudT -= dt; if (hudT <= 0) { hudT = .25; placeHud(); heroActHud(); elClock.textContent = clockText() + ' · ' + partOfDay(DAY.h) + slopeText(); elWx.textContent = STATES[WX.mode === 'auto' ? WX.cur : WX.mode].n; const wt = windText(); if (wt !== elWind._t) { elWind.innerHTML = wt; elWind._t = wt } hintUpdate(); devPanel() }
   requestAnimationFrame(frame) }
 document.addEventListener('visibilitychange', () => { last = performance.now() });
-window.__SB = { HENS, DOGS, dogSpr, henSpr, dmFrame, RSETS, rPick, heroSprite, walkHole, JOLT, get RLIFT() { return RLIFT }, DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
+window.__SB = { SQ, SPND, get RWORK() { return RWORK }, riderLocal, HENS, DOGS, dogSpr, henSpr, RSETS, rPick, heroSprite, SPR_ST, STAND, stKey, get BIKE() { return BIKE }, walkHole, JOLT, get RLIFT() { return RLIFT }, DAMR, mapwD, MAPW, CHUNKS, groundColor,  get t() { return t }, set t(v) { t = v }, get paused() { return paused }, set paused(v) { paused = v }, NPC_SPR, VIS, standAt, objsIn, get BTEST() { return BTEST }, set BTEST(v) { BTEST = v }, TRK, stepTracks, WIRES, bWireNear, bReset: () => { for (const B of BIRDS) bFree(B); BIRDS.length = 0; BFL.length = 0; BFIRST = false }, get MOTHS() { return MOTHS }, foxSpots, isFox, mothSpots, bVoice, BIRDS, BSKY, BFL, BDBG, BKIND, bMake, BOCC, bsprite, bSpawnGroup, bctx, bKindAt, bFlee, bGo, bPlan, bPerches, bNodeNear, skySpawn, SND, WS, terrH, SLOPE, deckLift, cowSpr, COWS, GULLS, GPERCH, gullCall, get leaves() { return leaves }, layerD, layersNear, bayDist, PLW, WLAY: () => LAYERS.filter(L => ["river","lake","bog","bridge","brook","pond"].includes(L.mat) && L.id && !L.id.startsWith("brook")).map(L => [L.id, L.mat, Math.round((L.bb[0]+L.bb[2])/2), Math.round((L.bb[1]+L.bb[3])/2)]), FORKS: TRAIL.forks, matAt, trailX: y => { ensureTrail(y); const w = TRLY - y; const R = rawRoads(w); return R[0].x + TRLX }, LAYERS, REGIONS, get BGDBG() { return { twj: TWJ.size, need: LIB_NEED.length, bq: BQ.length, fbq: FBQ.length, rs: [...RSETS.values()].filter(a => a.n === RIDER_N).length } }, PMAX, OCC, BRUSH, SOFT, PC, get GHOSTN() { return GHOSTN }, TW, TLIB, TLIB_ST, MOSSN, npcSprite, camperLook, SX, NPCS, SITS, get PUD() { return PUD }, set PUD(v) { PUD = v }, PUDS, LIGHTS, lightLevel, litCv, FIRES, get SHSET() { return SHSET }, RWORK, riderLocal, RW, RH, R, CAM, OBJS, OBJ, RSETS, DAY, WX, WIND, LT, PL, get vis() { return visCount }, rReady, toggleDev, DEV, stepRider, STAND, SPR_ST, KEYS, STICK, INTRO, INTRO_CARDS, introCard, introBuild, get HERO() { return HERO }, HEROES, personModel, t3sprite, t3rot, t3scale, t3shift, t3join, NPC_K, heroSprite, HSPR, setHero, blocked, matAt, toW, toL, WORLD_ROADS, WORLD_LINES, TRAIL, LONGLOG, WHY, FT, get TRLY() { return TRLY }, WORLD_SIGNS, LAYER, placeOf, regionsAbout, forestAt, standAt };
 // the sketch kit (karta-tropy/sketch) draws its scenes from the game's own generators: with window.__SKETCH set it gets
 // them as window.G and the ride is not started
 if (window.__SKETCH) window.G = { vn, fbm, h2, bay, quant, mulberry, P, PAL, G, GW, BG, Spr, MAKERS, REST, RIMT, rimSpr, crownLayers, prepCrown, crownFrame, lkPick, lkStamp, genRider3, ROX };
