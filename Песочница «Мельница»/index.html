@@ -5145,7 +5145,7 @@ function wStep(J, limit) { const { x0, y0, Ls, Ds, Bs, F, PN, ZN, blk } = J;
       if (k === 1) w = -bayDist(x, y)
       else { let h = layerAt(x, y), top = h.L, own = null; // (a dam's slope is land; where its layer shows the ground below, it is that ground's)
         if (top && top.mat === 'dam') { if (damPart(top, x, y)) continue; own = top; h = underLayer(x, y); top = h.L }
-        if (top && top.pier) continue; // (the pier is a deck over the shore and the water alike: the water's line, its foam and its wet do not run over the boards)
+        if (top && (top.pier || top.mat === 'bridge' || top.mat === 'weir')) continue; // (the pier is a deck over the shore and the water alike: the water's line, its foam and its wet do not run over the boards; nor over a bridge's or a weir's, where they come ashore)
         const isW = top && top.mat === 'lake' && top.pal === 'bay';
         if (isW) w = -bayDist(x, y); else { const d = bayDist(x, y); if (d < 0) continue; w = -d } // (not water, though the lake's layer lies under it: a jetty)
         for (const D of Ds) { damPart(D, x, y); if (D.pad && D.side && DAMG.sd !== D.side) continue; if (w > 0 && DP.edge > 0) w = Math.min(w, DP.edge) } }
